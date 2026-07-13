@@ -64,17 +64,39 @@ class of bugs.
 
 This is the most important architectural constraint in the project.
 
-A tool is a **row in the `tools` table**, not a hardcoded page. Adding a new tool must be
-possible entirely from the admin dashboard, with zero code changes, for the common case.
+A tool is a **row in the `tools` table**, not a hardcoded page.
+
+**Be precise about what this now means, because dropping n8n changed it.** A tool has two halves:
+
+- **Its interface is data.** The form, the field types and validation, the output blocks and how
+  they render, the access rule, the required providers, the rate limit, the copy, the ordering,
+  the status — all of it is columns on a row, all of it editable from the admin dashboard, none
+  of it a deploy. This is the leverage, and it survives the architecture change completely intact.
+- **Its behaviour is code.** With n8n, the *work* was also clickable. It isn't now: a tool's logic
+  is a TypeScript handler at `supabase/functions/run-tool/handlers/<slug>.ts`, and shipping it
+  means `supabase functions deploy run-tool`.
+
+So: **shipping a new tool is one handler file and one deploy command.** Everything else is the
+admin dashboard. That is a real, deliberate trade — we gave up a clickable workflow builder and
+got back a system where a member's API key never touches third-party software, where the tool is
+in version control, typed, testable, and reviewable, and where there is no second platform to
+keep alive. It is the right trade for a solo builder who can write TypeScript faster than he can
+drag nodes. But do not tell yourself tools are "no code" any more. They are *no deploy for
+everything a user can see*, which is still most of the win.
 
 Every tool has a `runtime`:
 
 | Runtime | What it is | When to use |
 |---|---|---|
-| `webhook_form` | **The default.** Tool defines an `input_schema` (JSON). The platform auto-renders a form from it, POSTs the validated payload to `webhook_url`, and renders the response using `output_schema`. | 90% of tools. Backed by n8n workflows or Supabase Edge Functions. |
+| `edge_function` | **The default.** Tool defines an `input_schema` (JSON). The platform auto-renders a form from it, invokes the `run-tool` Supabase Edge Function with the validated payload, and renders the result using `output_schema`. The tool's actual code is a handler file, dispatched by slug. | 90% of tools. See §9. |
 | `internal` | A custom React route registered in a client-side registry, keyed by `tools.slug`. | Complex, stateful tools that a form can't express. |
 | `iframe` | Renders `embed_url` in a sandboxed iframe with an auth token passed via query param. | Existing apps you already built. |
 | `external_link` | Just opens `external_url` in a new tab, after an access check. | Escape hatch. |
+
+**There is no external execution backend.** Tools are TypeScript that runs on our own Supabase
+project. There is no n8n, no third-party workflow engine, and no outbound webhook. This is the
+single most important consequence: **a member's API key never leaves infrastructure we control,
+and never touches software that persists it.** See §9 and §10.
 
 ### `input_schema` shape
 
@@ -106,7 +128,7 @@ Every tool has a `runtime`:
 ```
 
 **There is no `file` input type in the MVP.** File upload needs a Storage bucket, its own RLS,
-a signed-URL handoff to n8n, and a retention policy — that is a feature, not a field type. If a
+a signed-URL handoff to the handler, and a retention policy — that is a feature, not a field type. If a
 tool needs a file, it takes a URL to one. Revisit after Phase 7.
 
 ### `output_schema` shape
@@ -126,8 +148,9 @@ tool needs a file, it takes a URL to one. Revisit after Phase 7.
 
 ### Output files: re-hosted, and they expire
 
-A `file` or `image` block's value is a URL returned by n8n. **We never link to it directly** —
-an n8n temp URL dies, and dead links in run history make the product look broken.
+A `file` or `image` block's value is a URL a handler returned — typically a provider's temporary
+CDN link. **We never link to it directly.** Those URLs expire, and dead links in run history make
+the product look broken.
 
 At run completion, the runner downloads every `file`/`image` URL in the output and re-hosts it
 in the private Supabase Storage bucket `run-artifacts`, under `{user_id}/{run_id}/{key}`. The
@@ -155,7 +178,7 @@ the product. Invest in them.
 - Application form with anti-spam
 - Member dashboard: empty Apps state → application status → granted tools
 - Admin: applications review queue, users table, tool CRUD, access management
-- Tool registry + access engine + `webhook_form` runner
+- Tool registry + access engine + `edge_function` runner
 - Run history
 - **BYOK key vault** — members supply their own provider API keys. The platform never pays for compute.
 - Audit log
@@ -189,8 +212,9 @@ the product. Invest in them.
 - **Server Actions** for all mutations. No custom API routes unless there is a webhook to receive.
 - **Resend** for transactional email — and as Supabase Auth's custom SMTP provider
 - **Cloudflare Turnstile** for the application form
-- **Vercel (Hobby)** for deploy
-- **n8n** (already running) as the execution backend for `webhook_form` tools
+- **Vercel (Hobby)** for the web app
+- **Supabase Edge Functions** (Deno) as the execution backend for every tool. **No n8n. No
+  external execution of any kind.**
 
 Rules:
 
@@ -202,9 +226,13 @@ Rules:
 - **Rate limiting lives in Postgres.** No Redis, no Upstash, no in-process counter. Vercel
   functions are stateless and share no memory, so an in-process limiter is not a limiter. See
   `rate_limit_hits` in §6.13.
-- **We are on Vercel Hobby and we design for it.** Functions cap at 60s. The runner never
-  holds a request open waiting for n8n — see §9. Nothing in this product may depend on a Pro
-  plan's function duration.
+- **We are on Vercel Hobby and we design for it.** Vercel functions cap at 60s — irrelevant now,
+  because the runner Server Action returns in under a second and never waits for a tool to
+  finish. Nothing in this product may depend on a Vercel plan above Hobby.
+- **The binding constraint is Supabase's, not Vercel's.** A tool run is an Edge Function
+  invocation, and it dies at the wall-clock limit: **150s on the Supabase Free plan, 400s on
+  Pro.** That is now the hard ceiling on how long any tool can take. Read §9.1 before designing
+  a tool.
 
 ---
 
@@ -224,7 +252,7 @@ create type application_status as enum ('pending', 'approved', 'waitlisted', 're
 create type membership_status  as enum ('trialing', 'active', 'expired', 'revoked');
 create type tool_status        as enum ('draft', 'coming_soon', 'published', 'maintenance', 'archived');
 create type tool_access_type   as enum ('public_preview', 'members', 'plan', 'manual');
-create type tool_runtime       as enum ('webhook_form', 'internal', 'iframe', 'external_link');
+create type tool_runtime       as enum ('edge_function', 'internal', 'iframe', 'external_link');
 create type grant_source       as enum ('global', 'plan', 'manual', 'code');
 create type run_status         as enum ('queued', 'running', 'success', 'error', 'timeout');
 create type code_kind          as enum ('membership', 'tool_access');
@@ -367,7 +395,7 @@ create table tools (
 
   status          tool_status not null default 'draft',
   access_type     tool_access_type not null default 'members',
-  runtime         tool_runtime not null default 'webhook_form',
+  runtime         tool_runtime not null default 'edge_function',
 
   -- Non-secret runtime config only. The client legitimately needs this to render.
   internal_key    text,                      -- internal; maps to the client registry
@@ -379,8 +407,11 @@ create table tools (
   -- Empty array = runs on free/no-key APIs = can be offered as public_preview.
   required_providers api_provider[] not null default '{}',
 
-  timeout_seconds    integer not null default 120,   -- how long we wait for n8n's CALLBACK,
-                                                     -- not how long we hold an HTTP request. See §9.
+  -- How long we let this tool run before the reaper calls it dead. NOT how long we hold an
+  -- HTTP request open — we hold none. Must be <= the Supabase wall-clock limit (150s free /
+  -- 400s Pro), because the Edge Function will be killed at that point regardless of what this
+  -- column says. Enforced by a CHECK so a hopeful admin can't set 600 and wonder why.
+  timeout_seconds    integer not null default 120 check (timeout_seconds between 5 and 400),
   rate_limit_per_day integer,                -- abuse guard only; null = unlimited
 
   version         text default '1.0.0',
@@ -395,31 +426,36 @@ create index tools_status_idx on tools (status, sort_order);
 -- ============================================================
 -- 6.6b  TOOL_SECRETS
 --       Service role only. No policy is written for `anon` or `authenticated`, and none ever
---       will be — RLS is on with zero policies, which denies everyone. Only the runner (and
---       the admin Server Actions, via the service-role client) ever reads this table.
---       A separate table rather than column grants on `tools`, because a forgotten GRANT is
---       invisible and a forgotten table is not: you cannot leak a column you cannot join to.
+--       will be — RLS is on with zero policies, which denies everyone.
+--
+--       Honest note on the name: with n8n gone there is no longer a *credential* in here.
+--       There is no webhook URL to leak and no HMAC secret to steal, because there is no
+--       outbound webhook. What remains is runtime config the client has no business seeing —
+--       which handler file executes, where an iframe points. The table stays separate anyway,
+--       for the same structural reason as before: `tools` is publicly readable, and you cannot
+--       accidentally leak a column you cannot join to. Keeping the boundary costs nothing and
+--       means the next thing that IS a secret has an obvious home.
 -- ============================================================
 create table tool_secrets (
   tool_id        uuid primary key references tools(id) on delete cascade,
 
-  webhook_url    text,   -- webhook_form. HTTPS only, host must be on the allowlist. See §13.
-  webhook_secret text,   -- webhook_form. HMAC signing key, both directions. Generated on create.
+  -- edge_function: which handler in supabase/functions/run-tool/handlers/ runs this tool.
+  -- Defaults to the tool's slug; overridable so two tools can share one handler (e.g. the same
+  -- summarizer with different prompts baked into the row).
+  function_name  text,
+
   embed_url      text,   -- iframe
   external_url   text,   -- external_link
 
   updated_at     timestamptz not null default now(),
 
-  -- We POST members' plaintext API keys to webhook_url. It is never plain HTTP.
-  constraint webhook_url_is_https
-    check (webhook_url is null or webhook_url like 'https://%'),
   constraint embed_url_is_https
     check (embed_url is null or embed_url like 'https://%')
 );
 
--- embed_url and external_url are not secrets, but they live here anyway so that ALL runtime
--- config has exactly one home and `select * from tools` can never be a mistake. The server
--- reads them and passes them to the client as props, after an access check.
+-- embed_url and external_url are not secrets either, but all runtime config has exactly one
+-- home so that `select * from tools` can never be a mistake. The server reads them and passes
+-- them to the client as props, after an access check.
 
 -- Tools included in a plan (used when access_type = 'plan')
 create table plan_tools (
@@ -453,12 +489,10 @@ create table tool_runs (
   error_message text,
   duration_ms   integer,
 
-  -- Async is the default path (§9). A run outlives the request that started it, so a run
-  -- carries everything needed to resume rendering it from a cold page load.
-  is_async      boolean not null default true,
+  -- Every run is async (§9). A run outlives the request that started it, so it carries
+  -- everything needed to resume rendering from a cold page load.
   expires_at    timestamptz,   -- created_at + tools.timeout_seconds. A run still 'running'
                                -- past this is swept to 'timeout' by the reaper job.
-  callback_at   timestamptz,   -- when n8n's callback landed. Null until it does.
 
   -- File/image outputs are re-hosted into the `run-artifacts` bucket and kept 30 days.
   -- Past this, the file blocks render as expired; every other block renders forever. See §3.
@@ -668,7 +702,7 @@ insert into app_settings (id) values (true);
 --
 --       Per-tool run limits are NOT stored here — they are counted directly from tool_runs,
 --       which is already the source of truth. This table is for things with no natural row:
---       application submissions by IP, key-verification calls, callback attempts.
+--       application submissions by IP, key-verification calls.
 -- ============================================================
 create table rate_limit_hits (
   id         bigserial primary key,
@@ -701,7 +735,7 @@ end $$;
 -- 6.14  SCHEDULED JOBS  (pg_cron)
 -- ============================================================
 -- 1. The run reaper. Async runs have no request holding them open, so nothing else will ever
---    fail them. Without this, a dead n8n workflow leaves a run spinning in the UI forever.
+--    fail them. Without this, a killed Edge Function leaves a run spinning in the UI forever.
 --    Every minute: any 'queued'/'running' run past its expires_at becomes 'timeout'.
 --
 -- 2. The artifact sweeper. Daily: delete `run-artifacts` storage objects for runs whose
@@ -837,7 +871,7 @@ structurally, not by convention:
 
 | Danger | Wrong fix (what we are not doing) | What we do |
 |---|---|---|
-| `tools.webhook_secret` readable by any member | "Select explicit columns in the Server Component" | The column does not exist on `tools`. It lives in `tool_secrets`, which has **RLS on and zero policies** — deny-all. Service role only. |
+| Runtime config on `tools`, a publicly-readable table | "Select explicit columns in the Server Component" | The columns do not exist on `tools`. They live in `tool_secrets`, which has **RLS on and zero policies** — deny-all. Service role only. You cannot leak a column you cannot join to. |
 | `user_api_keys.ciphertext` readable by its owner | "Read through the `user_api_keys_public` view" (the view is `security_invoker`, so it enforces nothing the base table doesn't) | **Column-level `GRANT`**: revoke the table from `anon`/`authenticated`, grant `select` on the safe columns only. |
 
 **RLS policy summary** (write these out in full in the migration):
@@ -930,153 +964,181 @@ poking at production.
 
 ---
 
-## 9. The tool runner (`webhook_form`) — async-first
+## 9. The tool runner (`edge_function`)
 
-The single most important flow in the app. Implement it as a Server Action, never client-side.
+The single most important flow in the app. **Tools are TypeScript that runs on our own Supabase
+project.** There is no external execution backend, no webhook out, and no third party in the
+path of a member's API key.
 
-### The rule: a run outlives the request that started it
+### 9.1 What an Edge Function can and cannot do — read this before writing a tool
 
-**Every tool is async. There is no "long-running tool" special case, because there is no
-synchronous default to be an exception to.**
+These are hard platform limits, verified against Supabase's docs (July 2026). A tool is not a
+design until it fits inside this box.
 
-n8n workflows take minutes. Vercel Hobby functions die at 60 seconds. Holding an HTTP request
-open until n8n finishes is therefore not a design we could ship even if we wanted to — and we
-don't want to, because it makes the product worse: a member who closes the tab loses their run.
+| Limit | Value | What it actually means for a tool |
+|---|---|---|
+| **Wall clock** | **150s Free · 400s Pro** | The hard ceiling on a run. The function is killed at this point, mid-work, no matter what. `tools.timeout_seconds` must be ≤ this. |
+| **CPU time** | **2s** (2000ms) | **Does not include async I/O.** This is the number people misread, and it's the one that makes this architecture work: waiting 90 seconds on an OpenAI response burns ~0ms of CPU. Only *your own computation* counts. |
+| **Memory** | **256MB** | Never buffer a large file. Stream it. Re-hosting a 200MB artifact by loading it into a `Uint8Array` will kill the isolate. |
+| **Request idle timeout** | 150s | Irrelevant to us: we respond in ~100ms and do the work in a background task. |
+| **Script size** | 20MB bundled | Not a real constraint. All handlers share one bundle; keep dependencies lean anyway. |
+| **Invocations** | 500K/mo Free · 2M/mo Pro | Not a real constraint at our scale. One run ≈ one invocation. |
 
-So: **the Server Action's only job is to start the run and hand back a `run_id`.** It returns in
-under a second. n8n calls us back when it's done. The member can close the laptop, come back
-tomorrow, open `/dashboard/runs/[id]`, and the finished output is sitting there. That is a
-better product *and* the cheaper one, which is a rare thing, so we take it.
+> **The CPU/wall-clock distinction is the whole ballgame.** These tools are I/O-bound almost by
+> definition — they call an LLM, wait, call another API, wait. That's what a 2s CPU budget is
+> for. What you cannot do is *compute*: no parsing a 50MB CSV in-process, no image manipulation,
+> no embedding math over thousands of rows, no tight loops over big arrays. If a tool needs real
+> CPU, it needs a different home, and you should notice that at design time, not at 546-error time.
 
-Every n8n workflow responds immediately with `202 { "async": true }` and calls the callback
-endpoint when it finishes. This is the contract, not an option.
+**A tool that takes longer than 400 seconds cannot exist in this architecture.** That is a real
+loss versus n8n, which would happily grind for an hour, and it should be a conscious trade rather
+than a surprise. Two escape hatches, in order of preference:
 
-> A synchronous fast path — n8n returns `200` with the output inline — is permitted for tools
-> that genuinely finish in a couple of seconds, purely as a latency optimization. It is an
-> optimization, not a mode: the run row, the states, the storage, and the UI are identical
-> either way. If you ever find yourself writing code that only works on the sync path, delete it.
+1. **Make the tool return sooner.** Most "long" automations are long because they process N items
+   serially. Fan them out with `Promise.all` and the wall clock stops being the problem.
+2. **Chunk across invocations.** Persist progress on the run row, re-invoke, resume. This is a
+   real feature with real complexity — do not build it speculatively. Build it the first time a
+   tool actually needs it, and not before.
 
-### Phase 1 — `startRun()` Server Action (returns in < 1s)
+On the **Free plan the ceiling is 150s**, which is tight for anything doing several sequential
+LLM calls. Expect Supabase Pro ($25/mo) to become necessary the moment tools get real. That is
+the platform's *only* fixed cost, and it is not a per-member cost — the BYOK economics in §10 are
+untouched.
+
+### 9.2 Shape
+
+One Edge Function, `run-tool`. One handler file per tool, dispatched by slug.
 
 ```
-1.  User submits the auto-rendered form.
-2.  Server Action, in this order — cheapest and most-likely-to-fail checks first:
+supabase/functions/
+  run-tool/
+    index.ts                     # auth, dispatch, background task, run lifecycle
+    handlers/
+      youtube-lead-finder.ts     # export default async (ctx) => output
+      thumbnail-critic.ts
+      ...
+    _shared/
+      types.ts                   # RunContext, ToolOutput
+      providers.ts               # thin typed wrappers per api_provider
+      artifacts.ts               # stream a URL into the run-artifacts bucket
+  run-reaper/                    # pg_cron: fail runs that never finished
+  artifact-sweeper/              # pg_cron: delete artifacts past 30 days
+```
+
+**Shipping a new tool is: write one handler file, `supabase functions deploy run-tool`, then
+create the row in the admin editor.** The deploy is the only thing that isn't clickable, and it
+is one command. Everything a *user* sees — the form, the validation, the output rendering — still
+comes entirely from the row. §3 is unchanged and remains the real leverage.
+
+A handler is a pure-ish function. It receives validated input and the member's decrypted keys,
+and returns an object matching the tool's `output_schema`. It does not touch the database, it
+does not know what a run is, and it does not manage its own errors — `index.ts` owns all of that,
+once, for every tool.
+
+```ts
+// handlers/youtube-lead-finder.ts
+export default async function run(ctx: RunContext): Promise<Record<string, unknown>> {
+  const { input, secrets } = ctx           // input is already Zod-validated against input_schema
+  const channels = await searchChannels(input.channel_url, secrets.youtube_data)
+  const summary  = await summarize(channels, secrets.openai)
+  return { summary, leads: channels }      // keys match output_schema block keys
+}
+```
+
+### 9.3 The flow
+
+```
+1.  Member submits the auto-rendered form.
+
+2.  startRun() Server Action (Vercel). Returns in well under a second:
       a. Verify auth. Derive user_id from the session. Never from the request body.
-      b. can_access_tool(tool_id, user_id) — re-check server-side, always, even though
-         the UI already hid the button.
+      b. can_access_tool(tool_id, user_id) — re-check server-side, always, even though the UI
+         already hid the button.
       c. tool.status = 'published'. If 'maintenance', stop with the notice from DESIGN.md §12.
-      d. has_required_keys(tool_id) — if false, stop and name exactly which provider is
-         missing, with a link to /dashboard/keys pre-filtered to it.
+      d. has_required_keys(tool_id) — if false, stop and name exactly which provider is missing,
+         with a link to /dashboard/keys pre-filtered to it.
       e. Daily rate limit: count today's (UTC) tool_runs for this user+tool. The stricter of
          tools.rate_limit_per_day and the user's plans.max_runs_per_day wins. Abuse guard only.
       f. Validate input against a Zod schema compiled from tool.input_schema (lib/schema.ts).
-3.  Insert tool_runs:
-      status     = 'running'
-      input      = the validated form values, WITH NO SECRETS IN THEM
-      is_async   = true
-      expires_at = now() + tools.timeout_seconds
-      providers_used = tool.required_providers
-4.  Decrypt the user's keys for tool.required_providers. In memory only. Never logged, never
-    written back, never returned to the client.
-5.  Read webhook_url + webhook_secret from tool_secrets, on the SERVICE-ROLE client.
-    Validate webhook_url: https, and its host is on the allowlist (§13).
-6.  POST to webhook_url:
-      Headers: X-BLAI-Signature   HMAC-SHA256 of `{timestamp}.{raw_body}` with webhook_secret
-               X-BLAI-Timestamp   unix seconds
-               X-BLAI-Run-Id
-      Body:    {
-                 run_id, user_id, tool_slug,
-                 callback_url: "https://<site>/api/runs/callback",
-                 input:   { ...validated form values },
-                 secrets: { openai: "sk-...", elevenlabs: "..." }   // the member's own keys
-               }
-      This POST has a short timeout (10s). We are waiting for n8n to say "got it", not to work.
-7.  Expect 202. On any non-2xx, or a timeout on the handshake itself, mark the run 'error'
-    immediately — n8n never even picked it up, so no callback is coming.
-8.  Update user_api_keys.last_used_at.
-9.  Return { run_id }. The client navigates to the runner's live state and subscribes.
+      g. Insert tool_runs: status='running', input=<validated, NO SECRETS>,
+         expires_at = now() + tools.timeout_seconds, providers_used = tool.required_providers.
+      h. Decrypt the member's keys for tool.required_providers. In memory only.
+      i. Invoke the Edge Function with the SERVICE ROLE key:
+            POST https://<ref>.supabase.co/functions/v1/run-tool
+            Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
+            Body: { run_id, user_id, tool_slug, function_name, input, secrets }
+         Wait only for the 202. Ten-second timeout on the handshake — we are waiting for
+         "accepted", not for work.
+      j. Non-2xx or handshake timeout → mark the run 'error' immediately. Nothing was started.
+      k. Update user_api_keys.last_used_at. Return { run_id }.
+
+3.  run-tool Edge Function:
+      a. REJECT ANY CALLER THAT IS NOT THE SERVICE ROLE. See 9.4. This is not optional.
+      b. Look up the handler by function_name (or slug). Unknown slug → 'error', return 400.
+      c. EdgeRuntime.waitUntil(work())  ← NOT awaited
+         return new Response(null, { status: 202 })
+      d. work(), now running in the background with the request already answered:
+           - handler(ctx) with { input, secrets }
+           - re-host any file/image URLs in the output into run-artifacts/{user_id}/{run_id}/{key},
+             streaming, never buffering (256MB). Set artifacts_expire_at = now() + 30 days.
+           - update tool_runs: status='success', output, completed_at, duration_ms
+             — written directly, with the service role. There is no callback and no HTTP hop back.
+      e. On a thrown error: status='error', error_message (a sentence, not a stack trace).
+      f. On a provider 401/403: set that user_api_keys row to status='invalid', mark the run
+         'error' with the provider named, and email the member once per key (not per run). This
+         is the most common failure in BYOK and it is a first-class path, not an edge case.
+      g. addEventListener('beforeunload', ...) → the isolate is being shut down (wall clock, CPU,
+         or memory). Write status='timeout' with the shutdown reason. Best-effort: it may not
+         land, which is exactly why the reaper below exists and is not redundant.
+
+4.  Realtime pushes the updated tool_runs row to the browser. The UI renders it. No polling.
 ```
 
-### Phase 2 — the callback (`POST /api/runs/callback`)
+**The Server Action never waits for the tool.** It hands off and returns. A member can close the
+tab, close the laptop, come back tomorrow — the run finished without them and it is on
+`/dashboard/runs/[id]`. This is the same async-first guarantee as before; only the executor
+changed.
 
-The only public API route in the product.
+### 9.4 The Edge Function is on the public internet
 
-```
-Headers: X-BLAI-Signature   HMAC-SHA256 of `{timestamp}.{raw_body}` with the tool's webhook_secret
-         X-BLAI-Timestamp   unix seconds
-Body:    { run_id, status: "success" | "error", output?, error_message?,
-           provider_error?: { provider: "openai", http_status: 401 } }
-```
+`https://<ref>.supabase.co/functions/v1/run-tool` is reachable by anyone. **`verify_jwt` is not
+authorization** — the anon key *is* a valid JWT, so the default setting would happily let any
+visitor invoke `run-tool` with a hand-written body: someone else's `run_id`, arbitrary `secrets`,
+any handler they like.
 
-```
-1.  Read run_id from the body and load the run + its tool's webhook_secret (service role).
-    Looking up which secret to check against is not a trust decision — verifying is.
-2.  Reject if X-BLAI-Timestamp is more than 5 minutes old or in the future. Without this, a
-    captured callback replays forever.
-3.  Recompute the HMAC over `{timestamp}.{raw_body}` — the RAW body, before JSON parsing —
-    and compare in constant time. Reject anything unsigned or mismatched. 401, no detail.
-4.  Reject if the run is already terminal. A callback is idempotent: first one wins, the rest
-    are 200 OK and ignored. n8n retries.
-5.  Re-host artifacts: for every `file`/`image` block in the tool's output_schema, download the
-    URL n8n returned, put it in `run-artifacts/{user_id}/{run_id}/{key}`, and replace the URL
-    in the output with the storage path. Set artifacts_expire_at = now() + 30 days. (§3)
-6.  Update the run: status, output, error_message, completed_at, callback_at,
-    duration_ms = completed_at - created_at.
-7.  If provider_error.http_status is 401 or 403 → set that user_api_keys row to
-    status = 'invalid', and email the member once per key (not once per run). This is the
-    single most common failure in BYOK. It is a first-class path, not a generic error.
+So the first thing `index.ts` does, before anything else:
+
+```ts
+const auth = req.headers.get('Authorization')
+if (auth !== `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`) {
+  return new Response('not found', { status: 404 })   // 404, not 401. Don't confirm it exists.
+}
 ```
 
-### Phase 3 — the reaper
+Constant-time compare it. **The only caller in the world that may invoke `run-tool` is our own
+Server Action**, which has already verified the session, the access grant, the tool status, the
+keys, and the rate limit. The Edge Function trusts its input completely *because* nothing else
+can reach it — and that trust is only safe as long as this check is the first line in the file.
 
-No request is holding an async run open, so **nothing will ever fail it if n8n simply dies.**
-A pg_cron job runs every minute: any run still `queued`/`running` past `expires_at` becomes
-`timeout`. Without the reaper, one broken workflow leaves a spinner turning in someone's
-dashboard forever. This job is not optional and it is not Phase 8.
+### 9.5 The reaper (still required)
 
-### How the client sees any of this
+An Edge Function that is killed at the wall clock, runs out of memory, or dies in a way that
+skips its own `beforeunload` handler will leave a run sitting in `running` forever, and a spinner
+turning forever in someone's dashboard. Nothing else in the system will ever notice.
 
-The runner page and `/dashboard/runs/[id]` subscribe to their `tool_runs` row over Supabase
-Realtime, so the UI updates the instant the callback lands. **No polling.**
+pg_cron, every minute: any run still `queued`/`running` past `expires_at` becomes `timeout`.
+Not optional, and not Phase 8.
 
-Because the run lives in the database and not in a React state variable, the *resumed* case is
-free and must be treated as a first-class state, not an edge case: a cold page load of a run
-that is still `running` renders the identical live UI — progress line, skeleton, status pill —
-and subscribes. The member cannot tell whether they've been watching for two minutes or just
-walked back to their desk. See DESIGN.md §8.
-
-Requires: `alter publication supabase_realtime add table tool_runs;` and RLS letting the
-subscriber select their own row. Realtime respects RLS — if you forget the policy, you get
-silence, not an error.
-
-### Secrets: the one rule
+### 9.6 Secrets: the one rule
 
 **Never persist `secrets` anywhere.** Not in `tool_runs.input`, not in a log line, not in an
-error message, not in a Sentry breadcrumb, not in a thrown exception's `cause`. Strip keys
-before the run row is written. **Write a unit test that asserts a saved run row, serialized, does
-not contain a known test key** — and run it in CI, because this is the failure that ends the
-product.
+error message, not in a Sentry breadcrumb, not in a thrown exception's `cause`. Strip keys before
+the run row is written. **Write a unit test that asserts a saved run row, serialized, does not
+contain a known test key** — and run it in CI, because this is the failure that ends the product.
 
-### The n8n contract
-
-- Every workflow reads its credentials **from the incoming webhook body**, never from an n8n
-  credential store.
-- Every workflow responds `202 {"async": true}` immediately, then does the work, then POSTs the
-  callback.
-- Every workflow signs its callback with the tool's `webhook_secret`, over
-  `{timestamp}.{raw_body}`.
-- **Execution-data saving is disabled at the n8n instance level, not per workflow:**
-  ```
-  EXECUTIONS_DATA_SAVE_ON_SUCCESS=none
-  EXECUTIONS_DATA_SAVE_ON_ERROR=none
-  EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS=true
-  ```
-  Production (webhook-triggered) runs save nothing, so a member's key can never land in n8n's
-  database. Manual executions — the ones the admin triggers by hand in the n8n editor while
-  building — still save, so debugging works. Members never trigger manual executions, so member
-  keys never touch a saved execution. This is set once on the server; a per-workflow checkbox is
-  a human-memory dependency, and human memory is the thing we are designing around.
-
+A handler receives `ctx.secrets` and must never log it. `console.log(ctx)` in a handler is a
+security incident, because Edge Function logs are retained. Say so in the handler template's
+comment header, where someone writing tool #12 in a hurry will actually read it.
 ---
 
 ## 10. BYOK — bring your own keys
@@ -1084,6 +1146,31 @@ product.
 **The economic model of this platform: the member pays their provider, not me. Platform
 compute cost is always zero. There are no credits, no usage metering, no billing. A
 membership buys access to the tools; the member supplies the fuel.**
+
+(The platform's *fixed* cost is a Supabase plan. That is not a per-member cost and does not
+scale with usage. A thousand members running a thousand tools costs the same as one.)
+
+### Where a key goes, exactly
+
+Since tools execute as Edge Functions on our own Supabase project, **a member's API key never
+leaves infrastructure we control, and never touches software that persists it.** The full path,
+end to end:
+
+1. The member pastes the key into a form. It is encrypted in a Server Action and stored as
+   ciphertext. The plaintext is discarded.
+2. On a run, the Server Action decrypts it in memory and passes it over TLS to our own
+   `run-tool` Edge Function.
+3. The handler holds it in memory for the length of one call to the provider.
+4. The isolate dies. Nothing wrote it down.
+
+There is no external workflow engine, no third-party execution log, no `EXECUTIONS_DATA_SAVE`
+setting to remember, and no vendor that could retain a key by default while we weren't looking.
+The previous design's single most dangerous failure mode — one un-ticked checkbox in n8n silently
+writing every member's key to a database we don't own — **does not exist in this architecture.**
+It isn't mitigated; it's gone.
+
+The two things left to get right are both ours: don't log the key (§9.6), and don't let anyone
+but our own Server Action invoke the function (§9.4).
 
 ### Encryption
 
@@ -1203,27 +1290,26 @@ Two things from it that shape the architecture, so they belong here too:
   Component), and the Server Action (the mutation). Middleware alone is not authorization.
 - `can_access_tool()` is checked server-side on every run, even though the UI already hid the
   button. It takes an explicit subject — never rely on it reading `auth.uid()` for you.
-- **`webhook_url` and `webhook_secret` are not columns on a client-readable table.** They are in
-  `tool_secrets`, which has RLS on and no policies. There is nothing to remember not to select.
+- Runtime config is not on a client-readable table. It lives in `tool_secrets`, which has RLS on
+  and no policies. There is nothing to remember not to select.
 
-### Webhook security
+### The execution boundary
 
-- **Both directions are HMAC-signed**, over `{timestamp}.{raw_body}`, with the tool's
-  `webhook_secret`. Compare in constant time (`crypto.timingSafeEqual`). Sign the *raw* body,
-  before parsing — re-serializing JSON changes the bytes and breaks the signature for reasons
-  that will cost you an afternoon.
-- **Replay protection on the inbound callback:** an `X-BLAI-Timestamp` header is part of the
-  signed payload, and we reject anything more than **5 minutes** old, or dated in the future.
-  A signature alone is not freshness; without the window, one captured callback is replayable
-  forever.
-- **The callback is idempotent.** A run that is already terminal ignores further callbacks and
-  returns 200. n8n retries, and a retry must not overwrite a finished run.
-- **`webhook_url` is HTTPS-only** — enforced by a `CHECK` constraint on `tool_secrets`, not by
-  the form validation, because the form is not the last line.
-- **`webhook_url`'s host must be on an allowlist** (`WEBHOOK_ALLOWED_HOSTS`, comma-separated),
-  checked in the runner immediately before the POST. We send members' plaintext API keys to
-  whatever is in that column. Today only the admin can write it — but a single edited column
-  should not be a working exfiltration primitive, and this costs one line to close.
+There is no outbound webhook, so there is no HMAC signing, no callback endpoint, no replay
+window, and no host allowlist. **All of that machinery existed to make it safe to hand a member's
+key to someone else's server. We no longer do that, so it's deleted rather than maintained.**
+
+What replaces it is a single check, and it carries the entire weight:
+
+- **`run-tool` must reject any caller that is not the service role.** The function is on the
+  public internet. `verify_jwt` is *not* authorization — the anon key is a valid JWT, so a
+  visitor could otherwise invoke it directly with a forged body: someone else's `run_id`,
+  arbitrary `secrets`, any handler. The first statement in `index.ts` compares the bearer token
+  against `SUPABASE_SERVICE_ROLE_KEY` in constant time and 404s otherwise. See §9.4.
+- Everything the Edge Function trusts — that the user is who they say, that they have access,
+  that the tool is published, that their keys are theirs, that they're under the rate limit —
+  was verified by the Server Action. That trust is sound **only** because nothing else can reach
+  the function. If that check ever moves out of first position, the whole model collapses.
 
 ### The rest
 
@@ -1231,14 +1317,15 @@ Two things from it that shape the architecture, so they belong here too:
   (`rate_limit_take()`, §6.13). Not an in-process counter: Vercel functions share no memory, so
   an in-process limit is a limit of one instance, which is no limit. Auth is now also required
   to apply — but a signed-in bot is still a bot, so none of the above is dropped.
-- **Member API keys:** encrypted at rest (AES-256-GCM), decrypted only in the runner, never
-  logged, never persisted into `tool_runs`, never exposed by any interface in the product to
+- **Member API keys:** encrypted at rest (AES-256-GCM), decrypted only for the length of one run,
+  never logged, never persisted into `tool_runs`, never exposed by any interface in the product to
   anyone, including the admin. `ENCRYPTION_KEY` is server-only and never committed. Be precise
   about this claim — see §10.
-- **n8n never stores an execution body.** `EXECUTIONS_DATA_SAVE_ON_SUCCESS=none` and
-  `EXECUTIONS_DATA_SAVE_ON_ERROR=none`, set on the n8n *instance*. Every byte of encryption work
-  in this codebase is undone by one workflow saving its input, and per-workflow settings depend
-  on remembering. Instance-level settings don't.
+- **A key never reaches a third party.** Tools run on our own Supabase project. There is no
+  external execution engine that could retain a key by default, and therefore no vendor setting
+  we have to remember to turn off.
+- **A handler must never log `ctx.secrets`.** Edge Function logs are retained. `console.log(ctx)`
+  is a security incident, not a debugging convenience. See §9.6.
 - Log every admin mutation to `audit_logs`.
 
 ---
@@ -1246,7 +1333,7 @@ Two things from it that shape the architecture, so they belong here too:
 ## 14. Environment variables
 
 ```bash
-NEXT_PUBLIC_SITE_URL=               # differs per environment. The callback URL is built from it.
+NEXT_PUBLIC_SITE_URL=               # differs per environment.
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=          # server only
@@ -1255,9 +1342,11 @@ RESEND_FROM_EMAIL=
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
 ENCRYPTION_KEY=                     # 32 random bytes, base64. Encrypts member API keys. Server only.
-WEBHOOK_ALLOWED_HOSTS=              # comma-separated. e.g. n8n.yourdomain.com
-                                    # The runner refuses to POST member keys anywhere else.
 ```
+
+The Edge Function runtime gets `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_URL` injected by the
+platform — you do not set them. Nothing else is needed there: keys arrive in the request body, so
+the function never needs `ENCRYPTION_KEY`.
 
 **There is no `ADMIN_BOOTSTRAP_EMAIL`.** Postgres cannot read this file, so the trigger could
 never have used it. Promote yourself with one line of SQL, once. See §7.
@@ -1276,7 +1365,6 @@ app/
   (auth)/               # login, callback
   (app)/dashboard/      # member app
   (admin)/admin/        # admin
-  api/runs/callback/    # the only public API route
 components/
   tools/                # ToolForm, ToolOutput, ToolCard, RunStatus
   ui/                   # shadcn
@@ -1286,18 +1374,20 @@ lib/
   schema.ts             # Zod: compile input_schema -> Zod schema
   crypto.ts             # AES-256-GCM encrypt/decrypt. Nothing else imports node:crypto.
   keys.ts               # key vault: save, verify, list (public view), decryptForRun
-  runner.ts             # startRun: validate, decrypt, sign, POST, expect 202
-  callback.ts           # verify HMAC + timestamp, re-host artifacts, finalize the run
-  hmac.ts               # sign/verify {timestamp}.{body}. Used by both directions.
+  runner.ts             # startRun: validate, decrypt, invoke run-tool, expect 202
   ratelimit.ts          # thin wrapper over rate_limit_take()
-  artifacts.ts          # re-host n8n file URLs into Storage; 30-day expiry
   audit.ts
 actions/                # Server Actions, grouped by domain
-app/api/runs/callback/  # the only public API route
 supabase/
   migrations/
-  functions/            # Edge Functions: run-reaper, artifact-sweeper (both on pg_cron)
+  functions/
+    run-tool/           # THE executor. index.ts + handlers/<slug>.ts + _shared/
+    run-reaper/         # pg_cron: fail runs that outlived expires_at
+    artifact-sweeper/   # pg_cron: delete run artifacts past 30 days
 ```
+
+**There are no API routes.** `/api/runs/callback` is gone with n8n — nothing calls us from the
+outside any more. If you find yourself adding an API route, stop and ask what is calling it.
 
 - Server Actions live in `actions/`, each file starts with `"use server"`, each action starts
   with an auth check.
@@ -1326,8 +1416,8 @@ admin with the one-line SQL from §7 — there is no bootstrap env var.
 
 **Phase 2 — Tools schema + public catalog**
 Migrations 6.3, 6.6, **6.6b (`tool_secrets`)**. `tool_secrets` ships *with* `tools`, not as a
-retrofit — the moment `tools` has a select policy and a `webhook_secret` column in the same row,
-the secret is public, and a "we'll split it out later" is a window during which it leaked. Seed 3
+retrofit — the moment `tools` has a select policy and runtime config in the same row, that config
+is public, and a "we'll split it out later" is a window during which it leaked. Seed 3
 sample tools. `/tools`, `/tools/[slug]` with locked state and video embed. Landing page with the
 Shipping Log.
 *Done when:* the public site sells the product to a stranger — and `select * from tools` as a
@@ -1358,20 +1448,25 @@ One key per provider. Provider guides. The honesty copy from §10, verbatim.
 database, the logs, or any client payload — **and** that `select ciphertext from user_api_keys`
 from the browser console, as the key's own owner, is denied.
 
-**Phase 6 — The tool runner (async-first)**
+**Phase 6 — The tool runner (Edge Functions, async-first)**
 `ToolForm` + `ToolOutput` generic renderers. `lib/schema.ts` (JSON → Zod). `lib/runner.ts`
-(`startRun` → 202, returns in under a second). `/api/runs/callback` with HMAC + timestamp replay
-protection + idempotency. Artifact re-hosting into Storage, 30-day expiry. **The run reaper**
-(pg_cron) and the artifact sweeper. Realtime run updates. The full run choreography from
-DESIGN.md §8, **including the resumed-run state**. `/dashboard/runs`.
-*Done when:* I can wire a real n8n workflow, a member runs it with their own key, **closes the
-tab, comes back, and the finished run is there** — and the run feels good enough that I want to
-record it for YouTube.
+(`startRun` → invoke → 202, returns in under a second). The **`run-tool` Edge Function**:
+service-role gate (§9.4), slug dispatch, `EdgeRuntime.waitUntil` background task, direct writes
+to `tool_runs`, `beforeunload` shutdown capture. One real handler. Artifact re-hosting into
+Storage (streaming), 30-day expiry. **The run reaper** (pg_cron) and the artifact sweeper.
+Realtime run updates. The full run choreography from DESIGN.md §8, **including the resumed-run
+state**. `/dashboard/runs`.
+*Done when:* a member runs a real tool with their own key, **closes the tab, comes back, and the
+finished run is there** — the run feels good enough that I want to record it for YouTube — and
+invoking `run-tool` directly with the anon key gets a 404.
 
 **Phase 7 — Admin tool editor**
 Visual `input_schema` builder. Output block builder. Required-providers picker. "Test run"
 using my admin keys. `/admin` metrics.
-*Done when:* I can create and ship a brand-new working tool without opening VS Code.
+*Done when:* I can ship a brand-new tool by writing one handler file, running
+`supabase functions deploy run-tool`, and doing everything else — form, validation, output
+rendering, access, rate limit — from the admin dashboard. The deploy is the only step that isn't
+a click, and it is one command.
 
 **Phase 8 — Email + notifications**
 Migration 6.10 (notifications). Resend templates from Section 11. In-app bell.
@@ -1397,24 +1492,32 @@ Before this is called done, all of these must be true:
 - [ ] I can open one tool to every member with a single dropdown change.
 - [ ] I can grant one specific tool to one specific user with a single checkbox — and the access
       matrix shows me the truth, not "yes to everything because I'm the admin looking at it".
-- [ ] I can create an entirely new tool — form, execution, output rendering — from the admin
-      dashboard, without a deploy.
+- [ ] I can ship an entirely new tool with **one handler file and one deploy command**, and do
+      everything a user can see — form, validation, output rendering, access, rate limit, copy —
+      from the admin dashboard with no deploy at all.
 - [ ] A member cannot run a tool they don't have access to, even by crafting the request by hand.
+- [ ] `run-tool` invoked directly with the anon key, or any JWT that isn't the service role,
+      returns 404 and does nothing.
 - [ ] A brand-new signup can run at least one useful tool without connecting any API key.
 - [ ] **No interface in this product will show a stored API key back to anyone, including me**,
       and a leaked database dump is useless without `ENCRYPTION_KEY`, which is not in the
       database. (Stated exactly this way. I hold the key and the service role; pretending
       otherwise would be a lie to a technical audience.)
 - [ ] A member cannot read their own `ciphertext` column from the browser, as themselves.
-- [ ] A member cannot read `webhook_secret` for any tool, from the browser, as themselves.
-- [ ] No API key ever appears in `tool_runs`, in a log line, in a client payload, or in a saved
-      n8n execution.
-- [ ] The platform's compute bill for any member's usage is exactly zero.
+- [ ] A member cannot read any row of `tool_secrets`, from the browser, as themselves.
+- [ ] No API key ever appears in `tool_runs`, in a log line, or in a client payload.
+- [ ] **No member's API key is ever sent to software I do not control.** There is no third-party
+      execution engine in the path, so there is no vendor setting that could betray this by
+      default.
+- [ ] The platform's compute bill for any member's usage is exactly zero. The Supabase plan is a
+      fixed cost and does not scale with members.
 - [ ] A run that fails on a bad key says so plainly and links to the fix.
 - [ ] A member can start a run, close the tab, come back an hour later, and find the finished
       run waiting — with its output intact.
-- [ ] A run whose n8n workflow dies without calling back is `timeout`, not a spinner that turns
-      forever.
+- [ ] A run whose Edge Function is killed at the wall clock, or dies without writing a result, is
+      `timeout` — not a spinner that turns forever.
+- [ ] Every published tool completes inside the Supabase wall-clock limit (150s Free / 400s Pro),
+      and no tool needs more than 2s of actual CPU.
 - [ ] A run's file outputs are still downloadable a week later, and after 30 days the run still
       renders — with the file marked expired, not broken.
 - [ ] Nothing in the product depends on a Vercel plan above Hobby.

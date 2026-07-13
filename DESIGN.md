@@ -158,7 +158,7 @@ system." It appears on exactly these things and nothing else:
 - version numbers (`v1.2.0`)
 - status labels in chips (`RUNNING`, `LOCKED`)
 - provider names on key chips (`needs: openai`)
-- webhook URLs, JSON output, code blocks
+- JSON output, code blocks, handler names
 - shipping-log dates
 
 If it isn't a machine-generated or machine-shaped value, it isn't mono.
@@ -320,7 +320,7 @@ with a single centered line in `--text-faint`, `mono`: the tool's slug, and unde
    jumps. The button stays enabled-looking but is not clickable.
 2. **0ms** — A **2px indeterminate progress line** appears along the top edge of the output
    panel, in `--accent`. It sweeps left-to-right on a 1.4s loop. This is the only infinite
-   animation in the product, and it is honest: we truly don't know how long n8n will take.
+   animation in the product, and it is honest: we truly don't know how long the tool will take.
 3. **80ms** — The waiting well cross-fades out and a **skeleton of the actual output shape**
    fades in, built from the tool's `output_schema`. If the tool returns a table, the skeleton
    is a table. If it returns markdown, the skeleton is text lines of varying width. The user
@@ -350,8 +350,8 @@ failures are this. Design for it as a first-class path, not an edge case.
 
 ### The run is not a page state. It's a row.
 
-Runs are async (CLAUDE.md §9): the member clicks Run, we hand the job to n8n, and n8n calls back
-minutes later. The run lives in the database, not in a React state variable. **They can close the
+Runs are async (CLAUDE.md §9): the member clicks Run, we hand the job to an Edge Function, and it
+writes the result back minutes later. The run lives in the database, not in a React state variable. **They can close the
 tab. They can close the laptop.** The run keeps going without them and it will be there when they
 come back. This is a feature, and the design has to make them believe it.
 
@@ -397,8 +397,8 @@ don't celebrate it, don't make them dismiss anything.
 One component. Three inputs. If you find yourself writing a second output panel for the "resumed"
 case, stop — you've built the wrong thing.
 
-**`timeout` is its own state, not an error.** n8n died and never called back; the reaper marked
-it. The member did nothing wrong and their key wasn't charged. Say so. See §12.
+**`timeout` is its own state, not an error.** The tool was killed at the platform's wall-clock
+limit, or died without writing a result; the reaper marked it. The member did nothing wrong and their key wasn't charged. Say so. See §12.
 
 ---
 
