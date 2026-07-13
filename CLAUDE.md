@@ -984,11 +984,31 @@ design until it fits inside this box.
 | **Script size** | 20MB bundled | Not a real constraint. All handlers share one bundle; keep dependencies lean anyway. |
 | **Invocations** | 500K/mo Free · 2M/mo Pro | Not a real constraint at our scale. One run ≈ one invocation. |
 
-> **The CPU/wall-clock distinction is the whole ballgame.** These tools are I/O-bound almost by
-> definition — they call an LLM, wait, call another API, wait. That's what a 2s CPU budget is
-> for. What you cannot do is *compute*: no parsing a 50MB CSV in-process, no image manipulation,
-> no embedding math over thousands of rows, no tight loops over big arrays. If a tool needs real
-> CPU, it needs a different home, and you should notice that at design time, not at 546-error time.
+#### The handler contract: a tool is I/O-bound, or it doesn't belong here
+
+**This is a design constraint on every handler, not a footnote.** It decides which tools can
+exist, so it belongs in the design conversation, before a line is written — not in a post-mortem.
+
+The CPU/wall-clock distinction is the whole ballgame. These tools are I/O-bound almost by
+definition: call an LLM, wait. Call an API, wait. Waiting is free — a 90-second OpenAI response
+burns roughly **0ms** of the 2s CPU budget. That is why 2 seconds is generous rather than absurd.
+
+What a handler may **not** do, because all of it burns real CPU:
+
+- Parse or transform a large file in-process (a 50MB CSV, a big JSON blob).
+- Any image, audio, or video work. Resizing a thumbnail is not a small thing here.
+- Embedding math, similarity scoring, or clustering over more than a trivial number of vectors.
+- Tight loops over large arrays. Anything with an `O(n²)` smell and a real `n`.
+- Crypto beyond the key decrypt we already do.
+
+If a tool needs to *compute*, it needs a different home, and **you must notice that while
+designing the tool, not when it starts throwing 546s in production.** The question to ask of every
+new tool, before anything else: *what is this doing while it isn't waiting on a network call?* If
+the answer isn't "almost nothing", the tool is wrong for this platform.
+
+When a tool genuinely needs to process a large file, the shape is: the *provider* does the work
+(upload it to them, let their API chew on it), and the handler orchestrates. Orchestration is
+I/O. Orchestration is free.
 
 **A tool that takes longer than 400 seconds cannot exist in this architecture.** That is a real
 loss versus n8n, which would happily grind for an hour, and it should be a conscious trade rather
@@ -1011,19 +1031,26 @@ One Edge Function, `run-tool`. One handler file per tool, dispatched by slug.
 
 ```
 supabase/functions/
+  _shared/
+    crypto.ts                    # AES-256-GCM. THE ONLY FILE THAT READS ENCRYPTION_KEY.
+    types.ts                     # RunContext, ToolOutput
+    providers.ts                 # thin typed wrappers per api_provider (incl. verify calls)
+    artifacts.ts                 # stream a URL into the run-artifacts bucket
   run-tool/
-    index.ts                     # auth, dispatch, background task, run lifecycle
+    index.ts                     # service-role gate, load run, decrypt keys, dispatch, background task
     handlers/
       youtube-lead-finder.ts     # export default async (ctx) => output
       thumbnail-critic.ts
       ...
-    _shared/
-      types.ts                   # RunContext, ToolOutput
-      providers.ts               # thin typed wrappers per api_provider
-      artifacts.ts               # stream a URL into the run-artifacts bucket
+  key-vault/
+    index.ts                     # save / verify a member's key. Encrypts and decrypts here.
   run-reaper/                    # pg_cron: fail runs that never finished
   artifact-sweeper/              # pg_cron: delete artifacts past 30 days
 ```
+
+**`_shared/crypto.ts` is the only file in the entire codebase that reads `ENCRYPTION_KEY`, and it
+runs only on Supabase.** There is no `lib/crypto.ts` in the Next app, because the Next app has
+nothing to encrypt and no key to do it with.
 
 **Shipping a new tool is: write one handler file, `supabase functions deploy run-tool`, then
 create the row in the admin editor.** The deploy is the only thing that isn't clickable, and it
@@ -1062,29 +1089,39 @@ export default async function run(ctx: RunContext): Promise<Record<string, unkno
       f. Validate input against a Zod schema compiled from tool.input_schema (lib/schema.ts).
       g. Insert tool_runs: status='running', input=<validated, NO SECRETS>,
          expires_at = now() + tools.timeout_seconds, providers_used = tool.required_providers.
-      h. Decrypt the member's keys for tool.required_providers. In memory only.
-      i. Invoke the Edge Function with the SERVICE ROLE key:
+      h. Invoke the Edge Function with the SERVICE ROLE key:
             POST https://<ref>.supabase.co/functions/v1/run-tool
             Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
-            Body: { run_id, user_id, tool_slug, function_name, input, secrets }
+            Body: { run_id }        <-- and nothing else. See below.
          Wait only for the 202. Ten-second timeout on the handshake — we are waiting for
          "accepted", not for work.
-      j. Non-2xx or handshake timeout → mark the run 'error' immediately. Nothing was started.
-      k. Update user_api_keys.last_used_at. Return { run_id }.
+      i. Non-2xx or handshake timeout → mark the run 'error' immediately. Nothing was started.
+      j. Return { run_id }.
+
+    NOTE WHAT IS NOT IN THAT LIST: the Server Action never decrypts anything, never holds a
+    plaintext key, and never sends one. The body is a run_id. Vercel cannot leak what it does
+    not have. See §10.
 
 3.  run-tool Edge Function:
       a. REJECT ANY CALLER THAT IS NOT THE SERVICE ROLE. See 9.4. This is not optional.
-      b. Look up the handler by function_name (or slug). Unknown slug → 'error', return 400.
-      c. EdgeRuntime.waitUntil(work())  ← NOT awaited
+      b. Load the run row by run_id (service role), and its tool. The run row is the ONLY input
+         we trust, because only our Server Action could have created it — and it already
+         verified auth, access, status, keys and the rate limit before doing so.
+      c. Read the member's ciphertext from user_api_keys for tool.required_providers, and
+         DECRYPT IT HERE, with ENCRYPTION_KEY from Supabase secrets. This is the only place in
+         the entire system where a plaintext member key exists.
+      d. Look up the handler by function_name (or slug). Unknown slug → 'error', return 400.
+      e. EdgeRuntime.waitUntil(work())  ← NOT awaited
          return new Response(null, { status: 202 })
-      d. work(), now running in the background with the request already answered:
+      f. work(), now running in the background with the request already answered:
            - handler(ctx) with { input, secrets }
            - re-host any file/image URLs in the output into run-artifacts/{user_id}/{run_id}/{key},
              streaming, never buffering (256MB). Set artifacts_expire_at = now() + 30 days.
            - update tool_runs: status='success', output, completed_at, duration_ms
              — written directly, with the service role. There is no callback and no HTTP hop back.
-      e. On a thrown error: status='error', error_message (a sentence, not a stack trace).
-      f. On a provider 401/403: set that user_api_keys row to status='invalid', mark the run
+           - update user_api_keys.last_used_at.
+      g. On a thrown error: status='error', error_message (a sentence, not a stack trace).
+      h. On a provider 401/403: set that user_api_keys row to status='invalid', mark the run
          'error' with the provider named, and email the member once per key (not per run). This
          is the most common failure in BYOK and it is a first-class path, not an edge case.
       g. addEventListener('beforeunload', ...) → the isolate is being shut down (wall clock, CPU,
@@ -1152,16 +1189,20 @@ scale with usage. A thousand members running a thousand tools costs the same as 
 
 ### Where a key goes, exactly
 
-Since tools execute as Edge Functions on our own Supabase project, **a member's API key never
-leaves infrastructure we control, and never touches software that persists it.** The full path,
-end to end:
+Tools execute on our own Supabase project, and **all cryptography happens there too.** The full
+path of a member's API key, end to end:
 
-1. The member pastes the key into a form. It is encrypted in a Server Action and stored as
-   ciphertext. The plaintext is discarded.
-2. On a run, the Server Action decrypts it in memory and passes it over TLS to our own
-   `run-tool` Edge Function.
-3. The handler holds it in memory for the length of one call to the provider.
+1. The member pastes the key into the vault. The browser sends it, over TLS, **directly to the
+   `key-vault` Edge Function** — not through Vercel. The function derives the user from their
+   JWT, encrypts with `ENCRYPTION_KEY` from Supabase secrets, stores the ciphertext, and
+   discards the plaintext.
+2. On a run, the `run-tool` Edge Function reads that ciphertext from the database and decrypts
+   it, in memory, inside the same isolate that is about to use it.
+3. The handler holds it for the length of one call to the provider.
 4. The isolate dies. Nothing wrote it down.
+
+**Vercel appears nowhere in that list.** It does not encrypt, it does not decrypt, it never sees
+a plaintext key, and it does not hold `ENCRYPTION_KEY`. It is a UI and an auth layer. See §13.
 
 There is no external workflow engine, no third-party execution log, no `EXECUTIONS_DATA_SAVE`
 setting to remember, and no vendor that could retain a key by default while we weren't looking.
@@ -1170,14 +1211,41 @@ writing every member's key to a database we don't own — **does not exist in th
 It isn't mitigated; it's gone.
 
 The two things left to get right are both ours: don't log the key (§9.6), and don't let anyone
-but our own Server Action invoke the function (§9.4).
+but our own Server Action invoke `run-tool` (§9.4).
+
+### The `key-vault` Edge Function
+
+Saving and verifying a key are the **one deliberate exception** to "every mutation is a Server
+Action" (§5). The client calls this function directly, with the member's own JWT:
+
+```
+POST https://<ref>.supabase.co/functions/v1/key-vault
+Authorization: Bearer <the member's access token>
+Body: { action: 'save' | 'verify' | 'delete', provider, label?, plaintext? }
+```
+
+- **The user is derived from the JWT**, via `auth.getUser()`. A `user_id` in the body is ignored.
+  If one is ever added, that is a vulnerability, not a convenience.
+- `save` → encrypt, upsert (one key per provider), then immediately `verify`.
+- `verify` → decrypt, make the cheapest read-only call to the provider (table below), write
+  `status` and `last_verified_at`. Rate-limited per user via `rate_limit_take()`.
+- `delete` → drop the row. No crypto needed, but it lives here so the vault has one door.
+
+The exception is worth it precisely because of what it buys: **a plaintext API key never transits
+Vercel at all.** Routing the save through a Server Action would mean the key passes through
+Vercel's memory on its way to being encrypted — briefly, unlogged, and almost certainly fine. But
+"almost certainly fine" is a weaker claim than "impossible", and this is the one asset in the
+product where the difference is worth an architectural exception. Take the stronger claim.
 
 ### Encryption
 
-- AES-256-GCM, `node:crypto`. Master key in `ENCRYPTION_KEY` (32 bytes, base64), env only.
+- AES-256-GCM, **in Deno, in `supabase/functions/_shared/crypto.ts`**. That file is the only
+  thing in the codebase that reads `ENCRYPTION_KEY`, and it only ever runs on Supabase.
+- **`ENCRYPTION_KEY` lives in Supabase secrets and nowhere else.** Not in `.env.local`, not in
+  `.env.example`, and — this is the point — **not in Vercel**. See §14.
 - Fresh random 12-byte IV per record. Store `ciphertext`, `iv`, `auth_tag` separately.
-- Encrypt in the Server Action, before insert. Decrypt only inside `lib/keys.ts`, only in the
-  runner, only in memory.
+- Encrypt in the `key-vault` function. Decrypt in the `key-vault` function (to verify) and in
+  `run-tool` (to run). Nowhere else, ever.
 - **One key per provider per user.** `unique (user_id, provider)`. Saving a second OpenAI key
   replaces the first. There is no "which key does this tool use?" question, so we never have to
   build a screen that answers it.
@@ -1293,6 +1361,34 @@ Two things from it that shape the architecture, so they belong here too:
 - Runtime config is not on a client-readable table. It lives in `tool_secrets`, which has RLS on
   and no policies. There is nothing to remember not to select.
 
+### The strongest claim this product can make — protect it
+
+**Vercel holds no secret capable of exposing a member's API key, and no plaintext key ever passes
+through it. Not in memory, not in transit, not for a millisecond.**
+
+This is a *property of the architecture*, not a promise about our discipline, and that is exactly
+what makes it worth having. It holds because:
+
+- `ENCRYPTION_KEY` exists only in Supabase secrets. Vercel does not have it and must never be
+  given it. A full compromise of the Vercel project — every env var, every log, the entire
+  runtime — yields ciphertext and nothing else.
+- The key vault is written by the browser calling the `key-vault` Edge Function **directly**.
+  The plaintext key goes browser → Supabase. Vercel is not on the path.
+- `run-tool` decrypts the ciphertext itself, from the database, inside the isolate that uses it.
+  The Server Action sends it a `run_id` and nothing more.
+- Therefore: no Vercel log line, no Sentry breadcrumb, no serialized Server Action argument, and
+  no leaked Vercel env var can ever contain a member's key. There is nothing there to leak.
+
+**Three things would silently destroy this property. Treat all three as production incidents:**
+
+1. Adding `ENCRYPTION_KEY` to Vercel's environment "just for a script".
+2. Routing the key-save through a Server Action because it's more consistent with §5.
+3. Passing decrypted `secrets` in the `run-tool` request body because it's easier to debug.
+
+Each is a small, reasonable-looking convenience. Each one converts an impossibility back into a
+promise. If you find yourself reaching for one, the correct move is to write the code inside an
+Edge Function instead.
+
 ### The execution boundary
 
 There is no outbound webhook, so there is no HMAC signing, no callback endpoint, no replay
@@ -1317,10 +1413,10 @@ What replaces it is a single check, and it carries the entire weight:
   (`rate_limit_take()`, §6.13). Not an in-process counter: Vercel functions share no memory, so
   an in-process limit is a limit of one instance, which is no limit. Auth is now also required
   to apply — but a signed-in bot is still a bot, so none of the above is dropped.
-- **Member API keys:** encrypted at rest (AES-256-GCM), decrypted only for the length of one run,
-  never logged, never persisted into `tool_runs`, never exposed by any interface in the product to
-  anyone, including the admin. `ENCRYPTION_KEY` is server-only and never committed. Be precise
-  about this claim — see §10.
+- **Member API keys:** encrypted at rest (AES-256-GCM), decrypted only inside a Supabase Edge
+  Function and only for the length of one call, never logged, never persisted into `tool_runs`,
+  never exposed by any interface in the product to anyone, including the admin. Be precise about
+  this claim — see §10.
 - **A key never reaches a third party.** Tools run on our own Supabase project. There is no
   external execution engine that could retain a key by default, and therefore no vendor setting
   we have to remember to turn off.
@@ -1341,19 +1437,32 @@ RESEND_API_KEY=
 RESEND_FROM_EMAIL=
 NEXT_PUBLIC_TURNSTILE_SITE_KEY=
 TURNSTILE_SECRET_KEY=
-ENCRYPTION_KEY=                     # 32 random bytes, base64. Encrypts member API keys. Server only.
 ```
 
-The Edge Function runtime gets `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_URL` injected by the
-platform — you do not set them. Nothing else is needed there: keys arrive in the request body, so
-the function never needs `ENCRYPTION_KEY`.
+### `ENCRYPTION_KEY` is not in that list. Its absence is deliberate.
+
+**Do not add `ENCRYPTION_KEY` to Vercel. Do not add it to `.env.local`. Do not add it to
+`.env.example`.** If you are reading this in six months, having just noticed it's missing and
+assumed someone forgot: nobody forgot. It was removed on purpose, and putting it back would
+quietly destroy the security property in §13.
+
+It lives in **Supabase secrets, and only there**, because the only code that reads it is
+`supabase/functions/_shared/crypto.ts`, which only ever runs on Supabase:
+
+```bash
+supabase secrets set ENCRYPTION_KEY="$(openssl rand -base64 32)"   # once, at setup
+supabase secrets list                                              # confirm; never prints values
+```
+
+Back it up in a password manager the moment you generate it. **If you lose it, every member's
+stored API key is permanently unrecoverable.** There is no reset path and there is not supposed
+to be one.
+
+The Edge Function runtime also gets `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` injected by
+the platform — you do not set those.
 
 **There is no `ADMIN_BOOTSTRAP_EMAIL`.** Postgres cannot read this file, so the trigger could
 never have used it. Promote yourself with one line of SQL, once. See §7.
-
-**If you lose `ENCRYPTION_KEY`, every member's stored API key is permanently unrecoverable.**
-There is no reset path and there is not supposed to be one. It goes in a password manager on the
-day you generate it, not "later".
 
 ---
 
@@ -1372,8 +1481,8 @@ lib/
   supabase/             # server.ts, client.ts, admin.ts (service role)
   access.ts             # canAccessTool, requireAdmin, requireMember
   schema.ts             # Zod: compile input_schema -> Zod schema
-  crypto.ts             # AES-256-GCM encrypt/decrypt. Nothing else imports node:crypto.
-  keys.ts               # key vault: save, verify, list (public view), decryptForRun
+  keys.ts               # key vault, CLIENT side of it: list from the public view, and call
+                        # the key-vault Edge Function to save/verify/delete. No crypto here.
   runner.ts             # startRun: validate, decrypt, invoke run-tool, expect 202
   ratelimit.ts          # thin wrapper over rate_limit_take()
   audit.ts
@@ -1441,12 +1550,15 @@ tells the truth when *I* am the one looking at it (see the `is_admin(uid)` note 
 
 **Phase 5 — The BYOK key vault**
 Migration 6.8, including the column-level `GRANT`s — the view alone protects nothing.
-`lib/crypto.ts` (AES-256-GCM) and `lib/keys.ts`. `/dashboard/keys`: add, verify, relabel, delete.
-One key per provider. Provider guides. The honesty copy from §10, verbatim.
-`has_required_keys()`. Tool cards show their three-state key chip (DESIGN.md §9).
+**`supabase/functions/_shared/crypto.ts` (AES-256-GCM, Deno) and the `key-vault` Edge Function.**
+`ENCRYPTION_KEY` set via `supabase secrets set` — never added to Vercel (§14).
+`/dashboard/keys`: add, verify, relabel, delete — the browser calls `key-vault` directly, so a
+plaintext key never transits Vercel. One key per provider. Provider guides. The honesty copy from
+§10, verbatim. `has_required_keys()`. Tool cards show their three-state key chip (DESIGN.md §9).
 *Done when:* I can save an OpenAI key, verify it, and confirm the plaintext exists nowhere in the
-database, the logs, or any client payload — **and** that `select ciphertext from user_api_keys`
-from the browser console, as the key's own owner, is denied.
+database, the logs, or any client payload; that `select ciphertext from user_api_keys` from the
+browser console, as the key's own owner, is denied; and that `ENCRYPTION_KEY` appears in
+`supabase secrets list` and in **no** Vercel environment.
 
 **Phase 6 — The tool runner (Edge Functions, async-first)**
 `ToolForm` + `ToolOutput` generic renderers. `lib/schema.ts` (JSON → Zod). `lib/runner.ts`
@@ -1503,6 +1615,9 @@ Before this is called done, all of these must be true:
       and a leaked database dump is useless without `ENCRYPTION_KEY`, which is not in the
       database. (Stated exactly this way. I hold the key and the service role; pretending
       otherwise would be a lie to a technical audience.)
+- [ ] **`ENCRYPTION_KEY` does not exist in any Vercel environment.** A total compromise of the
+      Vercel project yields ciphertext and nothing else. No plaintext member key ever passes
+      through Vercel, in memory or in transit. (§13)
 - [ ] A member cannot read their own `ciphertext` column from the browser, as themselves.
 - [ ] A member cannot read any row of `tool_secrets`, from the browser, as themselves.
 - [ ] No API key ever appears in `tool_runs`, in a log line, or in a client payload.
