@@ -264,7 +264,7 @@ The discipline: **short, few, purposeful.**
 --dur-micro:  120ms;   /* hover, press, checkbox, color change */
 --dur-enter:  200ms;   /* dropdowns, dialogs, toasts, tooltips */
 --dur-layout: 320ms;   /* panels, drawers, height changes, reordering */
---dur-moment: 600ms+;  /* the run choreography ONLY. Nothing else earns this. */
+--dur-moment: 640ms;   /* the run choreography ONLY. Nothing else earns this. */
 
 --ease:       cubic-bezier(0.2, 0.8, 0.2, 1);    /* default */
 --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);     /* things arriving */
@@ -348,6 +348,58 @@ error. The panel says which provider rejected it, that the key has been marked i
 gives a button that goes straight to the key vault, filtered to that provider. Most BYOK
 failures are this. Design for it as a first-class path, not an edge case.
 
+### The run is not a page state. It's a row.
+
+Runs are async (CLAUDE.md §9): the member clicks Run, we hand the job to n8n, and n8n calls back
+minutes later. The run lives in the database, not in a React state variable. **They can close the
+tab. They can close the laptop.** The run keeps going without them and it will be there when they
+come back. This is a feature, and the design has to make them believe it.
+
+So the choreography above is not "what happens after you click". It is **a rendering of whatever
+state the row is in, whenever you happen to look at it.** Build it that way and the hard cases
+disappear.
+
+**Resumed, still running** — a cold load of a run that's still going. This is the state that
+proves the promise, so it gets designed, not defaulted. It renders the *identical* live UI:
+progress line sweeping, skeleton in the shape of this tool's output, `RUNNING` pill pulsing —
+and subscribes to the row over Realtime. The **only** difference from a live run is a single
+`--text-faint` `small` line under the status pill:
+
+> Started 4 minutes ago. You can close this — it'll keep going.
+
+No "reconnecting", no "restoring session", no spinner-before-the-spinner. The member must not be
+able to tell whether they have been watching for two minutes or just walked back to their desk.
+Any UI that reveals the difference is a bug.
+
+**Resumed, finished** — a cold load of a completed run. **No choreography.** The output is simply
+*there*, on first paint, with the receipt line. Do not replay the entrance stagger. The
+choreography is the payoff for *waiting*; performing it for someone who wasn't waiting is a lie,
+and worse, it's a lie that costs them 640ms before they can read their answer. Animation earned
+by an event, never by a page load.
+
+**Leaving mid-run** — nothing to do, and that's the point. No "are you sure?" dialog, no beforeunload
+prompt. The Run button's state, after the row is created, is a link, not a lock. If the member
+navigates away, a toast: *"Still running. It'll be in your run history."* with a `[View run]`
+action. One toast, then silence.
+
+**Coming back to a run they missed** — the notification bell and `/dashboard/runs` are the
+recovery path. A finished run they never saw is not "unread"; it's just a run. Don't badge it,
+don't celebrate it, don't make them dismiss anything.
+
+### The three states, plainly
+
+| Row state | What the panel shows |
+|---|---|
+| `queued` / `running`, started by you, in this tab | The full choreography, live |
+| `queued` / `running`, loaded cold | The same live UI + "Started N minutes ago. You can close this." |
+| `success` / `error` / `timeout`, loaded cold | The finished output, instantly, no animation |
+
+One component. Three inputs. If you find yourself writing a second output panel for the "resumed"
+case, stop — you've built the wrong thing.
+
+**`timeout` is its own state, not an error.** n8n died and never called back; the reaper marked
+it. The member did nothing wrong and their key wasn't charged. Say so. See §12.
+
 ---
 
 ## 9. Components
@@ -396,8 +448,8 @@ border → `--line-strong`, `translateY(-1px)`, 120ms.
 The tool card is the most-seen component in the product. It appears on the landing page, the
 public catalog, and the member dashboard. It has exactly three states:
 
-**Unlocked** — icon, name, `mono` slug, tagline, category chip. If the tool needs a key the
-member has, a small `--live-quiet` chip: `openai ✓`. Primary action: **Run**.
+**Unlocked** — icon, name, `mono` slug, tagline, category chip, and the key chip (below).
+Primary action: **Run**.
 
 **Locked** — the exact same card, at full opacity, **with the name and tagline fully legible**.
 Do not blur it. Do not grey it out. Desire needs an object; hiding the tool from someone who
@@ -409,10 +461,28 @@ chip explains the gate: `members only`.
 The action is **Notify me**, which toggles to `We'll tell you` on click, optimistically. This
 is your demand-measurement instrument; make it a single, frictionless click.
 
-**Missing-key variant** (unlocked but no key): the chip is `--warn-quiet`, reading
-`needs: openai`, and it is a *button* that goes to the key vault pre-filtered to that
-provider. The Run button stays visible but disabled, with the tooltip: *"Connect your OpenAI
-key to run this."*
+### The key chip — three states, not two
+
+A tool's `required_providers` chip has to distinguish *verified*, *present but unproven*, and
+*missing*. Two states can't, and the difference is not cosmetic: a key we've never verified might
+be a typo, and the member deserves to know that *before* they wait four minutes for a run to fail
+on a 401.
+
+`--live` in this system means "actually verified" — §2 is explicit that status colors are never
+decoration — so an unverified key must not be green. It gets no color at all.
+
+| Key state | Chip | Run button |
+|---|---|---|
+| **Verified** (`status = 'valid'`) | `--live-quiet` / `--live`, `mono-chip`: `openai ✓` | Enabled |
+| **Unverified** (`status = 'unverified'`) | `--surface` + `--line` border, `--text-muted`, `mono-chip`: `openai` — no tick, no color. A *button*: clicking verifies it in place. | **Enabled.** We don't block on verification — a run is a verification, and blocking here would be friction for a key that's probably fine. |
+| **Missing or invalid** | `--warn-quiet` / `--warn`, `mono-chip`: `needs: openai`. A *button* → key vault, pre-filtered to that provider. | Disabled, tooltip: *"Connect your OpenAI key to run this."* |
+
+A tool with `required_providers = '{}'` shows **no chip at all** — not a chip reading "no key
+needed". The absence is the message, and it's the quietest card on the page, which is exactly
+right for the one a brand-new signup should click first.
+
+A tool needing multiple providers shows one chip per provider, in schema order. Three chips is
+the practical ceiling; if a tool needs four keys, the tool is the problem, not the card.
 
 ### Status pill
 
@@ -460,9 +530,11 @@ copy.
 
 ### Command palette (⌘K)
 
-Build it in Phase 1. It costs half a day and it is the single highest-leverage perceived-quality
-feature in the entire product. Fuzzy search across: tools, runs, admin pages, settings, theme
-toggle. For the admin, it also searches users by name and email.
+**Build it in Phase 4**, not Phase 1. It is still the single highest-leverage perceived-quality
+feature in the product and it still costs about half a day — but in Phase 1 there are no tools,
+no runs and no users, so it would fuzzy-search an empty array. Build it when there is something
+to find. Fuzzy search across: tools, runs, admin pages, settings, theme toggle. For the admin, it
+also searches users by name and email.
 
 ---
 
@@ -480,6 +552,12 @@ toggle. For the admin, it also searches users by name and email.
   eventually forget which account you're in. This prevents that.
 
 ### Landing page
+
+**This order is the one that ships.** CLAUDE.md §8 summarizes the landing page in passing and
+lists the sections in a different order; that summary is not the spec. This file is. The
+difference matters: "how access works" has to land *before* the tool grid, so that a stranger
+scrolling into a wall of locked cards already knows why they're locked and what to do about it.
+A locked card is only frustrating if you don't yet know the door has a handle.
 
 The order, and nothing else:
 
@@ -562,10 +640,27 @@ Copy is design material. It's most of what the user actually experiences.
 > my bill. Most tools need one key. Some need none.
 > `[Connect a key]`
 
+**Key vault, what we do with the key — this exact wording, and nothing stronger, anywhere:**
+> Your key is encrypted before it's stored. No screen in this product can show it back to you —
+> or to me. A leaked database is useless without a key I keep off the server.
+
+> The temptation is to write "not even I can read it." Don't. I hold the encryption key and the
+> database credentials; with enough determination I could decrypt anything in here, and the
+> people this product is for know that. The sentence above is true in every clause, and a claim
+> that survives scrutiny is worth more than one that flatters us. Never soften it and never
+> inflate it.
+
 **Run history, empty:**
 > **No runs yet**
 > Every tool you run is saved here — inputs, outputs, and the exact time it took.
 > `[Pick a tool]`
+
+**Run still going, on a page you just opened:**
+> Started 4 minutes ago. You can close this — it'll keep going.
+
+**Navigating away mid-run (toast):**
+> Still running. It'll be in your run history.
+> `[View run]`
 
 **Run failed on a bad key:**
 > **OpenAI rejected your key**
@@ -579,6 +674,20 @@ Copy is design material. It's most of what the user actually experiences.
 > a minute.
 > `[Run again]`
 
+**Run timed out — the tool never reported back:**
+> **The tool never came back**
+> It's been running for 10 minutes with no response, so I've stopped waiting. This is on my
+> side, not yours, and nothing was charged to your key.
+> `[Run again]`
+
+**A file output that has aged out (30 days):**
+> **File expired**
+> Files are kept for 30 days. Everything else from this run is still here.
+> `[Run again]`
+
+(And on the runner, before they ever hit it, in `small` / `--text-muted` under the output:
+*Files are kept for 30 days. Text output is kept forever.*)
+
 **Tool in maintenance:**
 > **Being rebuilt**
 > This tool is offline while I fix something. It'll be back — you'll get a notification.
@@ -588,7 +697,7 @@ Copy is design material. It's most of what the user actually experiences.
 > I open them up as I add capacity. Leave your email and you'll be first to know.
 
 Notice what none of these do: apologize, use an exclamation mark, or make the user feel
-stupid.
+stupid. The timeout copy takes the blame, because the blame is ours.
 
 ---
 
@@ -613,11 +722,64 @@ Not a checklist to feel good about. These are bugs if they're missing.
 
 ## 14. Implementation
 
-- **Tailwind, with the tokens above defined as CSS variables** in `globals.css` and mapped in
-  `tailwind.config.ts`. Never a raw hex in a component. Never an arbitrary value like
-  `p-[18px]`.
+### Tailwind v4, CSS-first
+
+We are on **Tailwind v4**. There is **no `tailwind.config.ts`** — v4 is configured in CSS. The
+tokens in §2–§7 are the source of truth and they live in `globals.css`, exposed to Tailwind
+through `@theme`, so `bg-surface`, `text-muted`, `rounded-md`, and `duration-enter` all resolve
+to the values in this document and nowhere else.
+
+Theme switching stays on the **`[data-theme]` attribute**, exactly as §2 declares it. shadcn/ui
+and Tailwind both default to a `.dark` *class*; we override that with a custom variant rather
+than rewriting the selectors in this file, because the token block above is the contract and the
+tooling bends to it, not the reverse:
+
+```css
+/* globals.css */
+@import "tailwindcss";
+
+/* Make `dark:` mean [data-theme="dark"], not .dark */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root[data-theme="dark"] { /* ...the §2 dark tokens, verbatim... */ }
+:root[data-theme="light"] { /* ...the §2 light tokens, verbatim... */ }
+
+@theme inline {
+  --color-canvas:      var(--canvas);
+  --color-surface:     var(--surface);
+  --color-elevated:    var(--elevated);
+  --color-sunken:      var(--sunken);
+  --color-line:        var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text:        var(--text);
+  --color-text-muted:  var(--text-muted);
+  --color-text-faint:  var(--text-faint);
+  --color-accent:      var(--accent);
+  /* ...and so on. Every token in §2. No exceptions, no extras. */
+
+  --radius-sm:   6px;
+  --radius-md:  10px;
+  --radius-lg:  14px;
+
+  --font-display: 'Sora', system-ui, sans-serif;
+  --font-sans:    'Instrument Sans', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+}
+```
+
+`@theme inline` (not plain `@theme`) is what lets a utility resolve through the `var()` chain, so
+one attribute flip on `<html>` reskins the entire app with no class churn and no flash.
+
+The theme is set on `<html>` before first paint by a tiny blocking script reading
+`localStorage` → `prefers-color-scheme`. A theme flash is a bug, not a tradeoff.
+
+### The rest
+
+- **Never a raw hex in a component. Never an arbitrary value** like `p-[18px]` — §4 says there
+  is no 18.
 - **shadcn/ui as the base**, restyled to these tokens. Do not use its defaults — the whole
-  point is not looking like the default.
+  point is not looking like the default. Its generated components ship with `.dark` selectors
+  and its own token names; retoken them on the way in, once, rather than patching them per screen.
 - One component, one file, in `components/ui/` (primitives) or `components/tools/` (domain).
 - If you write the same three Tailwind classes twice, it's a component.
 - Every component supports both themes from day one. Never hardcode a dark-mode color.
