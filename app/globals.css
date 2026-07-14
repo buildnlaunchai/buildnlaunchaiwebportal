@@ -1,0 +1,291 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   Build & Launch AI — design tokens.
+
+   Every value here comes from DESIGN.md. Nothing is invented at this layer and
+   nothing may be invented above it: no raw hex in a component, no arbitrary
+   spacing like p-[18px]. If you need a value that isn't here, add it to
+   DESIGN.md first, then add it here, then use it.
+   ============================================================================ */
+
+/* `dark:` means [data-theme="dark"], not `.dark`.
+   DESIGN.md §2 declares the attribute selector, so the tooling bends to the
+   document rather than the other way round. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ---------- DESIGN.md §2 — Color ----------------------------------------- */
+
+:root[data-theme="dark"] {
+  /* surfaces — four steps, no more */
+  --canvas: #0f1013;
+  --surface: #17181d;
+  --elevated: #1f2128;
+  --sunken: #0a0b0d;
+
+  /* lines — cards are defined by a border, not a shadow */
+  --line: #2b2e37;
+  --line-strong: #3a3e4a;
+
+  /* text */
+  --text: #ecedf1;
+  --text-muted: #8e94a3;
+  --text-faint: #5d6270;
+
+  /* accent — exactly one */
+  --accent: #6366f1;
+  --accent-hover: #7175f3;
+  --accent-quiet: rgba(99, 102, 241, 0.12);
+  --accent-text: #ffffff;
+
+  /* status — semantic only. Never decorative. */
+  --live: #34d399;
+  --live-quiet: rgba(52, 211, 153, 0.12);
+  --warn: #fbbf24;
+  --warn-quiet: rgba(251, 191, 36, 0.12);
+  --danger: #f87171;
+  --danger-quiet: rgba(248, 113, 113, 0.12);
+
+  /* DESIGN.md §6 — shadows are only for things that float above the page */
+  --shadow-pop-v: 0 4px 12px -2px rgba(0, 0, 0, 0.28);
+  --shadow-modal-v: 0 24px 56px -16px rgba(0, 0, 0, 0.55);
+
+  --backdrop: rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --canvas: #fafafc;
+  --surface: #ffffff;
+  --elevated: #ffffff;
+  --sunken: #f4f5f8;
+
+  --line: #e5e7ee;
+  --line-strong: #cdd1dc;
+
+  --text: #14161c;
+  --text-muted: #5d6474;
+  --text-faint: #949aa8;
+
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-quiet: rgba(79, 70, 229, 0.09);
+  --accent-text: #ffffff;
+
+  --live: #059669;
+  --live-quiet: rgba(5, 150, 105, 0.1);
+  --warn: #b45309;
+  --warn-quiet: rgba(180, 83, 9, 0.1);
+  --danger: #dc2626;
+  --danger-quiet: rgba(220, 38, 38, 0.1);
+
+  /* §6: "In light mode, halve the opacity." */
+  --shadow-pop-v: 0 4px 12px -2px rgba(0, 0, 0, 0.14);
+  --shadow-modal-v: 0 24px 56px -16px rgba(0, 0, 0, 0.28);
+
+  --backdrop: rgba(0, 0, 0, 0.3);
+  color-scheme: light;
+}
+
+/* ---------- Expose the tokens to Tailwind -------------------------------- */
+/* `@theme inline` (not plain `@theme`) so utilities resolve through the var()
+   chain — one attribute flip on <html> reskins the app, no class churn. */
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-sunken: var(--sunken);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-quiet: var(--accent-quiet);
+  --color-accent-text: var(--accent-text);
+
+  --color-live: var(--live);
+  --color-live-quiet: var(--live-quiet);
+  --color-warn: var(--warn);
+  --color-warn-quiet: var(--warn-quiet);
+  --color-danger: var(--danger);
+  --color-danger-quiet: var(--danger-quiet);
+
+  --color-backdrop: var(--backdrop);
+
+  /* DESIGN.md §3 — Typography. Three faces, three jobs. */
+  --font-display: var(--font-sora), system-ui, sans-serif;
+  --font-sans: var(--font-instrument-sans), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /* DESIGN.md §4 — Space. 4px base unit. */
+  --spacing: 4px;
+
+  /* DESIGN.md §5 — Shape */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* DESIGN.md §6 — Elevation */
+  --shadow-pop: var(--shadow-pop-v);
+  --shadow-modal: var(--shadow-modal-v);
+
+  /* DESIGN.md §7 — Motion */
+  --ease-default: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  --duration-micro: 120ms;
+  --duration-enter: 200ms;
+  --duration-layout: 320ms;
+  --duration-moment: 640ms;
+
+  /* DESIGN.md §11 — Breakpoints */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+}
+
+/* ---------- DESIGN.md §3 — the type scale -------------------------------- */
+/* Named utilities, because a scale entry is one decision, not four. */
+
+@utility text-display-xl {
+  font-family: var(--font-display);
+  font-size: 52px;
+  line-height: 1.02;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+@utility text-display-l {
+  font-family: var(--font-display);
+  font-size: 36px;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+@utility text-h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+@utility text-h2 {
+  font-family: var(--font-sans);
+  font-size: 20px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+@utility text-h3 {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+@utility text-body {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+@utility text-body-strong {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  font-weight: 500;
+}
+@utility text-small {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+@utility text-label {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+@utility text-eyebrow {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+@utility text-mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+@utility text-mono-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* §3: "Numbers in tables use tabular-nums. Always." */
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* §4: "Set max-width: 62ch on prose." */
+@utility prose-measure {
+  max-width: 62ch;
+}
+
+/* ---------- Base ---------------------------------------------------------- */
+
+@layer base {
+  html {
+    /* §3: base is 15px, not 16. Deliberate. */
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--canvas);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* §13: focus-visible is a 2px accent ring at 2px offset. Never outline:none
+     without a replacement — a missing focus ring is a bug, not a style. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  ::selection {
+    background-color: var(--accent-quiet);
+  }
+}
+
+/* ---------- DESIGN.md §7 — Reduced motion, honoured fully ----------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

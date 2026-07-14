@@ -204,7 +204,11 @@ the product. Invest in them.
 
 ## 5. Tech stack
 
-- **Next.js 15** (App Router) + **TypeScript** (strict)
+- **Next.js 16** (App Router) + **React 19** + **TypeScript** (strict)
+  > This spec originally said Next 15. `create-next-app` now ships **16**, and on a greenfield
+  > project pinning to the previous major means starting with migration debt for no benefit —
+  > everything the spec relies on (App Router, Server Actions, RSC, Tailwind v4) is unchanged.
+  > Amended rather than silently diverged from, per DESIGN.md's own rule.
 - **Tailwind CSS v4** (CSS-first `@theme` tokens, no `tailwind.config.ts`) + **shadcn/ui**
 - **Supabase**: Postgres, Auth, RLS, Storage, Edge Functions, Realtime
 - **Zod** for all schema validation (shared between client and server)
