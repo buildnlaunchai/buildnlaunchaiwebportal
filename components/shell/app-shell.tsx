@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { ICONS, type IconName } from "@/components/shell/icons";
+import { UserMenu } from "@/components/shell/user-menu";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -14,9 +15,16 @@ export type NavItem = {
   icon: IconName;
 };
 
+export type ShellUser = {
+  email: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+};
+
 type AppShellProps = {
   title: string;
   nav: NavItem[];
+  user: ShellUser;
   /** DESIGN.md §10: "You will eventually forget which account you're in." */
   isAdmin?: boolean;
   children: React.ReactNode;
@@ -32,6 +40,7 @@ function isActive(pathname: string, href: string) {
 export function AppShell({
   title,
   nav,
+  user,
   isAdmin = false,
   children,
 }: AppShellProps) {
@@ -99,6 +108,11 @@ export function AppShell({
               </span>
             )}
             <ThemeToggle />
+            <UserMenu
+              email={user.email}
+              fullName={user.fullName}
+              avatarUrl={user.avatarUrl}
+            />
           </div>
         </header>
 

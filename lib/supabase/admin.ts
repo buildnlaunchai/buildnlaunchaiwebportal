@@ -2,6 +2,8 @@ import "server-only";
 
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
+import type { Database } from "@/lib/database.types";
+
 /**
  * The service-role client. BYPASSES RLS ENTIRELY.
  *
@@ -29,7 +31,7 @@ export function createAdminClient() {
     );
   }
 
-  return createSupabaseClient(url, serviceRoleKey, {
+  return createSupabaseClient<Database>(url, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }

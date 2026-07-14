@@ -1,7 +1,7 @@
 import { AppShell, type NavItem } from "@/components/shell/app-shell";
+import { requireUser } from "@/lib/access";
 
-/* CLAUDE.md §8 — the member app. The routes themselves land in later phases;
-   the shell and its navigation are Phase 0. */
+/* CLAUDE.md §8 — the member app. */
 const NAV: NavItem[] = [
   { href: "/dashboard", label: "Apps", icon: "apps" },
   { href: "/dashboard/runs", label: "Runs", icon: "runs" },
@@ -9,17 +9,28 @@ const NAV: NavItem[] = [
   { href: "/dashboard/settings", label: "Settings", icon: "settings" },
 ];
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  // NOT GUARDED YET. Middleware and the Server Component check land together in
-  // Phase 1, with the profiles table. A guard that exists only in a layout is
-  // not authorization (CLAUDE.md §13), so this is left honestly open rather than
-  // made to look protected.
+  // Check two of three (§13). Middleware already redirected an anonymous
+  // visitor, but middleware is a redirect, not authorization — this runs on the
+  // server, against a revalidated session, and does not care what middleware
+  // decided. Mutations check again for themselves.
+  const user = await requireUser("/dashboard");
+
   return (
-    <AppShell title="Apps" nav={NAV}>
+    <AppShell
+      title="Apps"
+      nav={NAV}
+      user={{
+        email: user.email,
+        fullName: user.profile.full_name,
+        avatarUrl: user.profile.avatar_url,
+      }}
+      isAdmin={user.profile.role === "admin"}
+    >
       {children}
     </AppShell>
   );

@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:types": "supabase gen types typescript --project-id pezsxoynjjsipfnpfvva --schema public > lib/database.types.ts",
+    "db:push": "supabase db push",
+    "verify:rls": "node --env-file=.env.local scripts/verify-rls.mjs",
+    "verify:guards": "node --env-file=.env.local scripts/verify-admin-guard.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

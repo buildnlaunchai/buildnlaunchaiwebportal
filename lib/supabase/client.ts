@@ -1,5 +1,7 @@
 import { createBrowserClient } from "@supabase/ssr";
 
+import type { Database } from "@/lib/database.types";
+
 /**
  * The browser client. Anon key only, RLS applies to everything it touches.
  *
@@ -8,7 +10,7 @@ import { createBrowserClient } from "@supabase/ssr";
  * on "we select the right columns" for safety — see CLAUDE.md §7.
  */
 export function createClient() {
-  return createBrowserClient(
+  return createBrowserClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );

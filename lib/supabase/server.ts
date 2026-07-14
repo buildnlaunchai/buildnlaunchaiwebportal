@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+import type { Database } from "@/lib/database.types";
+
 /**
  * The server client, acting AS THE SIGNED-IN USER. Anon key + their session, so
  * RLS still applies. This is the default for Server Components and for reads
@@ -12,7 +14,7 @@ import { cookies } from "next/headers";
 export async function createClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
