@@ -27,7 +27,7 @@ const svc = (path, init = {}) =>
 let pass = 0, fail = 0;
 const check = (ok, label, detail = "") => {
   console.log(`  ${ok ? "PASS" : "FAIL"}  ${label}${detail ? `  — ${detail}` : ""}`);
-  ok ? pass++ : fail++;
+  if (ok) pass++; else fail++;
 };
 
 /** The cookie @supabase/ssr writes: base64-<base64 of the session JSON>. */

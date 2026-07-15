@@ -31,7 +31,7 @@ let pass = 0;
 let fail = 0;
 const check = (ok, label, detail = "") => {
   console.log(`${ok ? "  PASS" : "  FAIL"}  ${label}${detail ? `  — ${detail}` : ""}`);
-  ok ? pass++ : fail++;
+  if (ok) pass++; else fail++;
 };
 
 let userId;
@@ -80,7 +80,7 @@ try {
     headers: { Prefer: "return=representation" },
     body: JSON.stringify({ role: "admin" }),
   });
-  const escBody = await esc.text();
+  await esc.text();
   check(!esc.ok, `PATCH role='admin' on OWN row is rejected`, `HTTP ${esc.status}`);
 
   const afterRes = await svc(`/rest/v1/profiles?id=eq.${userId}&select=role`);
@@ -157,7 +157,7 @@ try {
     console.log(
       `\n9. Cleanup\n  ${rows.length === 0 ? "PASS" : "FAIL"}  deleting auth.users cascades the profile away`,
     );
-    rows.length === 0 ? pass++ : fail++;
+    if (rows.length === 0) pass++; else fail++;
   }
 }
 
