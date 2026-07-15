@@ -1,10 +1,12 @@
 import { Lock } from "lucide-react";
 import Link from "next/link";
 
+import { chipStateFor, KeyChip } from "@/components/tools/key-chip";
 import { ProviderChip } from "@/components/tools/provider-chip";
 import { StatusPill } from "@/components/tools/status-pill";
 import { ToolIcon } from "@/components/tools/tool-icon";
 import { Button } from "@/components/ui/button";
+import type { KeyStatus } from "@/lib/keys";
 import type { ToolCardData } from "@/lib/tools";
 
 /**
@@ -20,9 +22,12 @@ import type { ToolCardData } from "@/lib/tools";
 export function ToolCard({
   tool,
   variant = "public",
+  keyStatuses,
 }: {
   tool: ToolCardData;
   variant?: "public" | "unlocked";
+  /** provider → key status, for the three-state chip on unlocked cards. */
+  keyStatuses?: Record<string, KeyStatus>;
 }) {
   const isComingSoon = tool.status === "coming_soon";
   const isPublicPreview = tool.access_type === "public_preview";
@@ -85,7 +90,15 @@ export function ToolCard({
             {tool.category}
           </span>
         )}
-        {!isComingSoon && <ProviderChip providers={tool.required_providers} />}
+        {/* On an unlocked (member) card we know their key state, so show the
+            three-state chip per provider. Elsewhere, the neutral "needs" chip. */}
+        {isUnlocked && keyStatuses && tool.required_providers.length > 0 ? (
+          tool.required_providers.map((p) => (
+            <KeyChip key={p} provider={p} state={chipStateFor(keyStatuses[p])} />
+          ))
+        ) : !isComingSoon ? (
+          <ProviderChip providers={tool.required_providers} />
+        ) : null}
         {!isUnlocked && !isPublicPreview && !isComingSoon && (
           <span className="text-mono-chip rounded-pill bg-warn-quiet px-2 py-1 text-warn">
             members only

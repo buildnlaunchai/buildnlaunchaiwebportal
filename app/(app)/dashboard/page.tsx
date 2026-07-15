@@ -5,6 +5,7 @@ import { ToolCard } from "@/components/tools/tool-card";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/access";
 import { getMyLatestApplication } from "@/lib/applications";
+import { getMyKeyStatusByProvider } from "@/lib/keys";
 import { getMyAccessibleTools, getMyMembership, isMembershipActive } from "@/lib/member";
 import { formatShipDate } from "@/lib/format";
 
@@ -32,10 +33,11 @@ function EmptyFrame({ children }: { children: React.ReactNode }) {
 export default async function DashboardPage() {
   await requireUser("/dashboard");
 
-  const [tools, membership, application] = await Promise.all([
+  const [tools, membership, application, keyStatuses] = await Promise.all([
     getMyAccessibleTools(),
     getMyMembership(),
     getMyLatestApplication(),
+    getMyKeyStatusByProvider(),
   ]);
 
   // Has tools → show them. This covers members AND applicants who can run the
@@ -53,7 +55,12 @@ export default async function DashboardPage() {
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tools.map((tool) => (
-            <ToolCard key={tool.slug} tool={tool} variant="unlocked" />
+            <ToolCard
+              key={tool.slug}
+              tool={tool}
+              variant="unlocked"
+              keyStatuses={keyStatuses}
+            />
           ))}
         </div>
         {!active && (

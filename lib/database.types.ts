@@ -513,6 +513,59 @@ export type Database = {
         }
         Relationships: []
       }
+      user_api_keys: {
+        Row: {
+          auth_tag: string
+          ciphertext: string
+          created_at: string
+          id: string
+          iv: string
+          key_hint: string
+          label: string | null
+          last_used_at: string | null
+          last_verified_at: string | null
+          provider: Database["public"]["Enums"]["api_provider"]
+          status: Database["public"]["Enums"]["key_status"]
+          user_id: string
+        }
+        Insert: {
+          auth_tag: string
+          ciphertext: string
+          created_at?: string
+          id?: string
+          iv: string
+          key_hint: string
+          label?: string | null
+          last_used_at?: string | null
+          last_verified_at?: string | null
+          provider: Database["public"]["Enums"]["api_provider"]
+          status?: Database["public"]["Enums"]["key_status"]
+          user_id: string
+        }
+        Update: {
+          auth_tag?: string
+          ciphertext?: string
+          created_at?: string
+          id?: string
+          iv?: string
+          key_hint?: string
+          label?: string | null
+          last_used_at?: string | null
+          last_verified_at?: string | null
+          provider?: Database["public"]["Enums"]["api_provider"]
+          status?: Database["public"]["Enums"]["key_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_api_keys_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_tool_access: {
         Row: {
           created_at: string
@@ -582,6 +635,50 @@ export type Database = {
         }
         Relationships: []
       }
+      user_api_keys_public: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          key_hint: string | null
+          label: string | null
+          last_used_at: string | null
+          last_verified_at: string | null
+          provider: Database["public"]["Enums"]["api_provider"] | null
+          status: Database["public"]["Enums"]["key_status"] | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          key_hint?: string | null
+          label?: string | null
+          last_used_at?: string | null
+          last_verified_at?: string | null
+          provider?: Database["public"]["Enums"]["api_provider"] | null
+          status?: Database["public"]["Enums"]["key_status"] | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          key_hint?: string | null
+          label?: string | null
+          last_used_at?: string | null
+          last_verified_at?: string | null
+          provider?: Database["public"]["Enums"]["api_provider"] | null
+          status?: Database["public"]["Enums"]["key_status"] | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_api_keys_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accessible_tool_ids: { Args: { uid?: string }; Returns: string[] }
@@ -594,6 +691,10 @@ export type Database = {
         Returns: boolean
       }
       has_active_membership: { Args: { uid?: string }; Returns: boolean }
+      has_required_keys: {
+        Args: { p_tool_id: string; uid?: string }
+        Returns: boolean
+      }
       is_admin: { Args: { uid?: string }; Returns: boolean }
       log_audit: {
         Args: {
@@ -626,6 +727,7 @@ export type Database = {
         | "custom"
       application_status: "pending" | "approved" | "waitlisted" | "rejected"
       grant_source: "global" | "plan" | "manual" | "code"
+      key_status: "unverified" | "valid" | "invalid"
       membership_status: "trialing" | "active" | "expired" | "revoked"
       tool_access_type: "public_preview" | "members" | "plan" | "manual"
       tool_runtime: "edge_function" | "internal" | "iframe" | "external_link"
@@ -779,6 +881,7 @@ export const Constants = {
       ],
       application_status: ["pending", "approved", "waitlisted", "rejected"],
       grant_source: ["global", "plan", "manual", "code"],
+      key_status: ["unverified", "valid", "invalid"],
       membership_status: ["trialing", "active", "expired", "revoked"],
       tool_access_type: ["public_preview", "members", "plan", "manual"],
       tool_runtime: ["edge_function", "internal", "iframe", "external_link"],
