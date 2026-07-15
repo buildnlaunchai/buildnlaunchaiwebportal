@@ -1,5 +1,6 @@
 import { AppShell, type NavItem } from "@/components/shell/app-shell";
 import { requireUser } from "@/lib/access";
+import { getPublicTools } from "@/lib/tools";
 
 /* CLAUDE.md §8 — the member app. */
 const NAV: NavItem[] = [
@@ -19,6 +20,7 @@ export default async function DashboardLayout({
   // server, against a revalidated session, and does not care what middleware
   // decided. Mutations check again for themselves.
   const user = await requireUser("/dashboard");
+  const tools = await getPublicTools();
 
   return (
     <AppShell
@@ -30,6 +32,7 @@ export default async function DashboardLayout({
         avatarUrl: user.profile.avatar_url,
       }}
       isAdmin={user.profile.role === "admin"}
+      paletteTools={tools.map((t) => ({ slug: t.slug, name: t.name }))}
     >
       {children}
     </AppShell>

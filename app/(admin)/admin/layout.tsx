@@ -1,5 +1,7 @@
 import { AppShell, type NavItem } from "@/components/shell/app-shell";
 import { requireAdmin } from "@/lib/access";
+import { getUsersForAdmin } from "@/lib/admin-users";
+import { getPublicTools } from "@/lib/tools";
 
 /* CLAUDE.md §8 — admin. */
 const NAV: NavItem[] = [
@@ -21,6 +23,9 @@ export default async function AdminLayout({
   // Server Action will be the second.
   const user = await requireAdmin();
 
+  // Command-palette sources: the admin can jump to any tool or any user by name.
+  const [tools, users] = await Promise.all([getPublicTools(), getUsersForAdmin()]);
+
   return (
     <AppShell
       title="Overview"
@@ -31,6 +36,12 @@ export default async function AdminLayout({
         avatarUrl: user.profile.avatar_url,
       }}
       isAdmin
+      paletteTools={tools.map((t) => ({ slug: t.slug, name: t.name }))}
+      paletteUsers={users.map((u) => ({
+        id: u.profile.id,
+        name: u.profile.full_name ?? u.profile.email,
+        email: u.profile.email,
+      }))}
     >
       {children}
     </AppShell>

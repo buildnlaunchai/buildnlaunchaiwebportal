@@ -53,7 +53,11 @@ export const applicationSchema = z.object({
 
   tools_wanted: z.array(z.string()).max(50).optional(),
 
-  willingness_to_pay: z.enum(wtpValues).optional(),
+  // Required: the single most valuable field for pricing later. Optional means
+  // most people skip it, so we ask for a pick — "$0" is a legitimate answer.
+  willingness_to_pay: z.enum(wtpValues, {
+    message: "Pick the closest — even $0 is useful to know.",
+  }),
   heard_from: z.enum(heardValues).optional(),
 
   role_title: optionalText,

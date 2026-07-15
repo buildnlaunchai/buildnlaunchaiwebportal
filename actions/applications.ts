@@ -116,9 +116,14 @@ export async function submitApplication(
 }
 
 /**
- * Admin review. Phase 3 only sets the status and records the reviewer — creating
- * a membership on approval is Phase 4. Guarded by requireAdmin (the third check,
- * §13), and it writes with the admin's own session so RLS applies.
+ * Admin review. Guarded by requireAdmin (the third §13 check).
+ *
+ * Approve is special: it goes through the approve_application RPC, which — in
+ * ONE transaction — sets the status, creates the membership, and writes the
+ * audit row. That atomicity is the point: you never get a user whose
+ * application says approved but who has no membership. Creating the membership
+ * is what unlocks every `members` tool for them (lever 1). Waitlist and reject
+ * only set the status, and log their own audit row.
  */
 export async function reviewApplication(
   applicationId: string,
@@ -126,20 +131,33 @@ export async function reviewApplication(
   adminNote?: string,
 ): Promise<{ error: string } | { ok: true }> {
   const admin = await requireAdmin();
-
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("applications")
-    .update({
-      status,
-      reviewed_by: admin.id,
-      reviewed_at: new Date().toISOString(),
-      admin_note: adminNote?.trim() || null,
-    })
-    .eq("id", applicationId);
 
-  if (error) return { error: "Couldn't update that application. Try again." };
+  if (status === "approved") {
+    const { error } = await supabase.rpc("approve_application", {
+      p_application_id: applicationId,
+    });
+    if (error) return { error: "Couldn't approve that one. Try again." };
+  } else {
+    const { error } = await supabase
+      .from("applications")
+      .update({
+        status,
+        reviewed_by: admin.id,
+        reviewed_at: new Date().toISOString(),
+        admin_note: adminNote?.trim() || null,
+      })
+      .eq("id", applicationId);
+    if (error) return { error: "Couldn't update that application. Try again." };
+
+    await supabase.rpc("log_audit", {
+      p_action: `application.${status}`,
+      p_entity_type: "application",
+      p_entity_id: applicationId,
+    });
+  }
 
   revalidatePath("/admin/applications");
+  revalidatePath("/admin/users");
   return { ok: true };
 }

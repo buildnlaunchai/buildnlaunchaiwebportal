@@ -139,6 +139,124 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json | null
+          target_user: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          target_user?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          target_user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_target_user_fkey"
+            columns: ["target_user"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      memberships: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          granted_by: string | null
+          id: string
+          is_gift: boolean
+          plan_id: string | null
+          provider: string | null
+          provider_subscription_id: string | null
+          source: string | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["membership_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_gift?: boolean
+          plan_id?: string | null
+          provider?: string | null
+          provider_subscription_id?: string | null
+          source?: string | null
+          started_at?: string | null
+          status: Database["public"]["Enums"]["membership_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_gift?: boolean
+          plan_id?: string | null
+          provider?: string | null
+          provider_subscription_id?: string | null
+          source?: string | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["membership_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "memberships_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memberships_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "memberships_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_tools: {
         Row: {
           plan_id: string
@@ -466,7 +584,27 @@ export type Database = {
       }
     }
     Functions: {
+      accessible_tool_ids: { Args: { uid?: string }; Returns: string[] }
+      approve_application: {
+        Args: { p_application_id: string; p_expires_at?: string }
+        Returns: string
+      }
+      can_access_tool: {
+        Args: { p_tool_id: string; uid?: string }
+        Returns: boolean
+      }
+      has_active_membership: { Args: { uid?: string }; Returns: boolean }
       is_admin: { Args: { uid?: string }; Returns: boolean }
+      log_audit: {
+        Args: {
+          p_action: string
+          p_entity_id?: string
+          p_entity_type?: string
+          p_metadata?: Json
+          p_target_user?: string
+        }
+        Returns: undefined
+      }
       rate_limit_take: {
         Args: { p_bucket: string; p_limit: number; p_window: string }
         Returns: boolean
@@ -488,6 +626,7 @@ export type Database = {
         | "custom"
       application_status: "pending" | "approved" | "waitlisted" | "rejected"
       grant_source: "global" | "plan" | "manual" | "code"
+      membership_status: "trialing" | "active" | "expired" | "revoked"
       tool_access_type: "public_preview" | "members" | "plan" | "manual"
       tool_runtime: "edge_function" | "internal" | "iframe" | "external_link"
       tool_status:
@@ -640,6 +779,7 @@ export const Constants = {
       ],
       application_status: ["pending", "approved", "waitlisted", "rejected"],
       grant_source: ["global", "plan", "manual", "code"],
+      membership_status: ["trialing", "active", "expired", "revoked"],
       tool_access_type: ["public_preview", "members", "plan", "manual"],
       tool_runtime: ["edge_function", "internal", "iframe", "external_link"],
       tool_status: [

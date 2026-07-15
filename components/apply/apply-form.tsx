@@ -138,17 +138,31 @@ export function ApplyForm({ tools }: { tools: ToolOption[] }) {
       {/* Two selects, side by side on wider screens */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="willingness_to_pay">
+          <Label htmlFor="willingness_to_pay" required>
             If these tools saved you real time, what would you pay?
           </Label>
-          <Select id="willingness_to_pay" defaultValue="" {...register("willingness_to_pay")}>
-            <option value="">Prefer not to say</option>
+          <Select
+            id="willingness_to_pay"
+            defaultValue=""
+            aria-invalid={errors.willingness_to_pay ? true : undefined}
+            aria-describedby={
+              errors.willingness_to_pay ? "willingness_to_pay-error" : undefined
+            }
+            {...register("willingness_to_pay")}
+          >
+            <option value="" disabled>
+              Choose one
+            </option>
             {WILLINGNESS_TO_PAY.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
             ))}
           </Select>
+          <FieldError
+            id="willingness_to_pay-error"
+            message={errors.willingness_to_pay?.message}
+          />
         </div>
 
         <div className="flex flex-col gap-2">

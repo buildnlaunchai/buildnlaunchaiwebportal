@@ -8,31 +8,45 @@ import { Button } from "@/components/ui/button";
 import type { ToolCardData } from "@/lib/tools";
 
 /**
- * The most-seen component in the product (DESIGN.md §9). Phase 2 renders its
- * PUBLIC states — locked and coming-soon — for a visitor who is not signed in.
- * The "unlocked" state (a member who can Run) needs the access engine and the
- * runner, so it lands in Phase 4/6. This file is built to grow into that, not
- * to be replaced.
+ * The most-seen component in the product (DESIGN.md §9). §9 is emphatic: the
+ * locked card is the exact same card at FULL opacity, name and tagline fully
+ * legible. Not blurred, not greyed. Desire needs an object.
  *
- * §9 is emphatic: the locked card is the exact same card at FULL opacity, name
- * and tagline fully legible. Not blurred, not greyed. Desire needs an object.
+ * Two variants:
+ *  - "public" (default): what a visitor sees — locked / coming-soon / preview.
+ *  - "unlocked": the member dashboard card for a tool they can actually run.
+ *    The runner itself is Phase 6; this card just links to it.
  */
-export function ToolCard({ tool }: { tool: ToolCardData }) {
+export function ToolCard({
+  tool,
+  variant = "public",
+}: {
+  tool: ToolCardData;
+  variant?: "public" | "unlocked";
+}) {
   const isComingSoon = tool.status === "coming_soon";
   const isPublicPreview = tool.access_type === "public_preview";
+  const isUnlocked = variant === "unlocked";
 
-  // The CTA. A visitor is never signed in, so a public_preview tool routes them
-  // through sign-in straight to the runner — the 30-second funnel (§10). A
-  // members tool routes them to apply. Coming-soon collects intent.
-  const cta = isComingSoon
-    ? { label: "Notify me", href: "/apply", variant: "secondary" as const }
-    : isPublicPreview
-      ? {
-          label: "Try it free",
-          href: `/login?next=/dashboard/tools/${tool.slug}`,
-          variant: "primary" as const,
-        }
-      : { label: "Apply for access", href: "/apply", variant: "secondary" as const };
+  // The whole card links to the runner when unlocked, to the public page when not.
+  const cardHref = isUnlocked
+    ? `/dashboard/tools/${tool.slug}`
+    : `/tools/${tool.slug}`;
+
+  // The CTA. Unlocked → Run. Otherwise: a public_preview tool routes a visitor
+  // through sign-in straight to the runner (the 30-second funnel, §10), a
+  // members tool routes them to apply, coming-soon collects intent.
+  const cta = isUnlocked
+    ? { label: "Run", href: `/dashboard/tools/${tool.slug}`, variant: "primary" as const }
+    : isComingSoon
+      ? { label: "Notify me", href: "/apply", variant: "secondary" as const }
+      : isPublicPreview
+        ? {
+            label: "Try it free",
+            href: `/login?next=/dashboard/tools/${tool.slug}`,
+            variant: "primary" as const,
+          }
+        : { label: "Apply for access", href: "/apply", variant: "secondary" as const };
 
   return (
     <article className="group relative flex flex-col rounded-md border border-line bg-surface p-5 transition-[border-color,transform] duration-micro ease-default hover:-translate-y-px hover:border-line-strong">
@@ -41,9 +55,8 @@ export function ToolCard({ tool }: { tool: ToolCardData }) {
           <ToolIcon name={tool.icon} />
         </span>
 
-        {/* Top-right marker: a lock for gated tools, a status pill for
-            coming-soon. §9. */}
-        {isComingSoon ? (
+        {/* Top-right marker. When unlocked there's no gate to signal. §9. */}
+        {isUnlocked ? null : isComingSoon ? (
           <StatusPill label="coming soon" tone="warn" dot={false} />
         ) : !isPublicPreview ? (
           <Lock aria-hidden className="size-4 text-text-faint" strokeWidth={1.5} />
@@ -52,11 +65,10 @@ export function ToolCard({ tool }: { tool: ToolCardData }) {
 
       <div className="mt-4 flex-1">
         <h3 className="text-h3">
-          {/* Stretched link: the whole card is clickable to the detail page,
-              but the CTA button below keeps its own destination and stays above
-              the overlay. No nested <a>. */}
+          {/* Stretched link: the whole card is clickable, but the CTA button
+              below keeps its own destination above the overlay. No nested <a>. */}
           <Link
-            href={`/tools/${tool.slug}`}
+            href={cardHref}
             className="after:absolute after:inset-0 after:content-['']"
           >
             {tool.name}
@@ -74,7 +86,7 @@ export function ToolCard({ tool }: { tool: ToolCardData }) {
           </span>
         )}
         {!isComingSoon && <ProviderChip providers={tool.required_providers} />}
-        {!isPublicPreview && !isComingSoon && (
+        {!isUnlocked && !isPublicPreview && !isComingSoon && (
           <span className="text-mono-chip rounded-pill bg-warn-quiet px-2 py-1 text-warn">
             members only
           </span>

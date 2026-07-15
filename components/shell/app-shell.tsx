@@ -3,6 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { useEffect, useState } from "react";
+import { Search } from "lucide-react";
+
+import {
+  CommandPalette,
+  type PaletteTool,
+  type PaletteUser,
+} from "@/components/shell/command-palette";
 import { ICONS, type IconName } from "@/components/shell/icons";
 import { UserMenu } from "@/components/shell/user-menu";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -27,6 +35,9 @@ type AppShellProps = {
   user: ShellUser;
   /** DESIGN.md §10: "You will eventually forget which account you're in." */
   isAdmin?: boolean;
+  /** Command palette sources (DESIGN.md §9). Users are admin-only. */
+  paletteTools?: PaletteTool[];
+  paletteUsers?: PaletteUser[];
   children: React.ReactNode;
 };
 
@@ -42,9 +53,24 @@ export function AppShell({
   nav,
   user,
   isAdmin = false,
+  paletteTools = [],
+  paletteUsers = [],
   children,
 }: AppShellProps) {
   const pathname = usePathname();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // ⌘K / Ctrl+K toggles the palette from anywhere in the authed app.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   // The top-bar title tracks the current section: the deepest nav item whose
   // href matches the path wins, so /admin/applications reads "Applications", not
@@ -110,6 +136,18 @@ export function AppShell({
           <h1 className="text-h1 truncate">{pageTitle}</h1>
 
           <div className="ml-auto flex items-center gap-2">
+            {/* ⌘K trigger — a real button so it works on mobile too (§11). */}
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              aria-label="Search"
+              className="inline-flex h-8 items-center gap-2 rounded-sm border border-line bg-surface px-2.5 text-text-muted transition-colors duration-micro ease-default hover:border-line-strong hover:text-text"
+            >
+              <Search aria-hidden className="size-4" strokeWidth={1.5} />
+              <span className="text-mono-chip hidden text-text-faint sm:inline">
+                ⌘K
+              </span>
+            </button>
             {isAdmin && (
               <span className="text-mono-chip rounded-pill bg-warn-quiet px-2 py-1 text-warn">
                 ADMIN
@@ -157,6 +195,14 @@ export function AppShell({
           );
         })}
       </nav>
+
+      <CommandPalette
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        isAdmin={isAdmin}
+        tools={paletteTools}
+        users={paletteUsers}
+      />
     </div>
   );
 }

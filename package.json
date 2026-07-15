@@ -13,7 +13,9 @@
     "verify:rls": "node --env-file=.env.local scripts/verify-rls.mjs",
     "verify:guards": "node --env-file=.env.local scripts/verify-admin-guard.mjs",
     "verify:applications": "node --env-file=.env.local scripts/verify-applications.mjs",
-    "verify:apply-pages": "node --env-file=.env.local scripts/verify-apply-pages.mjs"
+    "verify:apply-pages": "node --env-file=.env.local scripts/verify-apply-pages.mjs",
+    "verify:access": "node --env-file=.env.local scripts/verify-access-engine.mjs",
+    "verify:phase4": "node --env-file=.env.local scripts/verify-phase4-pages.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
