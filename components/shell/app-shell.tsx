@@ -46,6 +46,14 @@ export function AppShell({
 }: AppShellProps) {
   const pathname = usePathname();
 
+  // The top-bar title tracks the current section: the deepest nav item whose
+  // href matches the path wins, so /admin/applications reads "Applications", not
+  // the layout's default. Pages with no nav entry fall back to `title`.
+  const pageTitle =
+    nav
+      .filter((item) => isActive(pathname, item.href))
+      .sort((a, b) => b.href.length - a.href.length)[0]?.label ?? title;
+
   return (
     <div className="min-h-dvh">
       {/* ---- Sidebar: 240px, --canvas, 1px --line right edge (§10) --------
@@ -99,7 +107,7 @@ export function AppShell({
       <div className="flex min-h-dvh flex-col md:pl-16 lg:pl-60">
         {/* Top bar: 56px (§10) */}
         <header className="sticky top-0 z-20 flex h-14 items-center gap-4 border-b border-line bg-canvas px-5 lg:px-8">
-          <h1 className="text-h1 truncate">{title}</h1>
+          <h1 className="text-h1 truncate">{pageTitle}</h1>
 
           <div className="ml-auto flex items-center gap-2">
             {isAdmin && (

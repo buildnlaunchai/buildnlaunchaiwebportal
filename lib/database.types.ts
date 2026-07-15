@@ -14,6 +14,131 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          applications_open: boolean
+          auto_approve: boolean
+          default_plan_id: string | null
+          discord_webhook_url: string | null
+          id: boolean
+          maintenance_mode: boolean
+          skool_invite_url: string | null
+          trial_days: number
+          updated_at: string
+        }
+        Insert: {
+          applications_open?: boolean
+          auto_approve?: boolean
+          default_plan_id?: string | null
+          discord_webhook_url?: string | null
+          id?: boolean
+          maintenance_mode?: boolean
+          skool_invite_url?: string | null
+          trial_days?: number
+          updated_at?: string
+        }
+        Update: {
+          applications_open?: boolean
+          auto_approve?: boolean
+          default_plan_id?: string | null
+          discord_webhook_url?: string | null
+          id?: boolean
+          maintenance_mode?: boolean
+          skool_invite_url?: string | null
+          trial_days?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_settings_default_plan_id_fkey"
+            columns: ["default_plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      applications: {
+        Row: {
+          admin_note: string | null
+          company: string | null
+          country: string | null
+          created_at: string
+          email: string
+          full_name: string
+          heard_from: string | null
+          id: string
+          referral_code: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          role_title: string | null
+          socials: string | null
+          status: Database["public"]["Enums"]["application_status"]
+          tools_wanted: string[] | null
+          use_case: string
+          user_id: string
+          website_url: string | null
+          willingness_to_pay: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          company?: string | null
+          country?: string | null
+          created_at?: string
+          email: string
+          full_name: string
+          heard_from?: string | null
+          id?: string
+          referral_code?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role_title?: string | null
+          socials?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          tools_wanted?: string[] | null
+          use_case: string
+          user_id: string
+          website_url?: string | null
+          willingness_to_pay?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          company?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string
+          heard_from?: string | null
+          id?: string
+          referral_code?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          role_title?: string | null
+          socials?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          tools_wanted?: string[] | null
+          use_case?: string
+          user_id?: string
+          website_url?: string | null
+          willingness_to_pay?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_tools: {
         Row: {
           plan_id: string
@@ -141,6 +266,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rate_limit_hits: {
+        Row: {
+          bucket: string
+          created_at: string
+          id: number
+        }
+        Insert: {
+          bucket: string
+          created_at?: string
+          id?: number
+        }
+        Update: {
+          bucket?: string
+          created_at?: string
+          id?: number
+        }
+        Relationships: []
       }
       tool_secrets: {
         Row: {
@@ -306,10 +449,28 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      app_settings_public: {
+        Row: {
+          applications_open: boolean | null
+          maintenance_mode: boolean | null
+        }
+        Insert: {
+          applications_open?: boolean | null
+          maintenance_mode?: boolean | null
+        }
+        Update: {
+          applications_open?: boolean | null
+          maintenance_mode?: boolean | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       is_admin: { Args: { uid?: string }; Returns: boolean }
+      rate_limit_take: {
+        Args: { p_bucket: string; p_limit: number; p_window: string }
+        Returns: boolean
+      }
     }
     Enums: {
       api_provider:
@@ -325,6 +486,7 @@ export type Database = {
         | "apify"
         | "youtube_data"
         | "custom"
+      application_status: "pending" | "approved" | "waitlisted" | "rejected"
       grant_source: "global" | "plan" | "manual" | "code"
       tool_access_type: "public_preview" | "members" | "plan" | "manual"
       tool_runtime: "edge_function" | "internal" | "iframe" | "external_link"
@@ -476,6 +638,7 @@ export const Constants = {
         "youtube_data",
         "custom",
       ],
+      application_status: ["pending", "approved", "waitlisted", "rejected"],
       grant_source: ["global", "plan", "manual", "code"],
       tool_access_type: ["public_preview", "members", "plan", "manual"],
       tool_runtime: ["edge_function", "internal", "iframe", "external_link"],
