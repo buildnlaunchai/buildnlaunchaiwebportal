@@ -1150,11 +1150,18 @@ any handler they like.
 So the first thing `index.ts` does, before anything else:
 
 ```ts
-const auth = req.headers.get('Authorization')
-if (auth !== `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`) {
+const presented = req.headers.get('X-Runner-Secret') ?? ''
+if (!timingSafeEqual(presented, Deno.env.get('RUNNER_SECRET'))) {
   return new Response('not found', { status: 404 })   // 404, not 401. Don't confirm it exists.
 }
 ```
+
+A DEDICATED secret (`RUNNER_SECRET`), not the service-role key: Supabase injects the *new-format*
+secret key into functions while the startRun Server Action holds the *legacy JWT* service-role key,
+so a byte-compare against `SUPABASE_SERVICE_ROLE_KEY` can never match. `RUNNER_SECRET` lives in
+Supabase secrets AND in the app env, and its only job is to prove "our backend sent this". It
+**cannot decrypt anything** — `ENCRYPTION_KEY` is not on Vercel — so it does not weaken §13, and
+`run-tool` sets `verify_jwt = false` precisely so this check, not the gateway, is the gate.
 
 Constant-time compare it. **The only caller in the world that may invoke `run-tool` is our own
 Server Action**, which has already verified the session, the access grant, the tool status, the

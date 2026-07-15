@@ -403,6 +403,69 @@ export type Database = {
         }
         Relationships: []
       }
+      tool_runs: {
+        Row: {
+          artifacts_expire_at: string | null
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          expires_at: string | null
+          id: string
+          input: Json
+          output: Json | null
+          providers_used: Database["public"]["Enums"]["api_provider"][]
+          status: Database["public"]["Enums"]["run_status"]
+          tool_id: string
+          user_id: string
+        }
+        Insert: {
+          artifacts_expire_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          input?: Json
+          output?: Json | null
+          providers_used?: Database["public"]["Enums"]["api_provider"][]
+          status?: Database["public"]["Enums"]["run_status"]
+          tool_id: string
+          user_id: string
+        }
+        Update: {
+          artifacts_expire_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          expires_at?: string | null
+          id?: string
+          input?: Json
+          output?: Json | null
+          providers_used?: Database["public"]["Enums"]["api_provider"][]
+          status?: Database["public"]["Enums"]["run_status"]
+          tool_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tool_runs_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "tools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tool_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tool_secrets: {
         Row: {
           embed_url: string | null
@@ -729,6 +792,7 @@ export type Database = {
       grant_source: "global" | "plan" | "manual" | "code"
       key_status: "unverified" | "valid" | "invalid"
       membership_status: "trialing" | "active" | "expired" | "revoked"
+      run_status: "queued" | "running" | "success" | "error" | "timeout"
       tool_access_type: "public_preview" | "members" | "plan" | "manual"
       tool_runtime: "edge_function" | "internal" | "iframe" | "external_link"
       tool_status:
@@ -883,6 +947,7 @@ export const Constants = {
       grant_source: ["global", "plan", "manual", "code"],
       key_status: ["unverified", "valid", "invalid"],
       membership_status: ["trialing", "active", "expired", "revoked"],
+      run_status: ["queued", "running", "success", "error", "timeout"],
       tool_access_type: ["public_preview", "members", "plan", "manual"],
       tool_runtime: ["edge_function", "internal", "iframe", "external_link"],
       tool_status: [

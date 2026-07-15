@@ -277,6 +277,41 @@
   }
 }
 
+/* ---------- DESIGN.md §8 — The run choreography ---------------------------
+   The one place the product performs. transform/opacity only (§7). */
+
+@keyframes run-sweep {
+  0% { transform: translateX(-40%); }
+  100% { transform: translateX(340%); }
+}
+@keyframes run-skeleton {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+@keyframes run-dot {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+@keyframes run-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* The 2px indeterminate progress line — the only infinite animation (§8). */
+@utility run-progress {
+  animation: run-sweep 1.4s var(--ease-default) infinite;
+}
+@utility run-skeleton {
+  animation: run-skeleton 1.6s ease-in-out infinite;
+}
+@utility run-dot {
+  animation: run-dot 1.6s ease-in-out infinite;
+}
+/* Output blocks arrive, staggered — the reveal after the wait (§8 step 5). */
+@utility run-block-enter {
+  animation: run-enter var(--duration-enter) var(--ease-enter) both;
+}
+
 /* ---------- DESIGN.md §7 — Reduced motion, honoured fully ----------------- */
 
 @media (prefers-reduced-motion: reduce) {

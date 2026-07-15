@@ -382,3 +382,10 @@ s3_region = "env(S3_REGION)"
 s3_access_key = "env(S3_ACCESS_KEY)"
 # Configures AWS_SECRET_ACCESS_KEY for S3 bucket
 s3_secret_key = "env(S3_SECRET_KEY)"
+
+# run-tool is on the public internet and does its OWN authorization: the first
+# line of index.ts rejects any caller that is not the service role (§9.4). So
+# verify_jwt is OFF here on purpose — that manual check, not the gateway, is the
+# gate. key-vault keeps verify_jwt on (default): it's called by members.
+[functions.run-tool]
+verify_jwt = false

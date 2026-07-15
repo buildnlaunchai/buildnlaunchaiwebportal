@@ -30,11 +30,14 @@ export function StatusPill({
   label,
   tone,
   dot = true,
+  pulse = false,
   className,
 }: {
   label: string;
   tone: Tone;
   dot?: boolean;
+  /** §8/§9: the dot pulses only in RUNNING. */
+  pulse?: boolean;
   className?: string;
 }) {
   return (
@@ -46,7 +49,10 @@ export function StatusPill({
       )}
     >
       {dot && (
-        <span aria-hidden className={cn("size-1.5 rounded-pill", DOT[tone])} />
+        <span
+          aria-hidden
+          className={cn("size-1.5 rounded-pill", DOT[tone], pulse && "run-dot")}
+        />
       )}
       {label}
     </span>
