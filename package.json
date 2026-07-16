@@ -18,7 +18,8 @@
     "verify:phase4": "node --env-file=.env.local scripts/verify-phase4-pages.mjs",
     "verify:vault": "node --env-file=.env.local scripts/verify-vault.mjs",
     "verify:keys-pages": "node --env-file=.env.local scripts/verify-keys-pages.mjs",
-    "verify:runner": "node --env-file=.env.local scripts/verify-runner.mjs"
+    "verify:runner": "node --env-file=.env.local scripts/verify-runner.mjs",
+    "verify:editor": "node --env-file=.env.local scripts/verify-editor.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
