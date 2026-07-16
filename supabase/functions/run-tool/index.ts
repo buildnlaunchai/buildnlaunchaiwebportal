@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
 
   const { data: tool } = await supabase
     .from("tools")
-    .select("slug, required_providers, output_schema")
+    .select("slug, name, required_providers, output_schema")
     .eq("id", run.tool_id)
     .single();
   const { data: secret } = await supabase
@@ -124,7 +124,7 @@ type RunRow = { id: string; user_id: string; created_at: string };
 async function work(
   supabase: ReturnType<typeof createClient>,
   run: RunRow,
-  tool: { output_schema: unknown },
+  tool: { output_schema: unknown; name: string },
   providers: string[],
   handler: Handler,
   ctx: RunContext,
@@ -159,12 +159,15 @@ async function work(
       .eq("id", run.id);
   } catch (err) {
     if (err instanceof ProviderAuthError) {
-      // The single most common BYOK failure — a first-class path (§9.3 h).
+      // The single most common BYOK failure — a first-class path (§9.3 h). The
+      // run only started because the key was non-invalid (startRun checked), so
+      // reaching here IS the transition to invalid — notify exactly once (§11).
       await supabase
         .from("user_api_keys")
         .update({ status: "invalid" })
         .eq("user_id", run.user_id)
         .eq("provider", err.provider);
+      await notifyKeyStopped(supabase, run.user_id, err.provider, tool.name);
       await fail(
         supabase,
         run,
@@ -244,4 +247,63 @@ async function rehostArtifacts(
 function sentence(msg: string): string {
   const clean = (msg || "The tool didn't finish.").trim();
   return clean.length > 200 ? "The tool didn't finish." : clean;
+}
+
+/**
+ * "A key stopped working" — the notification + email, once per invalidation
+ * (§11). Best-effort: never lets a mail failure change the run outcome. Sent
+ * from HERE because this is where the 401 is detected; the Edge Function has
+ * RESEND_API_KEY in Supabase secrets.
+ */
+async function notifyKeyStopped(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  provider: string,
+  toolName: string,
+) {
+  try {
+    const [{ data: profile }, { data: key }] = await Promise.all([
+      supabase.from("profiles").select("email").eq("id", userId).maybeSingle(),
+      supabase
+        .from("user_api_keys")
+        .select("key_hint")
+        .eq("user_id", userId)
+        .eq("provider", provider)
+        .maybeSingle(),
+    ]);
+
+    const site = (Deno.env.get("PUBLIC_SITE_URL") ?? "https://buildnlaunchai.com").replace(/\/+$/, "");
+    const href = `/dashboard/keys?provider=${provider}`;
+
+    await supabase.from("notifications").insert({
+      user_id: userId,
+      title: `Your ${provider} key stopped working`,
+      body: `It was rejected during a run of ${toolName} and marked invalid. Update it to run again.`,
+      href,
+    });
+
+    const resendKey = Deno.env.get("RESEND_API_KEY");
+    const from = Deno.env.get("RESEND_FROM_EMAIL");
+    if (resendKey && from && profile?.email) {
+      const hint = key?.key_hint ?? "";
+      const html =
+        `<div style="font-family:sans-serif;color:#14161c">` +
+        `<h2>${provider} rejected your key</h2>` +
+        `<p>Your ${provider} key ${hint} was refused during a run of <strong>${toolName}</strong>, so it's been marked invalid. ` +
+        `It may have been revoked or run out of credit on ${provider}'s side. Nothing was charged on my end.</p>` +
+        `<p><a href="${site}${href}" style="background:#4f46e5;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none">Update your key</a></p></div>`;
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${resendKey}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          from,
+          to: profile.email,
+          subject: `Your ${provider} key stopped working`,
+          html,
+        }),
+      });
+    }
+  } catch (e) {
+    console.error("notifyKeyStopped failed (non-fatal):", (e as Error).message);
+  }
 }

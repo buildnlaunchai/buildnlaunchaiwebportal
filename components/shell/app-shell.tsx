@@ -12,9 +12,13 @@ import {
   type PaletteUser,
 } from "@/components/shell/command-palette";
 import { ICONS, type IconName } from "@/components/shell/icons";
+import { NotificationBell } from "@/components/shell/notification-bell";
 import { UserMenu } from "@/components/shell/user-menu";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import type { Database } from "@/lib/database.types";
 import { cn } from "@/lib/utils";
+
+type Notification = Database["public"]["Tables"]["notifications"]["Row"];
 
 export type NavItem = {
   href: string;
@@ -24,6 +28,7 @@ export type NavItem = {
 };
 
 export type ShellUser = {
+  id: string;
   email: string;
   fullName: string | null;
   avatarUrl: string | null;
@@ -38,6 +43,7 @@ type AppShellProps = {
   /** Command palette sources (DESIGN.md §9). Users are admin-only. */
   paletteTools?: PaletteTool[];
   paletteUsers?: PaletteUser[];
+  notifications?: Notification[];
   children: React.ReactNode;
 };
 
@@ -55,6 +61,7 @@ export function AppShell({
   isAdmin = false,
   paletteTools = [],
   paletteUsers = [],
+  notifications = [],
   children,
 }: AppShellProps) {
   const pathname = usePathname();
@@ -153,6 +160,7 @@ export function AppShell({
                 ADMIN
               </span>
             )}
+            <NotificationBell initial={notifications} userId={user.id} />
             <ThemeToggle />
             <UserMenu
               email={user.email}

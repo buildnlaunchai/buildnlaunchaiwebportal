@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/lib/access";
+import { toolAccessGrantedEmail } from "@/lib/email";
+import { notifyUser } from "@/lib/notify";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -36,6 +38,23 @@ export async function grantTool(
     p_entity_id: toolId,
     p_target_user: userId,
   });
+
+  // Tell the member their new tool is ready (§11).
+  const svc = createAdminClient();
+  const [{ data: profile }, { data: tool }] = await Promise.all([
+    svc.from("profiles").select("email").eq("id", userId).maybeSingle(),
+    svc.from("tools").select("name, slug").eq("id", toolId).maybeSingle(),
+  ]);
+  if (profile && tool) {
+    await notifyUser({
+      userId,
+      title: `${tool.name} unlocked`,
+      body: "I've granted you access to this tool.",
+      href: `/dashboard/tools/${tool.slug}`,
+      email: { to: profile.email, ...toolAccessGrantedEmail(tool.name, tool.slug) },
+    });
+  }
+
   revalidateUser(userId);
   return { ok: true };
 }

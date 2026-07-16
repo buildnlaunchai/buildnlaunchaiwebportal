@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 
 import { requireAdmin, requireUser } from "@/lib/access";
 import { pingDiscord } from "@/lib/discord";
+import { applicationReceivedEmail, approvedEmail, waitlistedEmail } from "@/lib/email";
+import { notifyUser } from "@/lib/notify";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { verifyTurnstile } from "@/lib/turnstile";
@@ -105,11 +107,18 @@ export async function submitApplication(
     return { error: "Something went wrong saving that. Try again." };
   }
 
-  // 7. Nudge Discord. Best-effort — a Discord failure must not fail the apply.
+  // 7. Nudge Discord (to me) and email the applicant (§11). Both best-effort.
   const wtp = input.willingness_to_pay ? ` · would pay ${input.willingness_to_pay}` : "";
   await pingDiscord(
     `**New application** — ${user.profile.full_name ?? user.email} (${user.email})${wtp}\n> ${input.use_case.slice(0, 300)}`,
   );
+  await notifyUser({
+    userId: user.id,
+    title: "Application received",
+    body: "I review these personally, usually within a day.",
+    href: "/dashboard",
+    email: { to: user.email, ...applicationReceivedEmail(user.profile.full_name ?? "") },
+  });
 
   revalidatePath("/admin/applications");
   redirect("/apply/thanks");
@@ -133,11 +142,34 @@ export async function reviewApplication(
   const admin = await requireAdmin();
   const supabase = await createClient();
 
+  // The applicant, for the email + notification (§11).
+  const { data: app } = await supabase
+    .from("applications")
+    .select("user_id, email, full_name")
+    .eq("id", applicationId)
+    .maybeSingle();
+
   if (status === "approved") {
     const { error } = await supabase.rpc("approve_application", {
       p_application_id: applicationId,
     });
     if (error) return { error: "Couldn't approve that one. Try again." };
+
+    if (app) {
+      const svc = createAdminClient();
+      const { data: settings } = await svc
+        .from("app_settings")
+        .select("skool_invite_url")
+        .eq("id", true)
+        .single();
+      await notifyUser({
+        userId: app.user_id,
+        title: "You're in",
+        body: "Your application was approved. Connect a key and run your first tool.",
+        href: "/dashboard",
+        email: { to: app.email, ...approvedEmail(app.full_name, settings?.skool_invite_url) },
+      });
+    }
   } else {
     const { error } = await supabase
       .from("applications")
@@ -155,6 +187,16 @@ export async function reviewApplication(
       p_entity_type: "application",
       p_entity_id: applicationId,
     });
+
+    if (status === "waitlisted" && app) {
+      await notifyUser({
+        userId: app.user_id,
+        title: "You're on the waitlist",
+        body: "I'm adding people as I add capacity. You're on the list.",
+        href: "/tools",
+        email: { to: app.email, ...waitlistedEmail(app.full_name) },
+      });
+    }
   }
 
   revalidatePath("/admin/applications");

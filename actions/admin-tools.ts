@@ -3,10 +3,27 @@
 import { revalidatePath } from "next/cache";
 
 import { requireAdmin } from "@/lib/access";
+import { toolPublishedEmail } from "@/lib/email";
+import { notifyActiveMembers } from "@/lib/notify";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { toolDraftSchema, type ToolDraft } from "@/lib/validation/tool";
 import { compileInputSchema } from "@/lib/schema";
 import { parseInputSchema } from "@/lib/tool-schema";
+
+/** "New tool published" fan-out (§11) — fires only on the transition to
+    published, so re-saving a published tool never re-broadcasts. */
+async function announceIfNewlyPublished(
+  wasPublished: boolean,
+  d: ToolDraft,
+): Promise<void> {
+  if (wasPublished || d.status !== "published") return;
+  await notifyActiveMembers({
+    title: `New tool: ${d.name}`,
+    body: d.tagline,
+    href: `/dashboard/tools/${d.slug}`,
+    email: toolPublishedEmail(d.name, d.tagline, d.slug),
+  });
+}
 
 type Result<T = object> = ({ error: string } | ({ ok: true } & T));
 
@@ -72,6 +89,9 @@ export async function createTool(raw: unknown): Promise<Result<{ id: string }>> 
     p_entity_id: tool.id,
   });
 
+  // A brand-new tool created straight as published is a launch → announce.
+  await announceIfNewlyPublished(false, parsed.data);
+
   revalidatePath("/admin/tools");
   revalidatePath("/");
   return { ok: true, id: tool.id };
@@ -112,6 +132,9 @@ export async function updateTool(id: string, raw: unknown): Promise<Result> {
     p_entity_type: "tool",
     p_entity_id: id,
   });
+
+  // Announce only when this save is the transition into published.
+  await announceIfNewlyPublished(existing?.status === "published", parsed.data);
 
   revalidatePath("/admin/tools");
   revalidatePath(`/admin/tools/${id}`);

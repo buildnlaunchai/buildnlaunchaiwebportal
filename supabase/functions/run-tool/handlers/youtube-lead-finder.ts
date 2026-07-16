@@ -1,4 +1,19 @@
-import { type Handler, providerFetch } from "../../_shared/types.ts";
+import { type Handler, ProviderAuthError, providerFetch } from "../../_shared/types.ts";
+
+// Google/YouTube returns 400 (not 401) with an "API key not valid" body for a
+// bad key — providerFetch only catches 401/403, so we detect that here and turn
+// it into the same first-class "your key stopped working" path.
+async function youtubeFetch(url: URL): Promise<Response> {
+  const res = await providerFetch("youtube_data", url);
+  if (res.ok) return res;
+  if (res.status === 400 || res.status === 403) {
+    const body = await res.clone().text();
+    if (/api key not valid|API_KEY_INVALID|keyInvalid/i.test(body)) {
+      throw new ProviderAuthError("youtube_data");
+    }
+  }
+  return res;
+}
 
 // Real tool: searches YouTube for channels in a niche (YouTube Data API), then
 // writes a short read on who's worth reaching (OpenAI). Runs on the member's own
@@ -27,7 +42,7 @@ const handler: Handler = async ({ input, secrets }) => {
   searchUrl.searchParams.set("maxResults", String(maxResults));
   searchUrl.searchParams.set("key", yt);
 
-  const searchRes = await providerFetch("youtube_data", searchUrl);
+  const searchRes = await youtubeFetch(searchUrl);
   if (!searchRes.ok) throw new Error(`YouTube search failed (${searchRes.status}).`);
   const search = (await searchRes.json()) as { items?: YTSearchItem[] };
   const channelIds = (search.items ?? [])
@@ -43,7 +58,7 @@ const handler: Handler = async ({ input, secrets }) => {
   chUrl.searchParams.set("part", "snippet,statistics");
   chUrl.searchParams.set("id", channelIds.join(","));
   chUrl.searchParams.set("key", yt);
-  const chRes = await providerFetch("youtube_data", chUrl);
+  const chRes = await youtubeFetch(chUrl);
   if (!chRes.ok) throw new Error(`YouTube channels lookup failed (${chRes.status}).`);
   const channels = (await chRes.json()) as { items?: YTChannel[] };
 

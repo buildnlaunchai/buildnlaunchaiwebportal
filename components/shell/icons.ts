@@ -4,6 +4,7 @@ import {
   KeyRound,
   LayoutDashboard,
   LayoutGrid,
+  Megaphone,
   ScrollText,
   Settings,
   Users,
@@ -32,6 +33,7 @@ export const ICONS = {
   users: Users,
   tools: Wrench,
   audit: ScrollText,
+  announcements: Megaphone,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
