@@ -21,7 +21,8 @@
     "verify:runner": "node --env-file=.env.local scripts/verify-runner.mjs",
     "verify:editor": "node --env-file=.env.local scripts/verify-editor.mjs",
     "verify:notify": "node --env-file=.env.local scripts/verify-notify.mjs",
-    "verify:codes": "node --env-file=.env.local scripts/verify-codes.mjs"
+    "verify:codes": "node --env-file=.env.local scripts/verify-codes.mjs",
+    "verify:community": "node --env-file=.env.local scripts/verify-community.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

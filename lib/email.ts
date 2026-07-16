@@ -129,6 +129,17 @@ export function toolAccessGrantedEmail(toolName: string, slug: string): EmailCon
   };
 }
 
+export function shippedRequestEmail(requestTitle: string, toolName: string, slug: string): EmailContent {
+  return {
+    subject: `You asked for it: ${toolName} is live`,
+    html: shell(
+      heading("You asked for this — it's live") +
+        para(`${toolName} shipped, and it came out of your request: "${requestTitle}". Go give it a run.`) +
+        button(`${siteUrl()}/dashboard/tools/${slug}`, "Open it"),
+    ),
+  };
+}
+
 export function referralAutoGrantEmail(): EmailContent {
   return {
     subject: "Your referrals earned you a membership",

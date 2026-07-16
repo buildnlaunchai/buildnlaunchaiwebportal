@@ -7,7 +7,7 @@ import type { Database } from "@/lib/database.types";
 export type Membership = Database["public"]["Tables"]["memberships"]["Row"];
 
 const CARD_COLUMNS =
-  "slug,name,tagline,category,icon,status,access_type,required_providers,version,launched_at";
+  "id,slug,name,tagline,category,icon,status,access_type,required_providers,version,launched_at";
 
 /** The signed-in user's membership, or null. RLS scopes it to them. */
 export async function getMyMembership(): Promise<Membership | null> {

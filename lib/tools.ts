@@ -14,9 +14,10 @@ export type ToolAccessType = Database["public"]["Enums"]["tool_access_type"];
  * and input/output_schema (large) have no business on a card.
  */
 const CARD_COLUMNS =
-  "slug,name,tagline,category,icon,status,access_type,required_providers,version,launched_at" as const;
+  "id,slug,name,tagline,category,icon,status,access_type,required_providers,version,launched_at" as const;
 
 export type ToolCardData = {
+  id: string;
   slug: string;
   name: string;
   tagline: string;

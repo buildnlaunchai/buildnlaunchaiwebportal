@@ -2,6 +2,7 @@ import { Lock } from "lucide-react";
 import Link from "next/link";
 
 import { chipStateFor, KeyChip } from "@/components/tools/key-chip";
+import { NotifyMeButton } from "@/components/tools/notify-me-button";
 import { ProviderChip } from "@/components/tools/provider-chip";
 import { StatusPill } from "@/components/tools/status-pill";
 import { ToolIcon } from "@/components/tools/tool-icon";
@@ -38,20 +39,18 @@ export function ToolCard({
     ? `/dashboard/tools/${tool.slug}`
     : `/tools/${tool.slug}`;
 
-  // The CTA. Unlocked → Run. Otherwise: a public_preview tool routes a visitor
-  // through sign-in straight to the runner (the 30-second funnel, §10), a
-  // members tool routes them to apply, coming-soon collects intent.
+  // The CTA. Unlocked → Run. public_preview → sign-in straight to the runner
+  // (the 30-second funnel, §10). members → apply. coming-soon is special: the
+  // real one-click "notify me" (NotifyMeButton), not a link — handled below.
   const cta = isUnlocked
     ? { label: "Run", href: `/dashboard/tools/${tool.slug}`, variant: "primary" as const }
-    : isComingSoon
-      ? { label: "Notify me", href: "/apply", variant: "secondary" as const }
-      : isPublicPreview
-        ? {
-            label: "Try it free",
-            href: `/login?next=/dashboard/tools/${tool.slug}`,
-            variant: "primary" as const,
-          }
-        : { label: "Apply for access", href: "/apply", variant: "secondary" as const };
+    : isPublicPreview
+      ? {
+          label: "Try it free",
+          href: `/login?next=/dashboard/tools/${tool.slug}`,
+          variant: "primary" as const,
+        }
+      : { label: "Apply for access", href: "/apply", variant: "secondary" as const };
 
   return (
     <article className="group relative flex flex-col rounded-md border border-line bg-surface p-5 transition-[border-color,transform] duration-micro ease-default hover:-translate-y-px hover:border-line-strong">
@@ -107,11 +106,15 @@ export function ToolCard({
       </div>
 
       <div className="relative z-10 mt-5">
-        <Link href={cta.href} tabIndex={-1}>
-          <Button variant={cta.variant} size="sm" className="w-full">
-            {cta.label}
-          </Button>
-        </Link>
+        {isComingSoon ? (
+          <NotifyMeButton toolId={tool.id} className="w-full" />
+        ) : (
+          <Link href={cta.href} tabIndex={-1}>
+            <Button variant={cta.variant} size="sm" className="w-full">
+              {cta.label}
+            </Button>
+          </Link>
+        )}
       </div>
     </article>
   );

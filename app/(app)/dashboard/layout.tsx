@@ -10,6 +10,7 @@ const NAV: NavItem[] = [
   { href: "/dashboard", label: "Apps", icon: "apps" },
   { href: "/dashboard/runs", label: "Runs", icon: "runs" },
   { href: "/dashboard/keys", label: "Keys", icon: "keys" },
+  { href: "/dashboard/requests", label: "Requests", icon: "requests" },
   { href: "/dashboard/settings", label: "Settings", icon: "settings" },
 ];
 

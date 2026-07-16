@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { NotifyMeButton } from "@/components/tools/notify-me-button";
 import { ProviderChip } from "@/components/tools/provider-chip";
 import { StatusPill } from "@/components/tools/status-pill";
 import { ToolFormPreview } from "@/components/tools/tool-form-preview";
@@ -147,11 +148,15 @@ export default async function ToolPage({
             )}
 
             <div className="mt-6">
-              <Link href={cta.href}>
-                <Button variant="primary" className="w-full">
-                  {cta.label}
-                </Button>
-              </Link>
+              {isComingSoon ? (
+                <NotifyMeButton toolId={tool.id} size="md" className="w-full" />
+              ) : (
+                <Link href={cta.href}>
+                  <Button variant="primary" className="w-full">
+                    {cta.label}
+                  </Button>
+                </Link>
+              )}
               {!isComingSoon && !isPublicPreview && (
                 <p className="mt-3 text-small text-text-muted">
                   Approved members run this with their own key.

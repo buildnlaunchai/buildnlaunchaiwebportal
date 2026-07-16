@@ -334,6 +334,87 @@ export type Database = {
           },
         ]
       }
+      feature_request_votes: {
+        Row: {
+          created_at: string
+          request_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          request_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          request_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_request_votes_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "feature_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feature_request_votes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_requests: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          shipped_tool_id: string | null
+          status: string
+          title: string
+          user_id: string
+          vote_count: number
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          shipped_tool_id?: string | null
+          status?: string
+          title: string
+          user_id: string
+          vote_count?: number
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          shipped_tool_id?: string | null
+          status?: string
+          title?: string
+          user_id?: string
+          vote_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_requests_shipped_tool_id_fkey"
+            columns: ["shipped_tool_id"]
+            isOneToOne: false
+            referencedRelation: "tools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feature_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       memberships: {
         Row: {
           created_at: string
@@ -587,6 +668,39 @@ export type Database = {
           id?: number
         }
         Relationships: []
+      }
+      tool_interest: {
+        Row: {
+          created_at: string
+          tool_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          tool_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          tool_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tool_interest_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "tools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tool_interest_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tool_runs: {
         Row: {

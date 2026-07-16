@@ -12,6 +12,7 @@ const NAV: NavItem[] = [
   { href: "/admin/tools", label: "Tools", icon: "tools" },
   { href: "/admin/announcements", label: "Announcements", icon: "announcements" },
   { href: "/admin/codes", label: "Codes", icon: "codes" },
+  { href: "/admin/requests", label: "Requests", icon: "requests" },
   { href: "/admin/audit", label: "Audit", icon: "audit" },
 ];
 
