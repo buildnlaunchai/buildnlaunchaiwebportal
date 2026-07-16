@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { claimReferral } from "@/lib/referral";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -31,6 +32,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login?error=expired`);
   }
 
+  // Referral attribution: if this sign-in carried a referral cookie, claim it
+  // now (once — the RPC only acts while referred_by is null). Best-effort.
+  const ref = request.cookies.get("blai_ref")?.value;
+  if (ref) {
+    try {
+      await claimReferral(ref);
+    } catch {
+      /* never block sign-in on referral attribution */
+    }
+  }
+
   // x-forwarded-host is what Vercel sets; behind its proxy, `origin` is the
   // internal host and redirecting to it would break the flow in production.
   const forwardedHost = request.headers.get("x-forwarded-host");
@@ -39,5 +51,7 @@ export async function GET(request: NextRequest) {
       ? origin
       : `https://${forwardedHost}`;
 
-  return NextResponse.redirect(`${base}${next}`);
+  const res = NextResponse.redirect(`${base}${next}`);
+  if (ref) res.cookies.delete("blai_ref"); // claimed (or not applicable) — clear it
+  return res;
 }

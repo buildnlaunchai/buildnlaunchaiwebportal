@@ -20,7 +20,8 @@
     "verify:keys-pages": "node --env-file=.env.local scripts/verify-keys-pages.mjs",
     "verify:runner": "node --env-file=.env.local scripts/verify-runner.mjs",
     "verify:editor": "node --env-file=.env.local scripts/verify-editor.mjs",
-    "verify:notify": "node --env-file=.env.local scripts/verify-notify.mjs"
+    "verify:notify": "node --env-file=.env.local scripts/verify-notify.mjs",
+    "verify:codes": "node --env-file=.env.local scripts/verify-codes.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

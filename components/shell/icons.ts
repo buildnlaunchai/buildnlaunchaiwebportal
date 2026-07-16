@@ -7,6 +7,7 @@ import {
   Megaphone,
   ScrollText,
   Settings,
+  Ticket,
   Users,
   Wrench,
   type LucideIcon,
@@ -34,6 +35,7 @@ export const ICONS = {
   tools: Wrench,
   audit: ScrollText,
   announcements: Megaphone,
+  codes: Ticket,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

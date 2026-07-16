@@ -14,6 +14,102 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_code_redemptions: {
+        Row: {
+          code_id: string
+          id: string
+          redeemed_at: string
+          user_id: string
+        }
+        Insert: {
+          code_id: string
+          id?: string
+          redeemed_at?: string
+          user_id: string
+        }
+        Update: {
+          code_id?: string
+          id?: string
+          redeemed_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_code_redemptions_code_id_fkey"
+            columns: ["code_id"]
+            isOneToOne: false
+            referencedRelation: "access_codes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "access_code_redemptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      access_codes: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          duration_days: number | null
+          expires_at: string | null
+          id: string
+          kind: Database["public"]["Enums"]["code_kind"]
+          max_uses: number
+          note: string | null
+          plan_id: string | null
+          tool_ids: string[] | null
+          used_count: number
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          duration_days?: number | null
+          expires_at?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["code_kind"]
+          max_uses?: number
+          note?: string | null
+          plan_id?: string | null
+          tool_ids?: string[] | null
+          used_count?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          duration_days?: number | null
+          expires_at?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["code_kind"]
+          max_uses?: number
+          note?: string | null
+          plan_id?: string | null
+          tool_ids?: string[] | null
+          used_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_codes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "access_codes_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcements: {
         Row: {
           body: string | null
@@ -842,6 +938,7 @@ export type Database = {
         Args: { p_tool_id: string; uid?: string }
         Returns: boolean
       }
+      claim_referral: { Args: { p_code: string }; Returns: Json }
       has_active_membership: { Args: { uid?: string }; Returns: boolean }
       has_required_keys: {
         Args: { p_tool_id: string; uid?: string }
@@ -862,6 +959,7 @@ export type Database = {
         Args: { p_bucket: string; p_limit: number; p_window: string }
         Returns: boolean
       }
+      redeem_access_code: { Args: { p_code: string }; Returns: Json }
     }
     Enums: {
       api_provider:
@@ -878,6 +976,7 @@ export type Database = {
         | "youtube_data"
         | "custom"
       application_status: "pending" | "approved" | "waitlisted" | "rejected"
+      code_kind: "membership" | "tool_access"
       grant_source: "global" | "plan" | "manual" | "code"
       key_status: "unverified" | "valid" | "invalid"
       membership_status: "trialing" | "active" | "expired" | "revoked"
@@ -1033,6 +1132,7 @@ export const Constants = {
         "custom",
       ],
       application_status: ["pending", "approved", "waitlisted", "rejected"],
+      code_kind: ["membership", "tool_access"],
       grant_source: ["global", "plan", "manual", "code"],
       key_status: ["unverified", "valid", "invalid"],
       membership_status: ["trialing", "active", "expired", "revoked"],

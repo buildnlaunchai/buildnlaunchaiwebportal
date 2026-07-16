@@ -129,6 +129,17 @@ export function toolAccessGrantedEmail(toolName: string, slug: string): EmailCon
   };
 }
 
+export function referralAutoGrantEmail(): EmailContent {
+  return {
+    subject: "Your referrals earned you a membership",
+    html: shell(
+      heading("Your membership is active") +
+        para("Enough of the people you referred have joined, so I've made your membership active. Thanks for spreading the word.") +
+        button(`${siteUrl()}/dashboard`, "Go to your dashboard"),
+    ),
+  };
+}
+
 export function keyStoppedWorkingEmail(provider: string, toolName: string, hint: string): EmailContent {
   return {
     subject: `Your ${provider} key stopped working`,
