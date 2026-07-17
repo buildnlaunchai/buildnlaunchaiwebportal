@@ -14,10 +14,24 @@ next-env.d.ts
 # production
 /build
 
-# env — never commit. ENCRYPTION_KEY lives here.
+# env — never commit.
+# ENCRYPTION_KEY does NOT live here, and neither does HUB_JWT_PRIVATE_KEY. Both
+# live in Supabase secrets and nowhere else (CLAUDE.md §14): the only code that
+# reads them runs on Supabase, and putting either in a .env file is the first
+# step toward putting it in Vercel — one of the three named production incidents
+# in §13. If you are here because a local script wants one of them, the answer is
+# to write the script as an Edge Function.
 .env
 .env.local
 .env.*.local
+
+# hub embed-token keys (Phase 11). The private key signs tokens that assert a
+# user's identity and tool access to embedded apps — same custody rule as
+# ENCRYPTION_KEY: Supabase secrets only, never Vercel, never git. The public key
+# is not a secret (it can only verify) but is generated alongside and would only
+# ever be committed by accident, so both are ignored.
+*.pem
+secrets/
 
 # vercel
 .vercel

@@ -528,6 +528,34 @@ Not a shrug. A centered block, max 400px: a small icon in `--text-faint`, an `h3
 `small`/`--text-muted` explaining what goes here, and one `primary` button. See §12 for the
 copy.
 
+### Embedded app (`runtime = 'iframe'`)
+
+Some tools are whole apps we built elsewhere and embed. The hub's job on that screen is to
+get out of the way: the app has its own design, its own signature moment, and its own idea of
+what it looks like — hub chrome wrapped around it would produce two products arguing inside
+one viewport.
+
+So the embed is **not** a card, has **no** panel padding, and gets **no** hub-styled toolbar
+inside it. The frame is:
+
+- The standard runner header (back link, icon, name, slug) — unchanged, so the member knows
+  where they are and how to leave.
+- The app itself: full content width, `--radius-md`, `1px --line`, `--canvas` fill (which
+  reads as a seam, not a container), `overflow: hidden` so the app's own corners are clipped
+  to ours.
+- Height: `calc(100vh - 260px)`, `min-height: 520px`. Tall enough for a real app; the header
+  stays visible so the hub never feels like it navigated away.
+- **No loading spinner over the frame.** The app renders its own loading state, and a hub
+  spinner on top of an app spinner is two products saying "wait" at once. The seam is enough.
+
+Below the frame, one line of `small`/`--text-muted`: what this app is and where its work
+lives. An embedded app keeps its own data — no run history in the hub — and saying so once
+prevents the member hunting `/dashboard/runs` for something that was never going to be there.
+
+**The reduced-motion rule does not reach inside the iframe.** We cannot style a document we
+do not own, and the app is responsible for its own accessibility floor. TEMPLATE.md holds
+every embedded app to the same floor, which is where that requirement belongs.
+
 ### Command palette (⌘K)
 
 **Build it in Phase 4**, not Phase 1. It is still the single highest-leverage perceived-quality

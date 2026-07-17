@@ -35,10 +35,22 @@ export async function startRunForUser(
   // Load the tool (server can read all its own columns; secrets stay elsewhere).
   const { data: tool } = await supabase
     .from("tools")
-    .select("id, slug, status, required_providers, input_schema, timeout_seconds, rate_limit_per_day")
+    .select("id, slug, status, runtime, required_providers, input_schema, timeout_seconds, rate_limit_per_day")
     .eq("slug", slug)
     .maybeSingle();
   if (!tool) return { error: "That tool doesn't exist." };
+
+  // a. This action runs ONLY edge_function tools. iframe/internal/external_link
+  //    tools are opened by the runner page directly (the iframe branch mints a
+  //    token; there is no "run" to start), and there is no handler for them in
+  //    run-tool — invoking it would 400 and leave an orphan 'error' run row.
+  //    Reject here, before any row is written, so a stale client or a split-brain
+  //    deploy (DB says iframe, code says form) fails cleanly instead of minting a
+  //    dead run. This is exactly the failure that shipped image_animator as a
+  //    Run form before the iframe branch was deployed.
+  if (tool.runtime !== "edge_function") {
+    return { error: "This tool isn't run from here." };
+  }
 
   // b. Access — re-checked server-side, always (§13).
   const { data: canAccess } = await supabase.rpc("can_access_tool", {

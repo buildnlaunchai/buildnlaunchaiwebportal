@@ -22,7 +22,9 @@
     "verify:editor": "node --env-file=.env.local scripts/verify-editor.mjs",
     "verify:notify": "node --env-file=.env.local scripts/verify-notify.mjs",
     "verify:codes": "node --env-file=.env.local scripts/verify-codes.mjs",
-    "verify:community": "node --env-file=.env.local scripts/verify-community.mjs"
+    "verify:community": "node --env-file=.env.local scripts/verify-community.mjs",
+    "verify:embed-token": "node --env-file=.env.local scripts/verify-embed-token.mjs",
+    "verify:embed-page": "node --env-file=.env.local scripts/verify-embed-page.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -46,6 +48,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "jose": "^5.10.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

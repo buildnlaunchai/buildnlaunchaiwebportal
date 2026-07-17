@@ -60,7 +60,23 @@ try {
   check(dash.status === 200, "/dashboard renders", `HTTP ${dash.status}`);
 
   const html = await dash.text();
-  check(html.includes("Nothing here yet"), "sees the empty Apps state");
+  // NOT the empty Apps state. §10 mandates that a brand-new signup can run
+  // something useful "within 30 seconds of landing, before they ever hear the
+  // word 'API key'" — hacker-news-digest is public_preview and needs no key, so
+  // a new member's grid is never empty. This asserted "Nothing here yet" and so
+  // contradicted the funnel the spec requires; it was the test that was stale.
+  //
+  // Checking both halves makes this the access engine's story end-to-end rather
+  // than a copy check: public_preview is visible to any signed-in user, while a
+  // `members` tool stays hidden until they actually have a membership.
+  //
+  // Asserted on the runner LINK, not the tool's name. The name appears in the
+  // command palette's payload for every published tool — which is not a leak
+  // (published tools are world-readable, and /tools lists them to strangers),
+  // but it does mean a bare name check would pass on text the grid never
+  // rendered. The href to /dashboard/tools/<slug> is what only a card emits.
+  check(html.includes("/dashboard/tools/hacker-news-digest"), "sees the public-preview tool in the grid (§10)");
+  check(!html.includes("/dashboard/tools/youtube-lead-finder"), "no card for a members-only tool without a membership");
   check(html.includes(EMAIL), "sees their own email in the top bar");
   check(!html.includes(">ADMIN<"), "does NOT see the ADMIN chip");
 
