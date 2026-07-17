@@ -168,7 +168,16 @@ try {
     // Only meaningful now that we know the app accepts a good token: a rejection
     // is evidence of a working check, not of a broken key.
     check(!/hub_token=/.test(forgedRes.setCookie), "a token signed by a DIFFERENT key → no cookie (its key really is ours)");
-    check(cspLive.includes("frame-ancestors https://www.buildnlaunchai.com"), "frame-ancestors pinned to the hub", cspLive.slice(0, 64));
+    // frame-ancestors must allow BOTH hub origins: the hub answers at the apex
+    // and at www, and Next client-side nav can leave the parent on either. A
+    // www-only list blocked the apex parent with a CSP violation (empty iframe).
+    check(
+      cspLive.startsWith("frame-ancestors") &&
+        cspLive.includes("https://buildnlaunchai.com") &&
+        cspLive.includes("https://www.buildnlaunchai.com"),
+      "frame-ancestors allows both hub origins (apex + www)",
+      cspLive.slice(0, 90),
+    );
     check(!/hub_token=/.test(wrongAudRes.setCookie), "a real-key token for ANOTHER app → rejected (aud enforced)");
     check(/samesite=lax/i.test(good.setCookie), "the session cookie is SameSite=Lax", good.setCookie.split(";").slice(1).join(";").trim().slice(0, 50));
     check(!/domain=/i.test(good.setCookie), "…and host-only (no Domain= — it must not reach sibling apps)");
