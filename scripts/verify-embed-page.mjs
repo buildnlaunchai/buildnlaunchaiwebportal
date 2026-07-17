@@ -178,6 +178,29 @@ try {
       "frame-ancestors allows both hub origins (apex + www)",
       cspLive.slice(0, 90),
     );
+    // …and 'self': the app page frames ITS OWN payload (/ → /animator/index.html),
+    // so the payload's ancestor chain is [the app, the hub] and every ancestor
+    // must match. Without 'self' the inner frame dies with "refused to connect"
+    // that reads exactly like the outer embed failing — in embedded mode only.
+    check(/frame-ancestors 'self'/.test(cspLive), "frame-ancestors includes 'self' (the app frames its own payload)");
+
+    // The payload's own CSP must SURVIVE. Next.js does not merge same-key
+    // headers across rules — the last matching rule wins — and a general-rule
+    // CSP once silently replaced the payload's whole policy (wasm/blob/hf.co) in
+    // production while the config file still read correctly. Fetch the payload
+    // with the session cookie the handoff just gave us and check both halves.
+    const cookieVal = (good.setCookie.match(/hub_token=([^;]+)/) ?? [])[1];
+    const payloadRes = await fetch("https://animator.buildnlaunchai.com/animator/index.html", {
+      headers: { cookie: `hub_token=${cookieVal}` },
+      redirect: "manual",
+    });
+    const payloadCsp = payloadRes.headers.get("content-security-policy") ?? "";
+    check(payloadRes.status === 200, "the payload is reachable with the session cookie", `HTTP ${payloadRes.status}`);
+    check(
+      payloadCsp.includes("wasm-unsafe-eval") && payloadCsp.includes("blob:") && payloadCsp.includes("hf.co"),
+      "the payload KEEPS its full CSP (wasm/blob/hf.co — not clobbered by the general rule)",
+    );
+    check(/frame-ancestors 'self'/.test(payloadCsp), "the payload's frame-ancestors also includes 'self'");
     check(!/hub_token=/.test(wrongAudRes.setCookie), "a real-key token for ANOTHER app → rejected (aud enforced)");
     check(/samesite=lax/i.test(good.setCookie), "the session cookie is SameSite=Lax", good.setCookie.split(";").slice(1).join(";").trim().slice(0, 50));
     check(!/domain=/i.test(good.setCookie), "…and host-only (no Domain= — it must not reach sibling apps)");
