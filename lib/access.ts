@@ -1,5 +1,7 @@
 import "server-only";
 
+import { cache } from "react";
+
 import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
@@ -20,8 +22,20 @@ export type AuthedUser = {
   profile: Profile;
 };
 
-/** The signed-in user, or null. Never throws, never redirects. */
-export async function getUser(): Promise<AuthedUser | null> {
+/**
+ * The signed-in user, or null. Never throws, never redirects.
+ *
+ * Wrapped in React.cache(): the layout AND the page both call requireUser()
+ * (correct — §13 wants every layer to re-check, and middleware is not
+ * authorization), and each call did a full auth.getUser() + profile fetch. Over
+ * the function↔database link that is two extra round trips per navigation for a
+ * fact that cannot change within one request. cache() memoizes the result for
+ * the lifetime of a single server render, so the checks still all run but the
+ * network work happens once. It does NOT persist across requests, so the JWT is
+ * still revalidated on every page load — the security property is unchanged, the
+ * duplication is not.
+ */
+export const getUser = cache(async (): Promise<AuthedUser | null> => {
   const supabase = await createClient();
 
   // getUser(), not getSession(): getSession reads the cookie and trusts it,
@@ -45,7 +59,7 @@ export async function getUser(): Promise<AuthedUser | null> {
   if (!profile) return null;
 
   return { id: user.id, email: user.email ?? profile.email, profile };
-}
+});
 
 /** Requires a signed-in, non-suspended user. Redirects to /login otherwise. */
 export async function requireUser(nextPath?: string): Promise<AuthedUser> {
