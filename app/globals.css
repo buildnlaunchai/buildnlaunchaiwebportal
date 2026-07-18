@@ -373,6 +373,35 @@
     filter: blur(7px);
   }
 
+  /* The APP's illumination (§ two intensities). The same cobalt light as the
+     hero, dialed down: an ambient wash at the top of the content column, plus a
+     stronger pool behind the sidebar logo. Calm enough to sit behind working
+     content all day; this is the ONLY lighting the app gets. */
+  .app-glow {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 260px;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(
+      70% 100% at 60% -30%,
+      rgba(60, 120, 255, 0.12),
+      transparent 64%
+    );
+  }
+  .app-glow-side {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 220px;
+    pointer-events: none;
+    z-index: 0;
+    background: radial-gradient(
+      90% 60% at 30% -10%,
+      rgba(60, 120, 255, 0.18),
+      transparent 66%
+    );
+  }
+
   /* A lit translucent pane. The top edge is brighter than the sides — that
      asymmetry is what makes it read as glass rather than a grey blur (§6). It
      must sit over something lit (a glow, an image) to become glass. */

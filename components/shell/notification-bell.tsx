@@ -77,9 +77,9 @@ export function NotificationBell({
         type="button"
         onClick={openPanel}
         aria-label={`Notifications${unread > 0 ? `, ${unread} unread` : ""}`}
-        className="relative inline-flex size-8 items-center justify-center rounded-sm text-text-muted transition-colors duration-micro ease-default hover:bg-elevated hover:text-text"
+        className="relative inline-flex size-[34px] items-center justify-center rounded-[9px] border border-line bg-surface/70 text-text-muted transition-colors duration-micro ease-default hover:border-line-strong hover:bg-elevated hover:text-text"
       >
-        <Bell aria-hidden className="size-4" strokeWidth={1.5} />
+        <Bell aria-hidden className="size-4" strokeWidth={1.6} />
         {unread > 0 && (
           <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-pill bg-accent px-1 text-[10px] font-medium text-accent-text">
             {unread > 9 ? "9+" : unread}

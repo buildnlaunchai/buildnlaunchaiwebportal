@@ -4,16 +4,16 @@ import { getUsersForAdmin } from "@/lib/admin-users";
 import { getMyNotifications } from "@/lib/notifications";
 import { getPublicTools } from "@/lib/tools";
 
-/* CLAUDE.md §8 — admin. */
+/* CLAUDE.md §8 — admin. Grouped for the sidebar (§10). */
 const NAV: NavItem[] = [
-  { href: "/admin", label: "Overview", icon: "overview" },
-  { href: "/admin/applications", label: "Applications", icon: "applications" },
-  { href: "/admin/users", label: "Users", icon: "users" },
-  { href: "/admin/tools", label: "Tools", icon: "tools" },
-  { href: "/admin/announcements", label: "Announcements", icon: "announcements" },
-  { href: "/admin/codes", label: "Codes", icon: "codes" },
-  { href: "/admin/requests", label: "Requests", icon: "requests" },
-  { href: "/admin/audit", label: "Audit", icon: "audit" },
+  { href: "/admin", label: "Overview", icon: "overview", section: "Manage" },
+  { href: "/admin/applications", label: "Applications", icon: "applications", section: "Manage" },
+  { href: "/admin/users", label: "Users", icon: "users", section: "Manage" },
+  { href: "/admin/tools", label: "Tools", icon: "tools", section: "Catalog" },
+  { href: "/admin/announcements", label: "Announcements", icon: "announcements", section: "Catalog" },
+  { href: "/admin/codes", label: "Codes", icon: "codes", section: "Catalog" },
+  { href: "/admin/requests", label: "Requests", icon: "requests", section: "Signals" },
+  { href: "/admin/audit", label: "Audit", icon: "audit", section: "Signals" },
 ];
 
 export default async function AdminLayout({
@@ -45,6 +45,8 @@ export default async function AdminLayout({
         avatarUrl: user.profile.avatar_url,
       }}
       isAdmin
+      plan={{ label: "Admin", sublabel: "Full access" }}
+      searchHint="Search users, tools…"
       paletteTools={tools.map((t) => ({ slug: t.slug, name: t.name }))}
       paletteUsers={users.map((u) => ({
         id: u.profile.id,
