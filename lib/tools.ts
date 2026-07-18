@@ -6,6 +6,7 @@ import type { Database } from "@/lib/database.types";
 export type ApiProvider = Database["public"]["Enums"]["api_provider"];
 export type ToolStatus = Database["public"]["Enums"]["tool_status"];
 export type ToolAccessType = Database["public"]["Enums"]["tool_access_type"];
+export type ToolRuntime = Database["public"]["Enums"]["tool_runtime"];
 
 /**
  * The columns safe to send to a client for a catalog card. tool_secrets is a
@@ -14,7 +15,7 @@ export type ToolAccessType = Database["public"]["Enums"]["tool_access_type"];
  * and input/output_schema (large) have no business on a card.
  */
 const CARD_COLUMNS =
-  "id,slug,name,tagline,category,icon,status,access_type,required_providers,version,launched_at" as const;
+  "id,slug,name,tagline,category,icon,status,access_type,runtime,required_providers,version,launched_at" as const;
 
 export type ToolCardData = {
   id: string;
@@ -25,6 +26,7 @@ export type ToolCardData = {
   icon: string | null;
   status: ToolStatus;
   access_type: ToolAccessType;
+  runtime: ToolRuntime;
   required_providers: ApiProvider[];
   version: string | null;
   launched_at: string | null;

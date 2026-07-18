@@ -7,6 +7,7 @@ import { useEffect, useState, useTransition } from "react";
 import { toggleToolInterest } from "@/actions/interest";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
 /**
  * "Notify me" on a coming-soon tool — the real one-click demand-capture
@@ -18,10 +19,13 @@ export function NotifyMeButton({
   toolId,
   size = "sm",
   className,
+  compact = false,
 }: {
   toolId: string;
   size?: "sm" | "md";
   className?: string;
+  /** Footer treatment for the ToolCard: a quiet lit action, not a filled button. */
+  compact?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -63,6 +67,36 @@ export function NotifyMeButton({
       else setInterested(res.interested);
     });
   };
+
+  if (compact) {
+    // The ToolCard footer: a quiet lit action matching the "Run →" CTA.
+    return (
+      <button
+        type="button"
+        onClick={click}
+        disabled={pending}
+        className={cn(
+          "inline-flex items-center gap-1.5 text-body-strong transition-colors duration-micro ease-default disabled:opacity-60",
+          interested
+            ? "text-live"
+            : "text-text-muted hover:text-accent",
+          className,
+        )}
+      >
+        {interested ? (
+          <>
+            <Check aria-hidden className="size-[15px]" strokeWidth={1.8} />
+            We&apos;ll tell you
+          </>
+        ) : (
+          <>
+            <Bell aria-hidden className="size-[15px]" strokeWidth={1.6} />
+            Notify me
+          </>
+        )}
+      </button>
+    );
+  }
 
   return (
     <Button

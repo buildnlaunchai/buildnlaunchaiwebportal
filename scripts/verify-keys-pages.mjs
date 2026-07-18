@@ -46,13 +46,16 @@ try {
   check(wkH.includes("invalid"), "status pill shows invalid for the bogus key");
   check(!wkH.includes("sk-bogus-canary"), "plaintext key never appears in the page HTML");
 
-  console.log("\n4. Dashboard tool card three-state key chip:");
+  console.log("\n4. Dashboard tool card key state:");
   const dash = await hit("/dashboard", c);
-  // Strip React's <!-- --> text-node separators so "needs: {provider}" reads whole.
+  // Strip React's <!-- --> text-node separators so "needs: {providers}" reads whole.
   const dH = (await dash.text()).replace(/<!--[^>]*-->/g, "");
   // youtube-lead-finder needs youtube_data + openai. openai is invalid→missing, youtube_data absent→missing.
+  // The canonical ToolCard consolidates all missing providers into ONE amber footer chip
+  // ("needs: youtube_data, openai") rather than a chip per provider — both are still named.
   check(dH.includes("YouTube lead finder"), "member sees the members tool");
-  check(dH.includes("needs: youtube_data") && dH.includes("needs: openai"), "both missing/invalid providers show the amber 'needs:' chip");
+  const needsText = (dH.match(/needs:\s*([^<]+)/) ?? [, ""])[1];
+  check(needsText.includes("youtube_data") && needsText.includes("openai"), "both missing/invalid providers named in the amber 'needs:' chip");
 
   console.log("\n5. Verify a good status renders as verified: (simulate via DB set to 'valid')");
   await svc(`/rest/v1/user_api_keys?user_id=eq.${uid}&provider=eq.openai`, { method: "PATCH", body: JSON.stringify({ status: "valid" }) });
