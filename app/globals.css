@@ -17,26 +17,32 @@
 /* ---------- DESIGN.md §2 — Color ----------------------------------------- */
 
 :root[data-theme="dark"] {
-  /* surfaces — four steps, no more */
-  --canvas: #0f1013;
-  --surface: #17181d;
-  --elevated: #1f2128;
-  --sunken: #0a0b0d;
+  /* surfaces — deep navy-black ground, matched to the reference. Not neutral
+     graphite: a cool blue cast runs through every surface step. */
+  --canvas: #080a12; /* page background — deep navy-black */
+  --surface: #12151f; /* cards, panels, inputs */
+  --elevated: #1a1e2b; /* dropdowns, dialogs, hover states */
+  --sunken: #05060c; /* wells, terminal areas */
 
-  /* lines — cards are defined by a border, not a shadow */
-  --line: #2b2e37;
-  --line-strong: #3a3e4a;
+  /* lines — navy-tinted hairlines */
+  --line: #232838;
+  --line-strong: #353c52;
 
-  /* text */
-  --text: #ecedf1;
-  --text-muted: #8e94a3;
-  --text-faint: #5d6270;
+  /* text — cool near-white, a touch bluer than before */
+  --text: #eef1f7;
+  --text-muted: #98a1b6;
+  --text-faint: #616a82;
 
-  /* accent — exactly one */
-  --accent: #6366f1;
-  --accent-hover: #7175f3;
-  --accent-quiet: rgba(99, 102, 241, 0.12);
+  /* accent — the reference's electric cobalt. One hue, three roles:
+     action, light (--glow), data (chart fills). */
+  --accent: #2f6bff;
+  --accent-hover: #4d83ff;
+  --accent-quiet: rgba(47, 107, 255, 0.16);
   --accent-text: #ffffff;
+
+  /* illumination — a brighter azure companion for data + light only. */
+  --illuminate: #5cc2ff;
+  --illuminate-quiet: rgba(92, 194, 255, 0.14);
 
   /* status — semantic only. Never decorative. */
   --live: #34d399;
@@ -47,30 +53,42 @@
   --danger-quiet: rgba(248, 113, 113, 0.12);
 
   /* DESIGN.md §6 — shadows are only for things that float above the page */
-  --shadow-pop-v: 0 4px 12px -2px rgba(0, 0, 0, 0.28);
-  --shadow-modal-v: 0 24px 56px -16px rgba(0, 0, 0, 0.55);
+  --shadow-pop-v: 0 4px 12px -2px rgba(0, 0, 0, 0.32);
+  --shadow-modal-v: 0 24px 56px -16px rgba(0, 0, 0, 0.6);
+  /* §6 — the premium float shadow. Blue-tinted (a LIT shadow), bigger + softer. */
+  --shadow-float-v: 0 34px 90px -30px rgba(26, 54, 150, 0.62);
 
-  --backdrop: rgba(0, 0, 0, 0.6);
+  /* Light as a material — the reference's cobalt sky. Used by the hero glow. */
+  --glow: rgba(60, 120, 255, 0.32);
+  /* §6 — glass. Dark navy glass with a light-catching top edge. */
+  --glass: rgba(18, 22, 34, 0.6);
+  --glass-top: rgba(160, 190, 255, 0.14); /* the light-catching top edge */
+  --glass-edge: rgba(150, 175, 255, 0.06);
+
+  --backdrop: rgba(2, 4, 12, 0.66);
   color-scheme: dark;
 }
 
 :root[data-theme="light"] {
-  --canvas: #fafafc;
+  --canvas: #f6f8fc; /* a hair cooler, to carry the blue family */
   --surface: #ffffff;
   --elevated: #ffffff;
-  --sunken: #f4f5f8;
+  --sunken: #eef1f7;
 
-  --line: #e5e7ee;
-  --line-strong: #cdd1dc;
+  --line: #e2e6f0;
+  --line-strong: #c8cee0;
 
-  --text: #14161c;
-  --text-muted: #5d6474;
-  --text-faint: #949aa8;
+  --text: #0e1220;
+  --text-muted: #545c72;
+  --text-faint: #8b93a8;
 
-  --accent: #4f46e5;
-  --accent-hover: #4338ca;
-  --accent-quiet: rgba(79, 70, 229, 0.09);
+  --accent: #2563eb; /* the reference blue, deepened so it reads on white */
+  --accent-hover: #1d4ed8;
+  --accent-quiet: rgba(37, 99, 235, 0.1);
   --accent-text: #ffffff;
+
+  --illuminate: #0284c7; /* deeper on light, so azure still reads on white */
+  --illuminate-quiet: rgba(2, 132, 199, 0.1);
 
   --live: #059669;
   --live-quiet: rgba(5, 150, 105, 0.1);
@@ -82,8 +100,15 @@
   /* §6: "In light mode, halve the opacity." */
   --shadow-pop-v: 0 4px 12px -2px rgba(0, 0, 0, 0.14);
   --shadow-modal-v: 0 24px 56px -16px rgba(0, 0, 0, 0.28);
+  --shadow-float-v: 0 30px 70px -30px rgba(30, 60, 150, 0.28);
 
-  --backdrop: rgba(0, 0, 0, 0.3);
+  /* fainter on light — the ground is already bright */
+  --glow: rgba(37, 99, 235, 0.12);
+  --glass: rgba(255, 255, 255, 0.62);
+  --glass-top: rgba(255, 255, 255, 0.9);
+  --glass-edge: rgba(20, 40, 90, 0.06);
+
+  --backdrop: rgba(6, 10, 24, 0.34);
   color-scheme: light;
 }
 
@@ -109,6 +134,10 @@
   --color-accent-quiet: var(--accent-quiet);
   --color-accent-text: var(--accent-text);
 
+  /* §2 — data + light only. Exposed for chart fills, never for buttons. */
+  --color-illuminate: var(--illuminate);
+  --color-illuminate-quiet: var(--illuminate-quiet);
+
   --color-live: var(--live);
   --color-live-quiet: var(--live-quiet);
   --color-warn: var(--warn);
@@ -118,10 +147,11 @@
 
   --color-backdrop: var(--backdrop);
 
-  /* DESIGN.md §3 — Typography. Three faces, three jobs. */
+  /* DESIGN.md §3 — Typography. Four faces; the serif is marketing emphasis only. */
   --font-display: var(--font-sora), system-ui, sans-serif;
   --font-sans: var(--font-instrument-sans), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-serif: var(--font-instrument-serif), Georgia, serif;
 
   /* DESIGN.md §4 — Space. 4px base unit. */
   --spacing: 4px;
@@ -130,11 +160,13 @@
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
+  --radius-xl: 18px; /* marketing surfaces only */
   --radius-pill: 999px;
 
   /* DESIGN.md §6 — Elevation */
   --shadow-pop: var(--shadow-pop-v);
   --shadow-modal: var(--shadow-modal-v);
+  --shadow-float: var(--shadow-float-v);
 
   /* DESIGN.md §7 — Motion */
   --ease-default: cubic-bezier(0.2, 0.8, 0.2, 1);
@@ -274,6 +306,83 @@
 
   ::selection {
     background-color: var(--accent-quiet);
+  }
+}
+
+/* ---------- DESIGN.md §1/§2/§6 — the premium layer, behind named helpers ---
+   Glow and glass live in exactly two classes, on purpose: "scarce and motivated"
+   is enforced by there being one place each lives, not by everyone remembering
+   the rule. Marketing mockups and the run moment only — never a content card. */
+
+@layer components {
+  /* The hero sky — the reference's signature. A bright cobalt light filling the
+     TOP of the hero and fading into the navy ground, as if lit from above and
+     behind. Layered: a broad ambient wash + a hotter core near the top. The
+     parent must be `relative` (and usually `overflow-hidden`). */
+  .glow {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      /* broad ambient cobalt wash */
+      radial-gradient(
+        145% 72% at 50% -14%,
+        rgba(118, 172, 255, 0.66) 0%,
+        rgba(64, 120, 250, 0.44) 22%,
+        rgba(34, 68, 190, 0.22) 42%,
+        transparent 64%
+      ),
+      /* the hot core near the very top — a near-white-blue light source */
+      radial-gradient(
+        72% 46% at 50% -10%,
+        rgba(198, 224, 255, 0.6) 0%,
+        rgba(120, 175, 255, 0.28) 34%,
+        transparent 60%
+      );
+  }
+
+  /* Light beams — soft god-rays fanning down from the top of the sky. Built from
+     a conic gradient of faint slices, blurred, then masked so they only show in
+     the bright upper band. Purely decorative; static, so reduced-motion is a
+     no-op. */
+  .hero-beams {
+    position: absolute;
+    inset: -20% -20% auto -20%;
+    height: 95%;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.8;
+    background: conic-gradient(
+      from 180deg at 50% 0%,
+      transparent 0deg,
+      rgba(200, 224, 255, 0.22) 10deg,
+      transparent 20deg,
+      transparent 38deg,
+      rgba(200, 224, 255, 0.16) 50deg,
+      transparent 60deg,
+      transparent 120deg,
+      rgba(200, 224, 255, 0.16) 130deg,
+      transparent 140deg,
+      transparent 158deg,
+      rgba(200, 224, 255, 0.22) 170deg,
+      transparent 180deg
+    );
+    -webkit-mask: radial-gradient(74% 72% at 50% 0%, #000 0%, transparent 70%);
+    mask: radial-gradient(74% 72% at 50% 0%, #000 0%, transparent 70%);
+    filter: blur(7px);
+  }
+
+  /* A lit translucent pane. The top edge is brighter than the sides — that
+     asymmetry is what makes it read as glass rather than a grey blur (§6). It
+     must sit over something lit (a glow, an image) to become glass. */
+  .glass {
+    background-color: var(--glass);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+    backdrop-filter: blur(20px) saturate(1.5);
+    border: 1px solid var(--glass-edge);
+    border-top-color: var(--glass-top);
+    box-shadow: var(--shadow-float-v);
   }
 }
 

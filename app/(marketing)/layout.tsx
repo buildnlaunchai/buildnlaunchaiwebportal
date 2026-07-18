@@ -10,7 +10,7 @@ export default function MarketingLayout({
 }) {
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="sticky top-0 z-20 border-b border-line bg-canvas">
+      <header className="sticky top-0 z-30 border-b border-line/60 bg-canvas/70 backdrop-blur-md">
         {/* §4: page gutter 20 / 32. */}
         <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center gap-6 px-5 lg:px-8">
           <Link href="/" className="flex items-center gap-2">

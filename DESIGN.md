@@ -29,20 +29,62 @@ is to make velocity legible.
 Restraint everywhere else is not timidity — it's what makes those two things land. When in
 doubt, remove.
 
+**Premium is light, not decoration.** A later addition to this thesis, learned from studying
+what makes a SaaS surface read as *expensive*: it is **lit**. The ground is never flat black —
+it behaves like a room with one soft, motivated light in it. Depth arrives in small steps,
+glass is a scarce spotlight, and the single accent is allowed to appear as light and as data,
+not only as a button. None of this contradicts restraint — restraint is exactly what keeps it
+from tipping into the generic "AI-SaaS template" look. The premium layer is added *quietly*,
+and mostly to marketing; the app receives a whisper of it at most. See the two intensities
+below, and the mechanics in §2 (light, data-colour), §3 (the serif), §5 (radius), §6 (glass,
+float shadow).
+
 ### What this is not
 
-A hard no-list. If a design decision drifts toward any of these, it's wrong:
+A hard no-list. If a design decision drifts toward any of these, it's wrong. Three of these
+were absolute bans and are now *scoped* — glow and glass are permitted, but only when scarce,
+motivated, and purposeful. The scoping is the discipline; the ban underneath it is unchanged.
 
-- Purple-to-pink gradients. Any gradient used as decoration.
-- Glassmorphism, frosted panels, backdrop blur on cards.
+- Purple-to-pink gradients. Any gradient used as **flat decoration or wallpaper**. (A single
+  soft **glow** as motivated light — one per view — is allowed and encouraged; see §2. The ban
+  is on gradient-as-texture, not on lighting.)
+- **Glass on content cards, navigation, tables, or as a background.** (Glass is allowed *only*
+  where it is scarce and motivated: floating marketing mockups, and the run moment — see §6.
+  Everywhere else it is still forbidden.)
 - Floating 3D blobs, orbs, meshes, particles, or an animated starfield.
 - Emoji used as interface icons.
-- Drop shadows on flat cards. (Shadows belong to floating layers only — see §6.)
-- More than one accent color visible on a single screen.
+- Drop shadows on flat cards **in the app**. (Floating layers get shadows — §6 — and a
+  marketing hero card may take a soft `--shadow-float`. In-app content cards still get none.)
+- More than one **action** accent on a screen. (`--illuminate` is data and light, never an
+  action, so it does not count as a second accent — see §2.)
 - "AI-powered", "supercharge", "unleash", "revolutionize", "seamlessly" anywhere in the copy.
-- Rounded-full buttons. Big border radii. Anything over 14px except pills and avatars.
+  (Still absolute. The reference we drew the *look* from leads with "AI-powered"; we take the
+  lighting, not the words. We sell the cadence and the tools.)
+- Rounded-full buttons. In the app, anything over 14px except pills and avatars. (Marketing may
+  use `--radius-xl`, 18px, on large surfaces — and no larger.)
 - A spinner as the answer to any wait longer than one second.
 - Hero copy that says what the company believes instead of what the product does.
+
+### Two intensities — marketing, and the app
+
+The product is two surfaces wearing one design system at two volumes. Same tokens, same type,
+same single accent — the *theatrical* elements (light, glass, the serif, hero scale) dial from
+loud to near-silent. This split governs every decision in the sections below.
+
+| Element         | Marketing / landing — **loud**       | Authenticated app — calm                     |
+|-----------------|--------------------------------------|----------------------------------------------|
+| Lighting        | A glow behind the hero and CTAs      | A whisper at the shell top, or none          |
+| Glass           | Floating product mockups             | The **run** moment only — never on cards     |
+| Editorial serif | Emphasis words in headlines          | None — Sora + Instrument Sans only           |
+| Section scale   | Big hero, 96px rhythm                | Dense 15px rhythm, 40px sections             |
+| Shadow          | Soft cool float on hero cards        | Border-defined + a restrained hover lift     |
+| Radius          | up to `--radius-xl` (18px)           | 6 / 10 / 14, unchanged                       |
+| Accent          | light + data + action                | action & data; light stays quiet             |
+| Goal            | create desire; feel expensive        | calm, scannable, usable for hours            |
+
+Rule of thumb: **if a member will look at a surface for more than a minute at a time, it
+belongs to the calm tier.** Dashboards, the runner, keys, settings, admin — all calm. Glow and
+glass are for the surfaces people pass *through*, not the ones they *work in*.
 
 ---
 
@@ -52,33 +94,46 @@ Dark is the primary mode and gets built first. Light mode is a real, supported, 
 plenty of members work in light, and shipping only dark halves the audience. Build both from
 the same tokens.
 
-The base is not black. It's a soft graphite with a faint blue cast, which reads calmer at
-night and lets the hairlines sit properly. Pure `#000` with white text is harsh and cheap.
+The base is not black. It's a **deep navy-black** — a cool blue cast runs through every
+surface step, matched to the landing hero (the visual benchmark for the whole product). Pure
+`#000` with white text is harsh and cheap; a neutral graphite reads flat next to the cobalt
+light, which is why the ground itself carries blue.
 
 ### Tokens
 
 ```css
 :root[data-theme="dark"] {
-  /* surfaces — four steps, no more */
-  --canvas:        #0F1013;   /* page background */
-  --surface:       #17181D;   /* cards, panels, inputs */
-  --elevated:      #1F2128;   /* dropdowns, dialogs, popovers, hover states */
-  --sunken:        #0A0B0D;   /* code blocks, output wells, terminal areas */
+  /* surfaces — four steps, no more. Deep navy-black, a cool cast in every step. */
+  --canvas:        #080A12;   /* page background — deep navy-black */
+  --surface:       #12151F;   /* cards, panels, inputs */
+  --elevated:      #1A1E2B;   /* dropdowns, dialogs, popovers, hover states */
+  --sunken:        #05060C;   /* code blocks, output wells, terminal areas */
 
-  /* lines — cards are defined by a border, not a shadow */
-  --line:          #2B2E37;   /* default hairline */
-  --line-strong:   #3A3E4A;   /* hover, focus-within, active row */
+  /* lines — navy-tinted hairlines. Cards are defined by a border, not a shadow. */
+  --line:          #232838;   /* default hairline */
+  --line-strong:   #353C52;   /* hover, focus-within, active row */
 
-  /* text */
-  --text:          #ECEDF1;   /* primary */
-  --text-muted:    #8E94A3;   /* secondary, labels, meta */
-  --text-faint:    #5D6270;   /* placeholders, disabled, timestamps */
+  /* text — cool near-white */
+  --text:          #EEF1F7;   /* primary */
+  --text-muted:    #98A1B6;   /* secondary, labels, meta */
+  --text-faint:    #616A82;   /* placeholders, disabled, timestamps */
 
-  /* accent — exactly one. Actions, links, focus rings, selected states. */
-  --accent:        #6366F1;
-  --accent-hover:  #7175F3;
-  --accent-quiet:  rgba(99, 102, 241, 0.12);   /* tinted backgrounds */
+  /* accent — the electric COBALT. Actions, links, focus rings, selected states.
+     One hue, three roles: action, light (--glow), data (chart fills). Never a second
+     action colour. */
+  --accent:        #2F6BFF;
+  --accent-hover:  #4D83FF;
+  --accent-quiet:  rgba(47, 107, 255, 0.16);   /* tinted backgrounds */
   --accent-text:   #FFFFFF;                     /* text on top of --accent */
+
+  /* illumination — a brighter AZURE companion. DATA AND LIGHT ONLY, never an action colour.
+     It exists so charts and glows can read "electric" without inventing a second button hue.
+     If it ever fills a button or marks a link, that is the bug. */
+  --illuminate:       #5CC2FF;
+  --illuminate-quiet: rgba(92, 194, 255, 0.14);
+
+  /* light as a material (§1). The hero's cobalt sky; scarce in the app (§ two intensities). */
+  --glow:          rgba(60, 120, 255, 0.32);
 
   /* status — semantic only. Never decorative. */
   --live:          #34D399;   /* running, success, active membership, verified key */
@@ -90,36 +145,50 @@ night and lets the hairlines sit properly. Pure `#000` with white text is harsh 
 }
 
 :root[data-theme="light"] {
-  --canvas:        #FAFAFC;
+  --canvas:        #F6F8FC;   /* a hair cooler, to carry the blue family */
   --surface:       #FFFFFF;
   --elevated:      #FFFFFF;
-  --sunken:        #F4F5F8;
+  --sunken:        #EEF1F7;
 
-  --line:          #E5E7EE;
-  --line-strong:   #CDD1DC;
+  --line:          #E2E6F0;
+  --line-strong:   #C8CEE0;
 
-  --text:          #14161C;
-  --text-muted:    #5D6474;
-  --text-faint:    #949AA8;
+  --text:          #0E1220;
+  --text-muted:    #545C72;
+  --text-faint:    #8B93A8;
 
-  --accent:        #4F46E5;
-  --accent-hover:  #4338CA;
-  --accent-quiet:  rgba(79, 70, 229, 0.09);
+  --accent:        #2563EB;   /* the reference blue, deepened so it reads on white */
+  --accent-hover:  #1D4ED8;
+  --accent-quiet:  rgba(37, 99, 235, 0.1);
   --accent-text:   #FFFFFF;
 
+  --illuminate:       #0284C7;   /* deeper on light, so azure still reads on white */
+  --illuminate-quiet: rgba(2, 132, 199, 0.1);
+  --glow:          rgba(37, 99, 235, 0.12);   /* fainter on light — the ground is already bright */
+
   --live:          #059669;
-  --live-quiet:    rgba(5, 150, 105, 0.10);
+  --live-quiet:    rgba(5, 150, 105, 0.1);
   --warn:          #B45309;
-  --warn-quiet:    rgba(180, 83, 9, 0.10);
+  --warn-quiet:    rgba(180, 83, 9, 0.1);
   --danger:        #DC2626;
-  --danger-quiet:  rgba(220, 38, 38, 0.10);
+  --danger-quiet:  rgba(220, 38, 38, 0.1);
 }
 ```
 
 ### Rules
 
-- **One accent per screen.** `--accent` marks the single most important action. If a screen
-  has two indigo buttons, one of them is wrong.
+- **One accent per screen — one hue, three roles.** `--accent` (indigo) marks the single most
+  important *action*; if a screen has two indigo buttons, one of them is wrong. The evolution:
+  that one hue may *also* appear as **light** (`--glow`) and as **data** (chart fills). Same
+  indigo, three roles — action, light, data — and still never a second *action* colour.
+- **`--illuminate` is not an accent.** The cyan is for data visualisation and lighting only:
+  a chart's second series, a sparkline's lit endpoint, a highlight inside a glow. It never
+  fills a button, marks a link, or signals a state. The moment it behaves like an action, it
+  has become a second accent — which is the one thing the rule above forbids.
+- **Light is scarce and motivated.** `--glow` is *one* soft radial per view, placed as if a
+  real lamp sat behind the hero or a single CTA — low opacity, no hard edge, never two in a
+  viewport. It is a marketing device; in the app it is a whisper (a faint wash at the shell's
+  top) or absent entirely. See the two intensities in §1.
 - **Status colors are never decoration.** Green means it's actually running or actually
   succeeded. Amber means the user actually has to do something. Red means something actually
   broke. Nothing is colored to look nice.
@@ -129,20 +198,61 @@ night and lets the hairlines sit properly. Pure `#000` with white text is harsh 
   carries meaning — 8% of your male users can't reliably distinguish red from green.
 - Contrast floor: 4.5:1 for body text, 3:1 for text ≥ 18px and for UI borders. Check it.
 
+### The premium layer — correct and incorrect
+
+The whole risk of this evolution is that glow, glass, cyan, and the serif quietly spread until
+the product looks like every other AI template. These examples are the guardrail. `✓` is
+correct; `✗` is a design bug, not a matter of taste.
+
+**Glow** (`--glow`)
+- ✓ One soft radial behind the landing hero, fading to nothing by 60–70% of its box.
+- ✓ A faint wash beneath a single primary CTA on a marketing section.
+- ✗ A glow behind every section, or two glows in one viewport.
+- ✗ Any glow on `/dashboard`, `/admin`, a settings panel, or a tool card. The app is lit by a
+  whisper at most — a single faint top wash on the shell, or nothing.
+
+**Glass** (`--glass`, `--glass-top`)
+- ✓ A floating dashboard mockup in the marketing hero, with the light-catching top border.
+- ✓ The run-moment surface (§8) — the one signature interaction that earns glass in the app.
+- ✗ Glass on a tool card, a nav rail, a settings panel, a table, or any admin surface.
+- ✗ Glass as a page background, or on more than one or two elements in a single view.
+
+**Cyan** (`--illuminate`)
+- ✓ The second series in a chart; a sparkline's lit endpoint; a highlight inside a glow.
+- ✗ A cyan button, a cyan link, a cyan active-nav state. That makes it a second action accent.
+
+**Editorial serif** (`--font-serif`, italic)
+- ✓ One or two lifted words in a marketing headline: "ship a new tool every *week*".
+- ✗ Body copy, a UI label, a button, a full headline set in it, or *anything* in the app.
+
+**Radius** (`--radius-xl`, 18px)
+- ✓ A large marketing surface — a hero mockup, a pricing-style panel.
+- ✗ `--radius-xl` anywhere in the app. Cards, inputs, and panels stay at 6 / 10 / 14.
+
 ---
 
 ## 3. Typography
 
-Type is where this product gets its personality. Three faces, three jobs, no exceptions.
+Type is where this product gets its personality. Four faces, four jobs, no exceptions — and
+the fourth is a spice, not a staple.
 
 ```css
---font-display: 'Sora', system-ui, sans-serif;          /* 600, 700 */
---font-sans:    'Instrument Sans', system-ui, sans-serif; /* 400, 500, 600 */
+--font-display: 'Sora', system-ui, sans-serif;            /* 600, 700 */
+--font-sans:    'Instrument Sans', system-ui, sans-serif;  /* 400, 500, 600 */
 --font-mono:    'JetBrains Mono', ui-monospace, monospace; /* 400, 500 */
+--font-serif:   'Instrument Serif', Georgia, serif;        /* 400 italic — MARKETING EMPHASIS ONLY */
 ```
 
 **Sora** for display: geometric, slightly unusual letterforms, technical without being cold.
 Used only for page titles and the landing page. Never for UI chrome.
+
+**Instrument Serif**, italic, is the one editorial note — the single premium-layer addition to
+type. It carries **one or two emphasis words** inside a marketing headline ("ship a new tool
+every *week*"), never a whole heading and never a full sentence. It pairs with Instrument Sans
+by design — same family intent — so it reads as considered, not as a random serif bolted on.
+It is a spice: **marketing only, and sparing even there.** It never appears in the
+authenticated app, in body copy, in a UI label, or on a control. If it isn't a word being
+*lifted* for effect on a public page, it isn't serif.
 
 **Instrument Sans** for everything in the interface. It is not Inter. It has a little more
 character in the terminals and a tighter rhythm, and it stops the app from looking like every
@@ -228,10 +338,13 @@ If a gap wants to be 18px, it is 16 or 20. There is no 18.
 --radius-sm:  6px;    /* inputs, buttons, chips, checkboxes */
 --radius-md:  10px;   /* cards, panels, output blocks */
 --radius-lg:  14px;   /* dialogs, sheets, popovers */
+--radius-xl:  18px;   /* MARKETING ONLY — large hero surfaces, floating mockups. Never in-app. */
 --radius-pill: 999px; /* status pills, avatars, tag filters */
 ```
 
-That's the whole vocabulary. Nothing is square. Nothing is a giant blob.
+That's the whole vocabulary. Nothing is square. Nothing is a giant blob. The app uses only
+`sm / md / lg`; `--radius-xl` is a marketing-tier value for large, floating surfaces, and it
+is the ceiling — nothing rounder than 18px exists anywhere (see the two intensities in §1).
 
 **Borders are the primary structural device.** Every card, input, panel, and table is defined
 by a `1px solid var(--line)`. Not by a shadow, not by a fill difference. This is what gives
@@ -246,12 +359,50 @@ Shadows are **only** for things that float above the page. A card that sits in t
 a border and nothing else.
 
 ```css
---shadow-pop:   0 4px 12px -2px rgba(0,0,0,0.28);   /* dropdown, tooltip, toast */
---shadow-modal: 0 24px 56px -16px rgba(0,0,0,0.55); /* dialog, sheet */
+--shadow-pop:   0 4px 12px -2px rgba(0,0,0,0.32);   /* dropdown, tooltip, toast */
+--shadow-modal: 0 24px 56px -16px rgba(0,0,0,0.60); /* dialog, sheet */
+--shadow-float: 0 34px 90px -30px rgba(26,54,150,0.62); /* MARKETING floating cards only.
+                   Blue-tinted, not neutral black — a LIT shadow, as if the cobalt sky cast it. */
 ```
 
-In light mode, halve the opacity. There is no `--shadow-sm` for cards, because cards do not
-get shadows.
+In light mode, halve the opacity of pop, modal, and float. **In-app content cards still get no
+shadow** — border and hover-lift only; that rule is unchanged and load-bearing. The exceptions
+are marketing-tier: a floating hero card may take `--shadow-float` (soft, cool-tinted — a lit
+shadow, never a grey one), and glass surfaces carry their own light. Neither ever appears on a
+dashboard.
+
+### Glass — the material, and where it is allowed
+
+Glass is the premium layer's most dangerous tool: it is gorgeous once and cheap five times.
+The tokens exist; the discipline is that they touch almost nothing.
+
+```css
+/* Scarce and motivated (§1, §2). Marketing mockups + the run moment (§8) ONLY. */
+--glass:       rgba(18, 22, 34, 0.60);      /* dark: navy translucent surface, sits over a glow */
+--glass-top:   rgba(160, 190, 255, 0.14);   /* the light-catching top edge — this is what sells it */
+--glass-edge:  rgba(150, 175, 255, 0.06);   /* the dimmer side and bottom edges */
+/* apply with: backdrop-filter: blur(20px) saturate(1.5); border-top uses --glass-top,
+   the other edges use --glass-edge. In light mode: --glass rgba(255,255,255,0.62),
+   --glass-top rgba(255,255,255,0.90), --glass-edge rgba(20,40,90,0.06). */
+```
+
+### Light beams — the hero's signature (marketing only)
+
+The landing hero's cobalt sky is fanned by **soft light beams** — faint god-rays descending
+from the top, built from a blurred, masked conic gradient (`.hero-beams`), purely decorative
+and static (so reduced-motion is a no-op). They are the loudest single element in the product
+and they live in **exactly one place**: the landing hero. Beams never appear in the app, never
+on a content page below the hero, never twice in a view. Like glass, their scarcity is the
+whole reason they read as premium rather than as noise.
+
+- Glass appears on **exactly two kinds of surface**: floating marketing mockups, and the run
+  moment (§8) — the one signature interaction that earns it in the app.
+- The **top edge is brighter** than the sides. That single asymmetry — light catching the top —
+  is what makes glass read as a lit pane instead of a grey blur. Get it right or don't use glass.
+- Glass always sits over something lit (a glow, an image). Glass over flat canvas is just a
+  murky panel; it needs light behind it to become glass.
+- Never on content cards, nav, tables, inputs, settings, or admin. If you are reaching for glass
+  on a surface a member operates daily, the answer is a border (§5) — see §2 for the examples.
 
 ---
 
@@ -783,17 +934,27 @@ tooling bends to it, not the reverse:
   --color-text-muted:  var(--text-muted);
   --color-text-faint:  var(--text-faint);
   --color-accent:      var(--accent);
-  /* ...and so on. Every token in §2. No exceptions, no extras. */
+  --color-illuminate:  var(--illuminate);   /* data + light only (§2) */
+  /* ...and so on. Every token in §2 — including --glow, --glass, --glass-top,
+     --glass-edge, and --shadow-float, wired the same way. No exceptions, no extras. */
 
   --radius-sm:   6px;
   --radius-md:  10px;
   --radius-lg:  14px;
+  --radius-xl:  18px;   /* marketing surfaces only (§5) */
 
   --font-display: 'Sora', system-ui, sans-serif;
   --font-sans:    'Instrument Sans', system-ui, sans-serif;
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --font-serif:   'Instrument Serif', Georgia, serif;   /* marketing emphasis only (§3) */
 }
 ```
+
+The premium-layer faces load the same way the existing three do (`next/font`), and
+`--font-serif` is registered only where marketing components can reach it. `--glow` and
+`--glass` are used through small, named helpers (a `.glow` background layer, a `.glass` surface
+class) rather than sprinkled inline — so "scarce and motivated" is enforced by there being one
+place each lives, not by everyone remembering the rule.
 
 `@theme inline` (not plain `@theme`) is what lets a utility resolve through the `var()` chain, so
 one attribute flip on `<html>` reskins the entire app with no class churn and no flash.

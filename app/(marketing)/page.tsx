@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Hero } from "@/components/marketing/hero";
 import { ShippingLog } from "@/components/marketing/shipping-log";
 import { ToolCard } from "@/components/tools/tool-card";
 import { Button } from "@/components/ui/button";
@@ -44,33 +45,11 @@ export default async function LandingPage() {
   ]);
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-5 lg:px-8">
-      {/* 1 — Hero */}
-      <section className="py-24 sm:py-32">
-        <div className="prose-measure">
-          <h1 className="text-display-l sm:text-display-xl text-balance">
-            AI tools that do the work, built in public.
-          </h1>
-          <p className="mt-6 text-body text-text-muted">
-            I ship a new automation tool every week. Approved members run them
-            with their own API keys — so you pay your provider directly, and
-            nothing runs through my bill.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link href="/apply">
-              <Button variant="primary" size="lg">
-                Apply for access
-              </Button>
-            </Link>
-            <Link href="/tools">
-              <Button variant="secondary" size="lg">
-                Browse the tools
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+    <>
+      {/* 1 — Hero (full-bleed: the cobalt sky spans the whole viewport) */}
+      <Hero shipped={shippingLog.length} />
 
+      <div className="mx-auto w-full max-w-[1200px] px-5 lg:px-8">
       {/* 2 — The Shipping Log (the signature) */}
       {shippingLog.length > 0 && (
         <section className="py-24">
@@ -154,6 +133,7 @@ export default async function LandingPage() {
           </Link>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }
