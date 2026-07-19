@@ -1,11 +1,14 @@
 "use client";
 
+import { Lightbulb } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { setRequestStatus } from "@/actions/requests";
 import { StatusPill } from "@/components/tools/status-pill";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import type { RequestWithTool } from "@/lib/requests";
 
@@ -53,10 +56,14 @@ export function RequestsManager({
     <div className="flex flex-col gap-3">
       {error && <p className="text-small text-danger">{error}</p>}
       {initial.length === 0 ? (
-        <p className="text-small text-text-faint">No requests yet.</p>
+        <EmptyState
+          icon={Lightbulb}
+          title="No requests yet"
+          description="Members' feature ideas will show up here to triage."
+        />
       ) : (
         initial.map((r) => (
-          <div key={r.id} className="rounded-md border border-line bg-surface p-4">
+          <Panel key={r.id} className="p-4">
             <div className="flex items-start gap-4">
               <div className="flex h-fit flex-col items-center rounded-sm border border-line px-3 py-2">
                 <span className="tabular text-body-strong text-text">{r.vote_count}</span>
@@ -102,7 +109,7 @@ export function RequestsManager({
                 </Button>
               </div>
             </div>
-          </div>
+          </Panel>
         ))
       )}
     </div>

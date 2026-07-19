@@ -1,8 +1,10 @@
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight, Search, Users } from "lucide-react";
 import Link from "next/link";
 
 import { StatusPill } from "@/components/tools/status-pill";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
+import { Panel } from "@/components/ui/panel";
 import { requireAdmin } from "@/lib/access";
 import { getUsersForAdmin } from "@/lib/admin-users";
 import { isMembershipActive } from "@/lib/member";
@@ -35,13 +37,19 @@ export default async function AdminUsersPage({
       </form>
 
       {users.length === 0 ? (
-        <p className="text-small text-text-faint">
-          {q ? `No users match "${q}".` : "No users yet."}
-        </p>
+        <EmptyState
+          icon={Users}
+          title={q ? "No matches" : "No users yet"}
+          description={
+            q
+              ? `Nothing matches "${q}". Try a different name or email.`
+              : "Everyone who signs up shows up here."
+          }
+        />
       ) : (
-        <div className="overflow-hidden rounded-md border border-line">
+        <Panel flush>
           {/* Header — hidden on mobile, where rows become cards (§9) */}
-          <div className="hidden grid-cols-[1fr_auto_auto_auto] gap-4 border-b border-line bg-surface px-5 py-3 md:grid">
+          <div className="hidden grid-cols-[1fr_auto_auto_auto] gap-4 border-b border-line bg-elevated px-5 py-3 md:grid">
             <span className="text-eyebrow text-text-faint">User</span>
             <span className="text-eyebrow text-text-faint">Role</span>
             <span className="text-eyebrow text-text-faint">Membership</span>
@@ -90,7 +98,7 @@ export default async function AdminUsersPage({
               </Link>
             );
           })}
-        </div>
+        </Panel>
       )}
     </div>
   );

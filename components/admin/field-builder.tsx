@@ -3,7 +3,9 @@
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input, Label } from "@/components/ui/input";
+import { Panel } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import type { InputField, InputFieldType, SelectOption } from "@/lib/tool-schema";
 
@@ -47,7 +49,7 @@ export function FieldBuilder({
       )}
 
       {fields.map((field, i) => (
-        <div key={i} className="rounded-md border border-line bg-surface p-4">
+        <Panel key={i} className="p-4">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-mono text-text-faint">{field.name || "unnamed"}</span>
             <div className="flex items-center gap-1">
@@ -91,7 +93,7 @@ export function FieldBuilder({
           </div>
 
           <label className="mt-3 flex items-center gap-2 text-small text-text-muted">
-            <input type="checkbox" checked={field.required ?? false} onChange={(e) => update(i, { required: e.target.checked })} className="size-4 rounded-sm border-line" />
+            <Checkbox checked={field.required ?? false} onChange={(e) => update(i, { required: e.target.checked })} />
             Required
           </label>
 
@@ -101,7 +103,7 @@ export function FieldBuilder({
               onChange={(options) => update(i, { options })}
             />
           )}
-        </div>
+        </Panel>
       ))}
 
       <Button variant="secondary" size="sm" onClick={add} className="self-start">

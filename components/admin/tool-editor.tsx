@@ -1,5 +1,16 @@
 "use client";
 
+import {
+  FileOutput,
+  FlaskConical,
+  Info,
+  KeyRound,
+  ListChecks,
+  type LucideIcon,
+  Settings2,
+  ShieldCheck,
+  Terminal,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -9,20 +20,21 @@ import { OutputBuilder } from "@/components/admin/output-builder";
 import { ProviderPicker } from "@/components/admin/provider-picker";
 import { TestRunPanel } from "@/components/admin/test-run-panel";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 import { Input, Label } from "@/components/ui/input";
+import { Panel, SectionHeader } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { ApiProvider } from "@/lib/providers";
 import type { InputField, OutputBlock } from "@/lib/tool-schema";
 import type { ToolDraft } from "@/lib/validation/tool";
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+function Section({ icon, title, hint, children }: { icon: LucideIcon; title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-md border border-line bg-surface p-5">
-      <h2 className="text-h3">{title}</h2>
-      {hint && <p className="mt-1 text-small text-text-muted">{hint}</p>}
-      <div className="mt-4">{children}</div>
-    </section>
+    <Panel>
+      <SectionHeader icon={icon} title={title} description={hint} />
+      <div className="mt-5">{children}</div>
+    </Panel>
   );
 }
 
@@ -61,7 +73,7 @@ export function ToolEditor({
   return (
     <div className="flex flex-col gap-6">
       {/* The data-vs-behaviour boundary — stated plainly, not implied away. */}
-      <div className="rounded-md border border-line bg-accent-quiet/40 px-4 py-3 text-small text-text">
+      <Callout tone="info" icon={Info}>
         This editor ships the tool&apos;s <strong>interface</strong> — form, output,
         access, copy — live, with no deploy. The tool&apos;s <strong>behaviour</strong>{" "}
         is a TypeScript handler at{" "}
@@ -71,9 +83,9 @@ export function ToolEditor({
         that you deploy separately with{" "}
         <span className="text-mono">supabase functions deploy run-tool</span>. Use
         Test run below to check the handler is wired up.
-      </div>
+      </Callout>
 
-      <Section title="Basics">
+      <Section icon={Settings2} title="Basics">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Name" required>
             <Input value={draft.name} onChange={(e) => set("name", e.target.value)} />
@@ -102,7 +114,7 @@ export function ToolEditor({
         </div>
       </Section>
 
-      <Section title="Access & status">
+      <Section icon={ShieldCheck} title="Access & status">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="Status">
             <Select value={draft.status} onChange={(e) => set("status", e.target.value as ToolDraft["status"])}>
@@ -134,14 +146,14 @@ export function ToolEditor({
         </div>
       </Section>
 
-      <Section title="Required keys (BYOK)" hint="Which provider keys a member must connect to run this.">
+      <Section icon={KeyRound} title="Required keys (BYOK)" hint="Which provider keys a member must connect to run this.">
         <ProviderPicker
           selected={draft.required_providers as ApiProvider[]}
           onChange={(p) => set("required_providers", p)}
         />
       </Section>
 
-      <Section title="Runtime config">
+      <Section icon={Terminal} title="Runtime config">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Handler (function name)" hint="defaults to the slug">
             <Input value={draft.function_name} onChange={(e) => set("function_name", e.target.value)} placeholder={draft.slug} className="font-mono" />
@@ -159,14 +171,14 @@ export function ToolEditor({
         </div>
       </Section>
 
-      <Section title="Input form" hint="The fields a member fills in. Rendered live from this.">
+      <Section icon={ListChecks} title="Input form" hint="The fields a member fills in. Rendered live from this.">
         <FieldBuilder
           fields={draft.input_schema.fields as InputField[]}
           onChange={(fields) => set("input_schema", { fields })}
         />
       </Section>
 
-      <Section title="Output" hint="How the result renders, block by block.">
+      <Section icon={FileOutput} title="Output" hint="How the result renders, block by block.">
         <OutputBuilder
           blocks={draft.output_schema.blocks as OutputBlock[]}
           onChange={(blocks) => set("output_schema", { type: "blocks", blocks })}
@@ -184,11 +196,11 @@ export function ToolEditor({
 
       {/* Test run — only once the tool has an id to run against. */}
       {toolId ? (
-        <Section title="Test run" hint="Fires the tool with YOUR admin keys and shows the raw response.">
+        <Section icon={FlaskConical} title="Test run" hint="Fires the tool with YOUR admin keys and shows the raw response.">
           <TestRunPanel toolId={toolId} inputSchema={draft.input_schema} />
         </Section>
       ) : (
-        <Section title="Test run">
+        <Section icon={FlaskConical} title="Test run">
           <p className="text-small text-text-faint">Create the tool first, then test it here.</p>
         </Section>
       )}

@@ -1,5 +1,7 @@
+import { BarChart3, LineChart } from "lucide-react";
 import Link from "next/link";
 
+import { Panel, SectionHeader } from "@/components/ui/panel";
 import { requireAdmin } from "@/lib/access";
 import { getAdminMetrics } from "@/lib/admin-metrics";
 
@@ -20,13 +22,13 @@ function Sparkline({ data }: { data: number[] }) {
 
 function Metric({ label, value, children }: { label: string; value: string; children?: React.ReactNode }) {
   return (
-    <div className="rounded-md border border-line bg-surface p-5">
+    <Panel>
       <div className="text-small text-text-muted">{label}</div>
       <div className="mt-2 flex items-end justify-between gap-2">
-        <div className="tabular font-display text-[26px] font-semibold leading-tight">{value}</div>
+        <div className="tabular text-display-l leading-none">{value}</div>
         {children}
       </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -35,18 +37,18 @@ export default async function AdminOverviewPage() {
   const m = await getAdminMetrics();
 
   return (
-    <div className="flex flex-col gap-10">
-      <section>
+    <div className="flex flex-col gap-8">
+      <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-eyebrow text-text-faint">Last 7 days</h2>
           {m.pendingApplications > 0 && (
-            <Link href="/admin/applications?status=pending" className="text-small text-accent hover:text-accent-hover">
+            <Link href="/admin/applications?status=pending" className="text-small text-accent transition-colors duration-micro ease-default hover:text-accent-hover">
               {m.pendingApplications} to review →
             </Link>
           )}
         </div>
 
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Metric label="Pending applications" value={String(m.pendingApplications)} />
           <Metric label="Active members" value={String(m.activeMembers)} />
           <Metric label="Runs (7d)" value={String(m.runs7d)} />
@@ -55,12 +57,12 @@ export default async function AdminOverviewPage() {
       </section>
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-md border border-line bg-surface p-5">
-          <h3 className="text-h3">Top tools (7d)</h3>
+        <Panel>
+          <SectionHeader icon={BarChart3} title="Top tools" description="Last 7 days" />
           {m.topTools.length === 0 ? (
-            <p className="mt-3 text-small text-text-faint">No runs yet this week.</p>
+            <p className="mt-4 text-small text-text-faint">No runs yet this week.</p>
           ) : (
-            <ul className="mt-3 flex flex-col gap-2">
+            <ul className="mt-4 flex flex-col gap-3">
               {m.topTools.map((t) => (
                 <li key={t.name} className="flex items-center justify-between text-small">
                   <span className="text-text">{t.name}</span>
@@ -69,17 +71,17 @@ export default async function AdminOverviewPage() {
               ))}
             </ul>
           )}
-        </div>
+        </Panel>
 
-        <div className="rounded-md border border-line bg-surface p-5">
-          <h3 className="text-h3">Signups (14d)</h3>
+        <Panel>
+          <SectionHeader icon={LineChart} title="Signups" description="Last 14 days" />
           <div className="mt-4 flex items-end justify-between gap-4">
-            <div className="tabular font-display text-[26px] font-semibold leading-tight">
+            <div className="tabular text-display-l leading-none">
               {m.signupTrend.reduce((a, b) => a + b, 0)}
             </div>
             <Sparkline data={m.signupTrend} />
           </div>
-        </div>
+        </Panel>
       </section>
     </div>
   );

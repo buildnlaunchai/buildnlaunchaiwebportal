@@ -2,6 +2,7 @@ import { Inbox } from "lucide-react";
 import Link from "next/link";
 
 import { ApplicationRow } from "@/components/admin/application-row";
+import { EmptyState } from "@/components/ui/empty-state";
 import { requireAdmin } from "@/lib/access";
 import {
   getApplicationCounts,
@@ -67,18 +68,15 @@ export default async function AdminApplicationsPage({
       </div>
 
       {applications.length === 0 ? (
-        // §9 empty state — not a shrug.
-        <div className="flex min-h-[40vh] flex-col items-center justify-center text-center">
-          <Inbox aria-hidden className="size-6 text-text-faint" strokeWidth={1.5} />
-          <h2 className="text-h3 mt-4">
-            {active === "pending" ? "Nothing to review" : `No ${active} applications`}
-          </h2>
-          <p className="mt-2 text-small text-text-muted">
-            {active === "pending"
+        <EmptyState
+          icon={Inbox}
+          title={active === "pending" ? "Nothing to review" : `No ${active} applications`}
+          description={
+            active === "pending"
               ? "New applications land here the moment they're submitted."
-              : "Applications you mark will show up under their status."}
-          </p>
-        </div>
+              : "Applications you mark will show up under their status."
+          }
+        />
       ) : (
         <div className="flex flex-col gap-3">
           {applications.map((a) => (

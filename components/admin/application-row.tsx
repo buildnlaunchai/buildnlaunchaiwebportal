@@ -7,6 +7,7 @@ import { useState, useTransition } from "react";
 import { reviewApplication } from "@/actions/applications";
 import { StatusPill } from "@/components/tools/status-pill";
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 import { formatShipDate } from "@/lib/format";
 import type { Application, ApplicationStatus } from "@/lib/applications";
 import { cn } from "@/lib/utils";
@@ -49,7 +50,7 @@ export function ApplicationRow({ application: a }: { application: Application })
   };
 
   return (
-    <div className="rounded-md border border-line bg-surface">
+    <Panel flush>
       {/* Collapsed header — always visible, always the click target */}
       <button
         type="button"
@@ -174,6 +175,6 @@ export function ApplicationRow({ application: a }: { application: Application })
           </div>
         </div>
       </div>
-    </div>
+    </Panel>
   );
 }

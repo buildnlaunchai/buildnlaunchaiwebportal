@@ -1,5 +1,6 @@
 "use client";
 
+import { UserCog } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -10,6 +11,7 @@ import {
 } from "@/actions/admin-users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Panel, SectionHeader } from "@/components/ui/panel";
 
 type Props = {
   userId: string;
@@ -42,8 +44,8 @@ export function UserControls({ userId, email, hasActiveMembership, suspended }: 
   };
 
   return (
-    <div className="flex flex-col gap-4 rounded-md border border-line bg-surface p-5">
-      <h2 className="text-h3">Membership &amp; account</h2>
+    <Panel className="flex flex-col gap-4">
+      <SectionHeader icon={UserCog} title="Membership & account" />
 
       {error && (
         <p className="text-small text-danger" role="alert">
@@ -54,7 +56,7 @@ export function UserControls({ userId, email, hasActiveMembership, suspended }: 
       {/* Membership lever */}
       {hasActiveMembership ? (
         confirming ? (
-          <div className="flex flex-col gap-2 rounded-sm border border-danger bg-danger-quiet p-3">
+          <div className="flex flex-col gap-2 rounded-md border border-danger bg-danger-quiet p-3">
             <p className="text-small text-text">
               Type <span className="text-mono text-text">{email}</span> to revoke
               this membership.
@@ -125,6 +127,6 @@ export function UserControls({ userId, email, hasActiveMembership, suspended }: 
           {suspended ? "Unsuspend" : "Suspend"}
         </Button>
       </div>
-    </div>
+    </Panel>
   );
 }

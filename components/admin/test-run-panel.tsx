@@ -77,7 +77,7 @@ export function TestRunPanel({
         )}
       </div>
 
-      <div className="rounded-md border border-line bg-sunken p-4">
+      <div className="rounded-lg border border-line bg-sunken p-4">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-eyebrow text-text-faint">Raw response</span>
           {run && <StatusPill {...PILL[run.status]} />}

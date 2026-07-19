@@ -1,10 +1,11 @@
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { CreditCard, FileText } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { AccessMatrix } from "@/components/admin/access-matrix";
 import { UserControls } from "@/components/admin/user-controls";
 import { StatusPill } from "@/components/tools/status-pill";
+import { BackLink } from "@/components/ui/page-header";
+import { Panel, SectionHeader } from "@/components/ui/panel";
 import { requireAdmin } from "@/lib/access";
 import { getUserDetail } from "@/lib/admin-users";
 import { isMembershipActive } from "@/lib/member";
@@ -27,16 +28,10 @@ export default async function AdminUserDetailPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <Link
-          href="/admin/users"
-          className="inline-flex items-center gap-2 text-small text-text-muted transition-colors duration-micro ease-default hover:text-text"
-        >
-          <ArrowLeft aria-hidden className="size-4" strokeWidth={1.5} />
-          All users
-        </Link>
+      <div className="flex flex-col gap-4">
+        <BackLink href="/admin/users" label="All users" />
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-h1">{profile.full_name ?? profile.email}</h1>
           {isAdmin && <StatusPill label="admin" tone="accent" dot={false} />}
           {profile.is_suspended && (
@@ -64,9 +59,9 @@ export default async function AdminUserDetailPage({
             suspended={profile.is_suspended}
           />
 
-          <div className="rounded-md border border-line bg-surface p-5">
-            <h2 className="text-h3">Membership</h2>
-            <dl className="mt-3 flex flex-col gap-2 text-small">
+          <Panel>
+            <SectionHeader icon={CreditCard} title="Membership" />
+            <dl className="mt-4 flex flex-col gap-2 text-small">
               <div className="flex justify-between gap-4">
                 <dt className="text-text-muted">Plan</dt>
                 <dd className="text-text">{plan?.name ?? "—"}</dd>
@@ -86,12 +81,12 @@ export default async function AdminUserDetailPage({
                 </dd>
               </div>
             </dl>
-          </div>
+          </Panel>
 
           {application && (
-            <div className="rounded-md border border-line bg-surface p-5">
-              <h2 className="text-h3">Application</h2>
-              <p className="mt-2 text-small text-text-muted">
+            <Panel>
+              <SectionHeader icon={FileText} title="Application" />
+              <p className="mt-4 text-small text-text-muted">
                 {application.use_case}
               </p>
               <dl className="mt-3 flex flex-col gap-1 text-small">
@@ -108,7 +103,7 @@ export default async function AdminUserDetailPage({
                   <dd className="text-text">{application.status}</dd>
                 </div>
               </dl>
-            </div>
+            </Panel>
           )}
         </div>
 

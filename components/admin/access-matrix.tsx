@@ -1,10 +1,13 @@
 "use client";
 
+import { TriangleAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { grantTool, revokeTool } from "@/actions/admin-users";
 import { StatusPill } from "@/components/tools/status-pill";
+import { Callout } from "@/components/ui/callout";
+import { Panel } from "@/components/ui/panel";
 import type { ToolAccessCell } from "@/lib/admin-users";
 import { cn } from "@/lib/utils";
 
@@ -118,16 +121,16 @@ export function AccessMatrix({
   return (
     <div>
       {suspended && (
-        <div className="mb-3 rounded-sm border border-danger bg-danger-quiet px-3 py-2 text-small text-danger">
+        <Callout tone="danger" icon={TriangleAlert} className="mb-3">
           This account is suspended, so the engine denies every tool regardless
           of grants below. Unsuspend to restore access.
-        </div>
+        </Callout>
       )}
-      <div className="overflow-hidden rounded-md border border-line">
+      <Panel flush>
         {tools.map((cell) => (
           <ToggleRow key={cell.id} userId={userId} cell={cell} isAdmin={isAdmin} />
         ))}
-      </div>
+      </Panel>
       <p className="mt-3 text-small text-text-muted">
         The switch is a per-user grant. The pill is what the access engine
         actually allows — it&apos;s green whenever this user can open the tool,

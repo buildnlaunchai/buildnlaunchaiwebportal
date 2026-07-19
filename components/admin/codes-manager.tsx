@@ -1,13 +1,16 @@
 "use client";
 
-import { Check, Copy, Trash2 } from "lucide-react";
+import { Check, CheckCircle2, Copy, KeyRound, ListChecks, Ticket, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { createAccessCode, deleteAccessCode } from "@/actions/admin-codes";
 import { StatusPill } from "@/components/tools/status-pill";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Label } from "@/components/ui/input";
+import { Panel, SectionHeader } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import type { AccessCodeView } from "@/lib/admin-codes";
 import { formatShipDate } from "@/lib/format";
@@ -77,8 +80,8 @@ export function CodesManager({
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="rounded-md border border-line bg-surface p-5">
-        <h2 className="text-h3">Generate a code</h2>
+      <Panel>
+        <SectionHeader icon={Ticket} title="Generate a code" />
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Label>Kind</Label>
@@ -138,58 +141,70 @@ export function CodesManager({
 
         {error && <p className="mt-3 text-small text-danger">{error}</p>}
         {justMade && (
-          <div className="mt-4 flex items-center gap-3 rounded-md border border-live bg-live-quiet px-4 py-3">
+          <Callout
+            tone="success"
+            icon={CheckCircle2}
+            className="mt-4"
+            action={
+              <Button variant="ghost" size="sm" onClick={() => copy(justMade, "new")}>
+                {copiedId === "new" ? "Copied" : "Copy"}
+              </Button>
+            }
+          >
             <span className="text-mono text-text">{justMade}</span>
-            <Button variant="ghost" size="sm" onClick={() => copy(justMade, "new")}>
-              {copiedId === "new" ? "Copied" : "Copy"}
-            </Button>
-          </div>
+          </Callout>
         )}
 
         <Button variant="primary" className="mt-4" pending={pending} onClick={create}>
           Generate code
         </Button>
-      </section>
+      </Panel>
 
       <section>
-        <h2 className="text-h3 mb-3">Codes</h2>
-        {initial.length === 0 ? (
-          <p className="text-small text-text-faint">No codes yet.</p>
-        ) : (
-          <div className="overflow-hidden rounded-md border border-line">
-            {initial.map((c) => {
-              const spent = c.used_count >= c.max_uses;
-              const expired = c.expires_at ? new Date(c.expires_at) < new Date() : false;
-              return (
-                <div key={c.id} className="flex items-center gap-4 border-b border-line px-5 py-4 last:border-0">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-mono text-text">{c.code}</span>
-                      <StatusPill
-                        label={expired ? "expired" : spent ? "used up" : "active"}
-                        tone={expired || spent ? "faint" : "live"}
-                        dot={false}
-                      />
+        <SectionHeader icon={ListChecks} title="Codes" />
+        <div className="mt-4">
+          {initial.length === 0 ? (
+            <EmptyState
+              icon={KeyRound}
+              title="No codes yet"
+              description="Generate one above to hand out membership or tool access."
+            />
+          ) : (
+            <Panel flush>
+              {initial.map((c) => {
+                const spent = c.used_count >= c.max_uses;
+                const expired = c.expires_at ? new Date(c.expires_at) < new Date() : false;
+                return (
+                  <div key={c.id} className="flex items-center gap-4 border-b border-line px-5 py-4 last:border-0">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-mono text-text">{c.code}</span>
+                        <StatusPill
+                          label={expired ? "expired" : spent ? "used up" : "active"}
+                          tone={expired || spent ? "faint" : "live"}
+                          dot={false}
+                        />
+                      </div>
+                      <p className="text-small text-text-muted">
+                        {c.kind === "membership" ? `Membership · ${c.planName ?? "default"}` : `Tools · ${c.toolNames.join(", ")}`}
+                        {" · "}{c.used_count}/{c.max_uses} used
+                        {c.duration_days ? ` · ${c.duration_days}d` : " · permanent"}
+                        {c.note ? ` · ${c.note}` : ""}
+                      </p>
+                      <p className="text-mono text-text-faint">{formatShipDate(c.created_at)}</p>
                     </div>
-                    <p className="text-small text-text-muted">
-                      {c.kind === "membership" ? `Membership · ${c.planName ?? "default"}` : `Tools · ${c.toolNames.join(", ")}`}
-                      {" · "}{c.used_count}/{c.max_uses} used
-                      {c.duration_days ? ` · ${c.duration_days}d` : " · permanent"}
-                      {c.note ? ` · ${c.note}` : ""}
-                    </p>
-                    <p className="text-mono text-text-faint">{formatShipDate(c.created_at)}</p>
+                    <Button variant="ghost" size="sm" className="size-8 px-0" onClick={() => copy(c.code, c.id)} aria-label="Copy code">
+                      {copiedId === c.id ? <Check aria-hidden className="size-4 text-live" strokeWidth={1.5} /> : <Copy aria-hidden className="size-4" strokeWidth={1.5} />}
+                    </Button>
+                    <Button variant="ghost" size="sm" className="size-8 px-0 hover:text-danger" pending={pending} onClick={() => remove(c.id)} aria-label="Delete code">
+                      <Trash2 aria-hidden className="size-4" strokeWidth={1.5} />
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="sm" className="size-8 px-0" onClick={() => copy(c.code, c.id)} aria-label="Copy code">
-                    {copiedId === c.id ? <Check aria-hidden className="size-4 text-live" strokeWidth={1.5} /> : <Copy aria-hidden className="size-4" strokeWidth={1.5} />}
-                  </Button>
-                  <Button variant="ghost" size="sm" className="size-8 px-0 hover:text-danger" pending={pending} onClick={() => remove(c.id)} aria-label="Delete code">
-                    <Trash2 aria-hidden className="size-4" strokeWidth={1.5} />
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </Panel>
+          )}
+        </div>
       </section>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { ListChecks, Megaphone, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -11,7 +11,9 @@ import {
 } from "@/actions/announcements";
 import { StatusPill } from "@/components/tools/status-pill";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Label } from "@/components/ui/input";
+import { Panel, SectionHeader } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Announcement } from "@/lib/announcements";
@@ -47,8 +49,8 @@ export function AnnouncementsManager({ initial }: { initial: Announcement[] }) {
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="rounded-md border border-line bg-surface p-5">
-        <h2 className="text-h3">Compose</h2>
+      <Panel>
+        <SectionHeader icon={Megaphone} title="Compose" />
         <div className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label required>Title</Label>
@@ -76,50 +78,56 @@ export function AnnouncementsManager({ initial }: { initial: Announcement[] }) {
             </Button>
           </div>
         </div>
-      </section>
+      </Panel>
 
       <section>
-        <h2 className="text-h3 mb-3">All announcements</h2>
-        {initial.length === 0 ? (
-          <p className="text-small text-text-faint">None yet.</p>
-        ) : (
-          <div className="overflow-hidden rounded-md border border-line">
-            {initial.map((a) => (
-              <div key={a.id} className="flex items-center gap-4 border-b border-line px-5 py-4 last:border-0">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate text-body text-text">{a.title}</span>
-                    <StatusPill
-                      label={a.is_published ? "published" : "draft"}
-                      tone={a.is_published ? "live" : "faint"}
-                      dot={false}
-                    />
+        <SectionHeader icon={ListChecks} title="All announcements" />
+        <div className="mt-4">
+          {initial.length === 0 ? (
+            <EmptyState
+              icon={Megaphone}
+              title="No announcements yet"
+              description="Compose one above to share news with your members."
+            />
+          ) : (
+            <Panel flush>
+              {initial.map((a) => (
+                <div key={a.id} className="flex items-center gap-4 border-b border-line px-5 py-4 last:border-0">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-body text-text">{a.title}</span>
+                      <StatusPill
+                        label={a.is_published ? "published" : "draft"}
+                        tone={a.is_published ? "live" : "faint"}
+                        dot={false}
+                      />
+                    </div>
+                    {a.body && <p className="truncate text-small text-text-muted">{a.body}</p>}
+                    <p className="text-mono text-text-faint">{formatShipDate(a.created_at)}</p>
                   </div>
-                  {a.body && <p className="truncate text-small text-text-muted">{a.body}</p>}
-                  <p className="text-mono text-text-faint">{formatShipDate(a.created_at)}</p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    pending={pending}
+                    onClick={() => act(() => setAnnouncementPublished(a.id, !a.is_published))}
+                  >
+                    {a.is_published ? "Unpublish" : "Publish"}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="size-8 px-0 hover:text-danger"
+                    pending={pending}
+                    onClick={() => act(() => deleteAnnouncement(a.id))}
+                    aria-label="Delete"
+                  >
+                    <Trash2 aria-hidden className="size-4" strokeWidth={1.5} />
+                  </Button>
                 </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  pending={pending}
-                  onClick={() => act(() => setAnnouncementPublished(a.id, !a.is_published))}
-                >
-                  {a.is_published ? "Unpublish" : "Publish"}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="size-8 px-0 hover:text-danger"
-                  pending={pending}
-                  onClick={() => act(() => deleteAnnouncement(a.id))}
-                  aria-label="Delete"
-                >
-                  <Trash2 aria-hidden className="size-4" strokeWidth={1.5} />
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </Panel>
+          )}
+        </div>
       </section>
     </div>
   );
