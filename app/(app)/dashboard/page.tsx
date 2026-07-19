@@ -1,10 +1,12 @@
 import { Clock, LayoutGrid, Rocket } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { ToolCard } from "@/components/tools/tool-card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Panel } from "@/components/ui/panel";
+import { CardGridSkeleton } from "@/components/ui/skeletons";
 import { requireUser } from "@/lib/access";
 import { getMyLatestApplication } from "@/lib/applications";
 import { getMyKeyStatusByProvider } from "@/lib/keys";
@@ -28,7 +30,23 @@ function CenteredEmpty({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default async function DashboardPage() {
+/**
+ * The Apps index streams behind an in-page Suspense so the grid skeleton shows
+ * while the four queries resolve. This boundary wraps ONLY this page's content —
+ * NOT a route-level `loading.tsx`, which would put a Suspense over every nested
+ * dashboard route and flush a 200 before a descendant's `notFound()` could set a
+ * 404. The runner's access gate (§13) depends on that 404, so loading state here
+ * lives in the page, not the segment.
+ */
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<CardGridSkeleton />}>
+      <Apps />
+    </Suspense>
+  );
+}
+
+async function Apps() {
   await requireUser("/dashboard");
 
   const [tools, membership, application, keyStatuses] = await Promise.all([
