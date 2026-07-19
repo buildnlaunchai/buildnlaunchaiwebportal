@@ -589,10 +589,35 @@ a bug, not a design.
 - Errors appear on blur, not on keystroke. Nobody wants to be shouted at mid-word.
 - Required fields get a `--danger` asterisk. Optional is the exception; mark the exception.
 
-### Card
+### Card / Panel
 
-`--surface` fill, `1px --line`, `--radius-md`, 20px padding. Hover (only if interactive):
-border → `--line-strong`, `translateY(-1px)`, 120ms.
+The standard content surface, and the authenticated app's main cohesion lever. `--surface`
+fill, `1px --line` border, **`--radius-lg`** (matching the flagship tool card), 20px padding,
+and a **light-catching top edge** — the top border is `--line-strong` while the other three
+sides stay `--line`, so the panel reads as lit from above. That top edge is the motif shared
+by the tool card, the glass footer, and the shell; it is what makes a grid of panels feel
+designed rather than boxed. **No shadow** — static content does not float (§6). Hover only if
+interactive: border → `--line-strong`, `translateY(-1px)`, 120ms.
+
+Built once as **`<Panel>`** (and `<Panel flush>` for list/table containers, which drop the
+padding and clip their rows to the radius). A titled section inside a panel uses
+**`<SectionHeader icon=… title=… description=… />`**, which carries the icon-tile motif from
+the shell. Never hand-roll a `rounded-* border bg-surface` container — reach for `<Panel>`.
+
+**Elevation & radius nesting.** Larger radius outside, smaller inside — that nesting is what
+reads as intentional: outer panels / cards / list-containers `--radius-lg` (14px) → inner
+sub-panels and icon tiles `--radius-md` (10px) → inputs / buttons `--radius-sm` (6px) →
+status and key chips `--radius-pill`. Shadows appear only on things that genuinely float
+(dialogs, popovers, the run moment), never on a resting panel.
+
+### Callout
+
+An inline, semantic notice — a tool in maintenance, a missing key, a saved draft, the
+data-vs-behaviour note in the tool editor. One shape (`<Callout tone=… icon=… action=…>`): a
+lit hairline panel tinted by tone, an optional leading icon, an optional trailing action.
+Tones map to the status palette — `info` (accent), `warn`, `danger`, `success` — and the
+tone carries the meaning; color is never decoration (§2). Replaces every hand-rolled
+`border-warn bg-warn-quiet`-style banner.
 
 ### ToolCard — three states, and they matter
 
@@ -654,9 +679,11 @@ hover but is *always present in the DOM* for keyboard users.
 
 ### Dialog
 
-`--elevated`, `--radius-lg`, `--shadow-modal`, max 520px. Enters at `opacity 0, scale 0.98`,
-200ms, `--ease-enter`. Backdrop `rgba(0,0,0,0.6)`, no blur. Focus trapped. Escape closes.
-Title is `h3`. The primary action goes on the right.
+`--elevated`, `--radius-lg`, `--shadow-modal`, max 520px, the light-catching top edge. Enters
+at `opacity 0, scale 0.98`, 200ms, `--ease-enter` — a CSS animation on mount, since the
+subtree only exists while open. Backdrop `--backdrop`, no blur. Focus trapped and returned to
+the trigger on close. Escape closes. Title is `h3`. The primary action goes on the right.
+Built once as **`<Dialog open onClose title footer>`**; never hand-roll a modal.
 
 **Destructive dialogs require typed confirmation** only when the action is irreversible and
 affects someone else (revoking a membership, deleting a tool with run history). Otherwise a
@@ -671,13 +698,19 @@ design. Every destructive toast carries an **Undo** for 4s, and Undo must actual
 ### Skeleton
 
 `--elevated` fill, `--radius-sm`, matching the exact dimensions of what's coming. Pulses
-opacity 0.5 → 0.8 → 0.5 over 1.6s. **No shimmer sweep gradient.**
+opacity 0.5 → 0.8 → 0.5 over 1.6s. **No shimmer sweep gradient.** Built as **`<Skeleton>`**;
+composed shapes (`CardGridSkeleton`, `ListSkeleton`, `PanelSkeleton`, `RunnerSkeleton`) are
+the shape of each page and drive its route `loading.tsx`, so a navigation shows the answer's
+shape before the data lands. Every data route also has an `error.tsx` (§12 voice, a Retry) and
+the app a `not-found.tsx` (neutral copy — the access engine 404s on denial and must not hint).
 
 ### Empty state
 
-Not a shrug. A centered block, max 400px: a small icon in `--text-faint`, an `h3`, one line of
-`small`/`--text-muted` explaining what goes here, and one `primary` button. See §12 for the
-copy.
+Not a shrug. A centered block, max 400px: the icon sits in a **lit tile** (the same tile motif
+as the shell nav and section heads, `--text-faint` on `--surface` with the top edge), then an
+`h3`, one line of `small`/`--text-muted` explaining what goes here, and one `primary` action.
+Built once as **`<EmptyState icon title description action>`** so every empty screen — dashboard,
+runs, keys, requests, users, codes — is the same component. See §12 for the copy.
 
 ### Embedded app (`runtime = 'iframe'`)
 
