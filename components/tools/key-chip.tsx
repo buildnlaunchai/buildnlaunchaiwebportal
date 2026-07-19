@@ -31,7 +31,7 @@ export function KeyChip({
   state: ChipState;
 }) {
   const base =
-    "text-mono-chip inline-flex items-center gap-1 rounded-sm px-2 py-1 transition-colors duration-micro ease-default";
+    "text-mono-chip inline-flex items-center gap-1 rounded-pill px-2 py-1 transition-colors duration-micro ease-default";
 
   if (state === "verified") {
     return (

@@ -17,7 +17,7 @@ export function ProviderChip({
   className?: string;
 }) {
   const base =
-    "text-mono-chip inline-flex items-center rounded-sm border border-line bg-surface px-2 py-1 text-text-muted";
+    "text-mono-chip inline-flex items-center rounded-pill border border-line bg-surface px-2 py-1 text-text-muted";
 
   if (providers.length === 0) {
     // The funnel star: a tool a stranger can run with nothing connected (§10).
