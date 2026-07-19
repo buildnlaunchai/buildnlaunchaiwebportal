@@ -1,7 +1,9 @@
+import { KeyRound, Ticket, UserRound } from "lucide-react";
 import Link from "next/link";
 
 import { ReferralLink } from "@/components/dashboard/referral-link";
 import { StatusPill } from "@/components/tools/status-pill";
+import { Panel, SectionHeader } from "@/components/ui/panel";
 import { requireUser } from "@/lib/access";
 import { getMyMembership, isMembershipActive } from "@/lib/member";
 import { createClient } from "@/lib/supabase/server";
@@ -19,15 +21,15 @@ export default async function SettingsPage() {
     .eq("referred_by", user.id);
 
   return (
-    <div className="flex max-w-[640px] flex-col gap-6">
-      <section className="rounded-md border border-line bg-surface p-5">
-        <h2 className="text-h3">Profile</h2>
-        <dl className="mt-3 flex flex-col gap-2 text-small">
-          <div className="flex justify-between gap-4">
+    <div className="flex max-w-[640px] flex-col gap-5">
+      <Panel>
+        <SectionHeader icon={UserRound} title="Profile" />
+        <dl className="mt-4 flex flex-col gap-3 text-small">
+          <div className="flex items-center justify-between gap-4">
             <dt className="text-text-muted">Name</dt>
             <dd className="text-text">{user.profile.full_name ?? "—"}</dd>
           </div>
-          <div className="flex justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <dt className="text-text-muted">Email</dt>
             <dd className="text-mono text-text">{user.email}</dd>
           </div>
@@ -44,14 +46,14 @@ export default async function SettingsPage() {
             </dd>
           </div>
         </dl>
-      </section>
+      </Panel>
 
-      <section className="rounded-md border border-line bg-surface p-5">
-        <h2 className="text-h3">Invite people</h2>
-        <p className="mt-1 text-small text-text-muted">
-          Share your link. When enough people you invite join, your membership is
-          on me.
-        </p>
+      <Panel>
+        <SectionHeader
+          icon={UserRound}
+          title="Invite people"
+          description="Share your link. When enough people you invite join, your membership is on me."
+        />
         <div className="mt-4">
           <ReferralLink code={user.profile.referral_code ?? ""} />
         </div>
@@ -59,24 +61,24 @@ export default async function SettingsPage() {
           You&apos;ve invited {referralCount ?? 0}{" "}
           {referralCount === 1 ? "person" : "people"} so far.
         </p>
-      </section>
+      </Panel>
 
-      <section className="rounded-md border border-line bg-surface p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-h3">Have a code?</h2>
-            <p className="mt-1 text-small text-text-muted">
-              Redeem a membership or tool-access code.
-            </p>
-          </div>
-          <Link
-            href="/dashboard/redeem"
-            className="shrink-0 text-small text-accent hover:text-accent-hover"
-          >
-            Redeem →
-          </Link>
-        </div>
-      </section>
+      <Panel>
+        <SectionHeader
+          icon={Ticket}
+          title="Have a code?"
+          description="Redeem a membership or tool-access code."
+          action={
+            <Link
+              href="/dashboard/redeem"
+              className="inline-flex items-center gap-1.5 text-small text-accent transition-colors duration-micro ease-default hover:text-accent-hover"
+            >
+              <KeyRound aria-hidden className="size-4" strokeWidth={1.6} />
+              Redeem
+            </Link>
+          }
+        />
+      </Panel>
     </div>
   );
 }

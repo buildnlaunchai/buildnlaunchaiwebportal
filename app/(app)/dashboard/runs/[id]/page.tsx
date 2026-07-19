@@ -1,8 +1,7 @@
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { RunnerClient } from "@/components/tools/runner-client";
+import { PageHeader } from "@/components/ui/page-header";
 import { requireUser } from "@/lib/access";
 import { formatShipDate } from "@/lib/format";
 import { getMyRun } from "@/lib/runs";
@@ -35,20 +34,12 @@ export default async function RunDetailPage({
     .maybeSingle();
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <Link
-          href="/dashboard/runs"
-          className="inline-flex items-center gap-2 text-small text-text-muted transition-colors duration-micro ease-default hover:text-text"
-        >
-          <ArrowLeft aria-hidden className="size-4" strokeWidth={1.5} />
-          Run history
-        </Link>
-        <h1 className="text-h1 mt-4">{run.tools.name}</h1>
-        <p className="text-mono text-text-faint">
-          {formatShipDate(run.created_at)}
-        </p>
-      </div>
+    <div className="flex flex-col gap-2">
+      <PageHeader
+        back={{ href: "/dashboard/runs", label: "Run history" }}
+        title={run.tools.name}
+        description={formatShipDate(run.created_at)}
+      />
 
       <RunnerClient
         slug={run.tools.slug}

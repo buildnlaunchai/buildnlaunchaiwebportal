@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, RotateCw } from "lucide-react";
+import { AlertTriangle, KeyRound, RotateCw } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, useTransition } from "react";
 
@@ -9,6 +9,7 @@ import { StatusPill } from "@/components/tools/status-pill";
 import { ToolForm } from "@/components/tools/tool-form";
 import { ToolOutput } from "@/components/tools/tool-output";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 import { createClient } from "@/lib/supabase/client";
 import type { InputSchema, OutputSchema } from "@/lib/tool-schema";
 import type { Database } from "@/lib/database.types";
@@ -133,14 +134,14 @@ export function RunnerClient({
           onRun={onRun}
         />
         {formError && (
-          <div className="mt-4 rounded-md border border-warn bg-warn-quiet px-4 py-3 text-small text-warn" role="alert">
+          <Callout tone="warn" icon={AlertTriangle} className="mt-4">
             {formError}
             {/needs? your |key /i.test(formError) && (
               <Link href="/dashboard/keys" className="ml-1 underline">
                 Open the key vault
               </Link>
             )}
-          </div>
+          </Callout>
         )}
       </div>
 
@@ -176,8 +177,8 @@ function OutputPanel({
   return (
     <div
       className={cn(
-        "relative min-h-[320px] overflow-hidden rounded-md border bg-sunken",
-        failed ? "border-danger" : "border-line",
+        "relative min-h-[320px] overflow-hidden rounded-lg border bg-sunken",
+        failed ? "border-danger" : "border-line [border-top-color:var(--line-strong)]",
       )}
     >
       {/* The 2px indeterminate progress line (§8 step 2) */}

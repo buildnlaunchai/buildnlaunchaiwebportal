@@ -1,8 +1,10 @@
-import { LayoutGrid } from "lucide-react";
+import { Clock, LayoutGrid, Rocket } from "lucide-react";
 import Link from "next/link";
 
 import { ToolCard } from "@/components/tools/tool-card";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Panel } from "@/components/ui/panel";
 import { requireUser } from "@/lib/access";
 import { getMyLatestApplication } from "@/lib/applications";
 import { getMyKeyStatusByProvider } from "@/lib/keys";
@@ -18,15 +20,11 @@ import { formatShipDate } from "@/lib/format";
  *   - approved but nothing accessible yet → gentle orientation
  *   - never applied → the apply CTA
  */
-// Hoisted: defining a component inside render recreates it every pass.
-function EmptyFrame({ children }: { children: React.ReactNode }) {
+
+/** The dashboard empty state gets vertical presence — it's the whole funnel. */
+function CenteredEmpty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="flex max-w-[400px] flex-col items-center text-center">
-        <LayoutGrid aria-hidden className="size-6 text-text-faint" strokeWidth={1.5} />
-        {children}
-      </div>
-    </div>
+    <div className="flex min-h-[62vh] items-center justify-center">{children}</div>
   );
 }
 
@@ -46,13 +44,11 @@ export default async function DashboardPage() {
     const active = isMembershipActive(membership);
     return (
       <div className="flex flex-col gap-6">
-        <div>
-          <p className="text-small text-text-muted">
-            {active
-              ? `${tools.length} ${tools.length === 1 ? "tool" : "tools"} unlocked.`
-              : "Open to everyone — no key needed. Apply to unlock the rest."}
-          </p>
-        </div>
+        <p className="text-small text-text-muted">
+          {active
+            ? `${tools.length} ${tools.length === 1 ? "tool" : "tools"} unlocked.`
+            : "Open to everyone — no key needed. Apply to unlock the rest."}
+        </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tools.map((tool) => (
             <ToolCard
@@ -64,17 +60,21 @@ export default async function DashboardPage() {
           ))}
         </div>
         {!active && (
-          <div className="rounded-md border border-line bg-surface p-5">
+          <Panel className="flex items-center justify-between gap-4">
             <p className="text-small text-text-muted">
-              Want the full catalog? {application?.status === "pending" ? (
-                <>Your application is in review.</>
-              ) : (
-                <Link href="/apply" className="text-accent hover:text-accent-hover">
-                  Apply for access →
-                </Link>
-              )}
+              Want the full catalog?{" "}
+              {application?.status === "pending"
+                ? "Your application is in review."
+                : "Access is free while I build in public."}
             </p>
-          </div>
+            {application?.status !== "pending" && (
+              <Link href="/apply" className="shrink-0">
+                <Button variant="secondary" size="sm">
+                  Apply for access
+                </Button>
+              </Link>
+            )}
+          </Panel>
         )}
       </div>
     );
@@ -83,46 +83,54 @@ export default async function DashboardPage() {
   // No accessible tools. Orient by application state (§12 voice).
   if (application?.status === "pending") {
     return (
-      <EmptyFrame>
-        <h2 className="text-h3 mt-5">You&apos;re in the queue</h2>
-        <p className="mt-2 text-small text-text-muted">
-          Applied {formatShipDate(application.created_at)}. I review these
-          personally, usually within a day. You&apos;ll get an email the moment I
-          do.
-        </p>
-        <Link href="/tools" className="mt-6">
-          <Button variant="secondary">Browse the tools</Button>
-        </Link>
-      </EmptyFrame>
+      <CenteredEmpty>
+        <EmptyState
+          icon={Clock}
+          title="You're in the queue"
+          description={`Applied ${formatShipDate(
+            application.created_at,
+          )}. I review these personally, usually within a day. You'll get an email the moment I do.`}
+          action={
+            <Link href="/tools">
+              <Button variant="secondary">Browse the tools</Button>
+            </Link>
+          }
+        />
+      </CenteredEmpty>
     );
   }
 
   if (application?.status === "approved" || isMembershipActive(membership)) {
     // Approved, but no tools resolved yet (e.g. no member-access tools exist).
     return (
-      <EmptyFrame>
-        <h2 className="text-h3 mt-5">You&apos;re in</h2>
-        <p className="mt-2 text-small text-text-muted">
-          Tools show up here as I open them to members. The first ones are on the
-          way.
-        </p>
-        <Link href="/tools" className="mt-6">
-          <Button variant="secondary">See what&apos;s coming</Button>
-        </Link>
-      </EmptyFrame>
+      <CenteredEmpty>
+        <EmptyState
+          icon={Rocket}
+          title="You're in"
+          description="Tools show up here as I open them to members. The first ones are on the way."
+          action={
+            <Link href="/tools">
+              <Button variant="secondary">See what&apos;s coming</Button>
+            </Link>
+          }
+        />
+      </CenteredEmpty>
     );
   }
 
   // Never applied (or waitlisted/rejected) and nothing accessible.
   return (
-    <EmptyFrame>
-      <h2 className="text-h3 mt-5">Nothing here yet</h2>
-      <p className="mt-2 text-small text-text-muted">
-        Tools unlock when your application is approved. It usually takes a day.
-      </p>
-      <Link href="/apply" className="mt-6">
-        <Button variant="primary">Apply for access</Button>
-      </Link>
-    </EmptyFrame>
+    <CenteredEmpty>
+      <EmptyState
+        icon={LayoutGrid}
+        title="Nothing here yet"
+        description="Tools unlock when your application is approved. It usually takes a day."
+        action={
+          <Link href="/apply">
+            <Button variant="primary">Apply for access</Button>
+          </Link>
+        }
+      />
+    </CenteredEmpty>
   );
 }

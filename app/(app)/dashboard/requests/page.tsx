@@ -7,15 +7,12 @@ export default async function RequestsPage() {
   const { requests, myVotes } = await getFeatureRequests();
 
   return (
-    <div className="max-w-[720px]">
-      <h1 className="text-h1">Feature requests</h1>
-      <p className="mt-2 text-small text-text-muted">
+    <div className="flex max-w-[720px] flex-col gap-8">
+      <p className="text-small text-text-muted prose-measure">
         Tell me what to build, and upvote what you want most. This is genuinely how
         I decide what ships next.
       </p>
-      <div className="mt-8">
-        <RequestBoard requests={requests} myVotes={[...myVotes]} />
-      </div>
+      <RequestBoard requests={requests} myVotes={[...myVotes]} />
     </div>
   );
 }

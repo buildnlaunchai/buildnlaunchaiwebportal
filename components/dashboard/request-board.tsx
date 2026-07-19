@@ -1,13 +1,15 @@
 "use client";
 
-import { ChevronUp } from "lucide-react";
+import { ChevronUp, Lightbulb, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { submitFeatureRequest, toggleVote } from "@/actions/requests";
 import { StatusPill } from "@/components/tools/status-pill";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Label } from "@/components/ui/input";
+import { Panel, SectionHeader } from "@/components/ui/panel";
 import { Textarea } from "@/components/ui/textarea";
 import type { RequestWithTool } from "@/lib/requests";
 import { cn } from "@/lib/utils";
@@ -73,8 +75,8 @@ export function RequestBoard({
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="rounded-md border border-line bg-surface p-5">
-        <h2 className="text-h3">Request a tool</h2>
+      <Panel>
+        <SectionHeader icon={Sparkles} title="Request a tool" />
         <div className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <Label required>What would you like me to build?</Label>
@@ -89,23 +91,27 @@ export function RequestBoard({
             Submit
           </Button>
         </div>
-      </section>
+      </Panel>
 
       <section className="flex flex-col gap-3">
         {requests.length === 0 ? (
-          <p className="text-small text-text-faint">No requests yet. Be the first.</p>
+          <EmptyState
+            icon={Lightbulb}
+            title="No requests yet"
+            description="Be the first — tell me what to build, and others can upvote it."
+          />
         ) : (
           requests.map((r) => {
             const v = votes[r.id];
             const s = STATUS[r.status as keyof typeof STATUS] ?? STATUS.open;
             return (
-              <div key={r.id} className="flex gap-4 rounded-md border border-line bg-surface p-4">
+              <Panel key={r.id} className="flex gap-4">
                 <button
                   type="button"
                   onClick={() => vote(r.id)}
                   aria-pressed={v.voted}
                   className={cn(
-                    "flex h-fit flex-col items-center gap-0.5 rounded-sm border px-3 py-2 transition-colors duration-micro ease-default",
+                    "flex h-fit flex-col items-center gap-0.5 rounded-md border px-3 py-2 transition-colors duration-micro ease-default",
                     v.voted ? "border-accent bg-accent-quiet text-accent" : "border-line text-text-muted hover:border-line-strong hover:text-text",
                   )}
                 >
@@ -125,7 +131,7 @@ export function RequestBoard({
                     </Link>
                   )}
                 </div>
-              </div>
+              </Panel>
             );
           })
         )}

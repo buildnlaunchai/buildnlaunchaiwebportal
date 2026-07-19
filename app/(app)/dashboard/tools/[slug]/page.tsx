@@ -1,4 +1,4 @@
-import { ArrowLeft, KeyRound } from "lucide-react";
+import { KeyRound, Wrench } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -6,6 +6,8 @@ import { RunnerClient } from "@/components/tools/runner-client";
 import { ToolEmbed } from "@/components/tools/tool-embed";
 import { ToolIcon } from "@/components/tools/tool-icon";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { BackLink } from "@/components/ui/page-header";
 import { requireUser } from "@/lib/access";
 import { mintEmbedToken } from "@/lib/embed";
 import { getMyRun } from "@/lib/runs";
@@ -90,19 +92,13 @@ export default async function RunnerPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 text-small text-text-muted transition-colors duration-micro ease-default hover:text-text"
-        >
-          <ArrowLeft aria-hidden className="size-4" strokeWidth={1.5} />
-          Apps
-        </Link>
-        <div className="mt-4 flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-md border border-line text-text-muted">
+      <div className="flex flex-col gap-4">
+        <BackLink href="/dashboard" label="Apps" />
+        <div className="flex items-center gap-3">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-lg border border-line bg-elevated text-text-muted [border-top-color:var(--line-strong)]">
             <ToolIcon name={tool.icon} className="size-5" />
           </span>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-h1">{tool.name}</h1>
             <p className="text-mono text-text-faint">{tool.slug}</p>
           </div>
@@ -110,30 +106,33 @@ export default async function RunnerPage({
       </div>
 
       {inMaintenance && (
-        <div className="rounded-md border border-warn bg-warn-quiet px-4 py-3 text-small text-warn">
+        <Callout tone="warn" icon={Wrench}>
           This tool is being rebuilt right now. It&apos;ll be back — you&apos;ll get
           a notification.
-        </div>
+        </Callout>
       )}
 
       {!hasKeys && !inMaintenance && (
-        <div className="flex flex-wrap items-center gap-3 rounded-md border border-warn bg-warn-quiet px-4 py-3">
-          <span className="text-small text-warn">
-            This tool needs your {(tool.required_providers ?? []).join(", ")} key.
-          </span>
-          <Link href={`/dashboard/keys?provider=${(tool.required_providers ?? [])[0] ?? ""}`}>
-            <Button variant="secondary" size="sm">
-              <KeyRound aria-hidden className="size-4" strokeWidth={1.5} />
-              Connect it
-            </Button>
-          </Link>
-        </div>
+        <Callout
+          tone="warn"
+          icon={KeyRound}
+          action={
+            <Link href={`/dashboard/keys?provider=${(tool.required_providers ?? [])[0] ?? ""}`}>
+              <Button variant="secondary" size="sm">
+                <KeyRound aria-hidden className="size-4" strokeWidth={1.5} />
+                Connect it
+              </Button>
+            </Link>
+          }
+        >
+          This tool needs your {(tool.required_providers ?? []).join(", ")} key.
+        </Callout>
       )}
 
       {embedError && (
-        <div className="rounded-md border border-warn bg-warn-quiet px-4 py-3 text-small text-warn">
+        <Callout tone="warn" icon={Wrench}>
           {embedError}
-        </div>
+        </Callout>
       )}
 
       {isEmbed

@@ -1,12 +1,14 @@
 "use client";
 
-import { ExternalLink, KeyRound, RotateCw, Trash2 } from "lucide-react";
+import { ExternalLink, KeyRound, RotateCw, ShieldCheck, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { StatusPill } from "@/components/tools/status-pill";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Label } from "@/components/ui/input";
+import { Panel, SectionHeader } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
 import { KEY_HONESTY_COPY, PROVIDERS, PROVIDER_BY_VALUE } from "@/lib/providers";
@@ -57,13 +59,13 @@ function KeyRow({ keyMeta }: { keyMeta: KeyMeta }) {
 
   return (
     <div className="flex items-center gap-4 border-b border-line px-5 py-4 last:border-0">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-sm border border-line text-text-muted">
-        <KeyRound aria-hidden className="size-4" strokeWidth={1.5} />
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-line bg-elevated text-text-muted [border-top-color:var(--line-strong)]">
+        <KeyRound aria-hidden className="size-[18px]" strokeWidth={1.5} />
       </span>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-body text-text">{meta?.name ?? keyMeta.provider}</span>
+          <span className="text-body-strong text-text">{meta?.name ?? keyMeta.provider}</span>
           {keyMeta.status && statusPill(keyMeta.status)}
         </div>
         <p className="text-mono text-text-faint">
@@ -139,8 +141,8 @@ function AddKeyForm({ preselect }: { preselect?: string }) {
   };
 
   return (
-    <div className="rounded-md border border-line bg-surface p-5">
-      <h2 className="text-h3">Connect a key</h2>
+    <Panel>
+      <SectionHeader icon={KeyRound} title="Connect a key" />
 
       <div className="mt-4 flex flex-col gap-4">
         <div className="flex flex-col gap-2">
@@ -227,7 +229,7 @@ function AddKeyForm({ preselect }: { preselect?: string }) {
           Save key
         </Button>
       </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -241,30 +243,34 @@ export function KeyVault({
   return (
     <div className="flex flex-col gap-6">
       {/* The honesty statement — verbatim, nothing stronger anywhere (§10). */}
-      <div className="rounded-md border border-line bg-accent-quiet/40 px-4 py-3">
+      <div className="flex items-start gap-3 rounded-lg border border-line bg-accent-quiet/40 px-4 py-3.5 [border-top-color:var(--line-strong)]">
+        <ShieldCheck
+          aria-hidden
+          className="mt-0.5 size-[18px] shrink-0 text-accent"
+          strokeWidth={1.6}
+        />
         <p className="text-small text-text">{KEY_HONESTY_COPY}</p>
       </div>
 
       <AddKeyForm preselect={preselect} />
 
-      <div>
-        <h2 className="text-h3 mb-3">Connected keys</h2>
+      <div className="flex flex-col gap-4">
+        <SectionHeader icon={KeyRound} title="Connected keys" />
         {keys.length === 0 ? (
-          <div className="rounded-md border border-line bg-surface p-8 text-center">
-            <KeyRound aria-hidden className="mx-auto size-6 text-text-faint" strokeWidth={1.5} />
-            <p className="mt-3 text-body-strong text-text">No keys connected</p>
-            <p className="mx-auto mt-1 max-w-[42ch] text-small text-text-muted">
-              Tools run on your own API keys, so you pay your provider directly
-              and nothing runs through my bill. Most tools need one key. Some need
-              none.
-            </p>
-          </div>
+          <Panel>
+            <EmptyState
+              icon={KeyRound}
+              title="No keys connected"
+              description="Tools run on your own API keys, so you pay your provider directly and nothing runs through my bill. Most tools need one key. Some need none."
+              className="py-10"
+            />
+          </Panel>
         ) : (
-          <div className="overflow-hidden rounded-md border border-line">
+          <Panel flush>
             {keys.map((k) => (
               <KeyRow key={k.id} keyMeta={k} />
             ))}
-          </div>
+          </Panel>
         )}
       </div>
     </div>
