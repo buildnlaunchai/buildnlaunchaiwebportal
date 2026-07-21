@@ -90,6 +90,22 @@ export default async function RunnerPage({
   // client re-subscribes; if terminal, it renders instantly with no ceremony.
   const initialRun = isEmbed || !runId ? null : await getMyRun(runId);
 
+  // An embedded app gets FOCUS MODE: the whole viewport, nothing of the shell
+  // behind it (so there is nothing to scroll back to), one slim bar home. The
+  // shelled layout below still handles maintenance / embed errors, where there
+  // is no app to hand the screen to.
+  if (isEmbed && embed) {
+    return (
+      <ToolEmbed
+        embedUrl={embed.url}
+        token={embed.token}
+        name={tool.name}
+        slug={tool.slug}
+        icon={tool.icon}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
@@ -135,19 +151,15 @@ export default async function RunnerPage({
         </Callout>
       )}
 
-      {isEmbed
-        ? embed && (
-            <ToolEmbed embedUrl={embed.url} token={embed.token} name={tool.name} />
-          )
-        : (
-          <RunnerClient
-            slug={tool.slug}
-            inputSchema={parseInputSchema(tool.input_schema)}
-            outputSchema={parseOutputSchema(tool.output_schema)}
-            initialRun={initialRun}
-            runnable={Boolean(hasKeys) && !inMaintenance}
-          />
-        )}
+      {!isEmbed && (
+        <RunnerClient
+          slug={tool.slug}
+          inputSchema={parseInputSchema(tool.input_schema)}
+          outputSchema={parseOutputSchema(tool.output_schema)}
+          initialRun={initialRun}
+          runnable={Boolean(hasKeys) && !inMaintenance}
+        />
+      )}
     </div>
   );
 }

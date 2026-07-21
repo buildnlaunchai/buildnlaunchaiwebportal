@@ -246,8 +246,15 @@ export function AppShell({
         </header>
 
         {/* §4: app pages max out at 1200px. Bottom padding clears the mobile
-            nav bar, which is fixed. */}
-        <main className="relative z-10 flex-1 px-5 pb-24 pt-8 md:pb-10 lg:px-8">
+            nav bar, which is fixed.
+
+            No z-index here, deliberately: a z would make <main> a stacking
+            context, and then a route-level takeover (the embed focus mode's
+            fixed overlay) could never rise above the sidebar (z-30) or this
+            header (z-20) no matter its own z. DOM order alone keeps main's
+            content above the .app-glow sibling (both paint at level 0, later
+            wins), so the z bought nothing. */}
+        <main className="relative flex-1 px-5 pb-24 pt-8 md:pb-10 lg:px-8">
           <div className="mx-auto w-full max-w-[1200px]">{children}</div>
         </main>
       </div>

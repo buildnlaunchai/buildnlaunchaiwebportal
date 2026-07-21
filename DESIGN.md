@@ -719,22 +719,27 @@ get out of the way: the app has its own design, its own signature moment, and it
 what it looks like — hub chrome wrapped around it would produce two products arguing inside
 one viewport.
 
-So the embed is **not** a card, has **no** panel padding, and gets **no** hub-styled toolbar
-inside it. The frame is:
+So the embed is **focus mode**: the app takes the **entire viewport**, and the shell —
+sidebar, top bar, page padding — does not render behind it at all. Framing an app inside the
+dashboard made it read as a video playing inside another platform; handing it the screen makes
+it feel like the member stepped *into* the app, with an obvious way back. The frame is:
 
-- The standard runner header (back link, icon, name, slug) — unchanged, so the member knows
-  where they are and how to leave.
-- The app itself: full content width, `--radius-md`, `1px --line`, `--canvas` fill (which
-  reads as a seam, not a container), `overflow: hidden` so the app's own corners are clipped
-  to ours.
-- Height: `calc(100vh - 260px)`, `min-height: 520px`. Tall enough for a real app; the header
-  stays visible so the hub never feels like it navigated away.
+- **One slim glass bar**, 56px, the same material as the shell's top bar (`--glass` + blur,
+  hairline bottom): an `Apps` back button (the way out, always visible), a hairline divider,
+  the tool's lit icon tile, its name (display face) over its `mono` slug — and, right-aligned
+  on desktop, the one line of truth: *Your work stays in this app — it won't show in run
+  history.* An embedded app keeps its own data, and saying so here prevents the member hunting
+  `/dashboard/runs` for something that was never going to be there.
+- The app itself fills everything below the bar: full-bleed, `--canvas` fill, no border, no
+  radius — there is no hub surface left to seam against.
+- The overlay sits above the shell (z-40; under the command palette) and enters with a fade,
+  not a pop. Maintenance and embed-error states keep the normal shelled page — there is no app
+  to hand the screen to.
+- The iframe grants `clipboard-read; clipboard-write; fullscreen` via the permissions policy —
+  the apps copy share links and go fullscreen for review, and without the grant those fail
+  silently inside a frame.
 - **No loading spinner over the frame.** The app renders its own loading state, and a hub
-  spinner on top of an app spinner is two products saying "wait" at once. The seam is enough.
-
-Below the frame, one line of `small`/`--text-muted`: what this app is and where its work
-lives. An embedded app keeps its own data — no run history in the hub — and saying so once
-prevents the member hunting `/dashboard/runs` for something that was never going to be there.
+  spinner on top of an app spinner is two products saying "wait" at once.
 
 **The reduced-motion rule does not reach inside the iframe.** We cannot style a document we
 do not own, and the app is responsible for its own accessibility floor. TEMPLATE.md holds
