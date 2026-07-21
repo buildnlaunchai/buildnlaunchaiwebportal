@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 
+import { SparkMark } from "@/components/brand/spark-mark";
 import {
   CommandPalette,
   type PaletteTool,
@@ -14,7 +15,6 @@ import {
 import { ICONS, type IconName } from "@/components/shell/icons";
 import { NotificationBell } from "@/components/shell/notification-bell";
 import { UserMenu } from "@/components/shell/user-menu";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import type { Database } from "@/lib/database.types";
 import { cn } from "@/lib/utils";
 
@@ -115,6 +115,11 @@ export function AppShell({
 
   return (
     <div className="min-h-dvh">
+      {/* Grain film (DESIGN.md §3) — a fixed, screen-locked texture over the
+          whole app so the flat green fills read as graded, not plastic.
+          pointer-events:none, so it never intercepts a click. */}
+      <div className="grain" aria-hidden />
+
       {/* ---- Sidebar (DESIGN.md §10) — 260px, on --canvas, hairline right edge.
           Collapses to a 64px icon rail at md; below md the bottom bar takes over.
           Depth is carried by lit elements on the navy, not a different fill:
@@ -126,10 +131,12 @@ export function AppShell({
         <div className="relative z-10 flex h-16 items-center gap-[11px] px-3 md:justify-center lg:justify-start lg:px-5">
           <span
             aria-hidden
-            className="size-[30px] shrink-0 rounded-[9px] bg-gradient-to-br from-accent-hover to-accent shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_6px_18px_-6px_rgba(47,107,255,0.7)]"
-          />
-          <span className="hidden font-display text-[15px] font-semibold tracking-[-0.01em] lg:inline">
-            Build &amp; Launch
+            className="flex size-[30px] shrink-0 items-center justify-center text-accent [filter:drop-shadow(0_0_9px_rgba(200,242,79,0.5))]"
+          >
+            <SparkMark className="size-[26px]" />
+          </span>
+          <span className="hidden font-display text-[15px] font-light tracking-[-0.01em] lg:inline">
+            Build &amp; <span className="font-semibold text-accent">Launch</span>
           </span>
         </div>
 
@@ -156,7 +163,7 @@ export function AppShell({
                       "group relative flex h-[42px] items-center gap-[11px] rounded-[10px] text-body transition-colors duration-micro ease-default",
                       "justify-center px-0 lg:justify-start lg:px-[10px]",
                       active
-                        ? "text-text lg:bg-elevated lg:shadow-[0_8px_22px_-14px_rgba(40,90,220,0.7)]"
+                        ? "text-text lg:bg-elevated lg:shadow-[0_8px_22px_-14px_rgba(80,160,60,0.6)]"
                         : "text-text-muted hover:text-text lg:hover:bg-surface/60",
                     )}
                   >
@@ -164,14 +171,14 @@ export function AppShell({
                     {active && (
                       <span
                         aria-hidden
-                        className="absolute left-[-14px] top-1/2 hidden h-[22px] w-[3px] -translate-y-1/2 rounded-pill bg-accent shadow-[0_0_10px_0_rgba(47,107,255,0.9)] lg:block"
+                        className="absolute left-[-14px] top-1/2 hidden h-[22px] w-[3px] -translate-y-1/2 rounded-pill bg-accent shadow-[0_0_10px_0_rgba(200,242,79,0.9)] lg:block"
                       />
                     )}
                     <span
                       className={cn(
                         "flex size-[30px] shrink-0 items-center justify-center rounded-[8px] border transition-colors duration-micro ease-default",
                         active
-                          ? "border-[color:rgba(90,140,255,0.4)] bg-accent-quiet text-illuminate"
+                          ? "border-[color:rgba(200,242,79,0.4)] bg-accent-quiet text-illuminate"
                           : "border-line bg-surface text-text-faint group-hover:text-text-muted",
                       )}
                     >
@@ -190,7 +197,7 @@ export function AppShell({
           <div className="relative z-10 mx-[14px] mb-[14px] hidden items-center gap-2.5 rounded-[11px] border border-line bg-[var(--glass)] p-[11px] [border-top-color:var(--glass-top)] lg:flex">
             <span
               aria-hidden
-              className="size-2 shrink-0 rounded-pill bg-illuminate shadow-[0_0_8px_0_rgba(92,194,255,0.9)]"
+              className="size-2 shrink-0 rounded-pill bg-illuminate shadow-[0_0_8px_0_rgba(200,242,79,0.9)]"
             />
             <div className="min-w-0">
               <div className="truncate text-[12.5px] font-semibold text-text">
@@ -236,7 +243,6 @@ export function AppShell({
               </span>
             )}
             <NotificationBell initial={notifications} userId={user.id} />
-            <ThemeToggle />
             <UserMenu
               email={user.email}
               fullName={user.fullName}
@@ -277,7 +283,7 @@ export function AppShell({
               {active && (
                 <span
                   aria-hidden
-                  className="absolute inset-x-0 top-0 mx-auto h-[3px] w-8 rounded-pill bg-accent shadow-[0_0_10px_0_rgba(47,107,255,0.9)]"
+                  className="absolute inset-x-0 top-0 mx-auto h-[3px] w-8 rounded-pill bg-accent shadow-[0_0_10px_0_rgba(200,242,79,0.9)]"
                 />
               )}
               <Icon aria-hidden className="size-5" strokeWidth={1.6} />

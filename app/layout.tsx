@@ -13,7 +13,9 @@ import "./globals.css";
    marketing emphasis only (see §3), never UI chrome. */
 const sora = Sora({
   subsets: ["latin"],
-  weight: ["600", "700"],
+  // 300/400 carry the "Spark" thin display look (big marketing type); 600/700
+  // stay for emphasis words and solid working-UI titles.
+  weight: ["300", "400", "600", "700"],
   variable: "--font-sora",
   display: "swap",
 });

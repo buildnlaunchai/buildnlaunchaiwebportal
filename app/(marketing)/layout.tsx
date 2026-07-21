@@ -1,7 +1,7 @@
 import Link from "next/link";
 
+import { SparkMark } from "@/components/brand/spark-mark";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export default function MarketingLayout({
   children,
@@ -10,13 +10,22 @@ export default function MarketingLayout({
 }) {
   return (
     <div className="flex min-h-dvh flex-col">
+      {/* Grain film (DESIGN.md §3) — same screen-locked texture the app carries,
+          so the marketing ground reads as graded, not plastic. */}
+      <div className="grain" aria-hidden />
+
       <header className="sticky top-0 z-30 border-b border-line/60 bg-canvas/70 backdrop-blur-md">
         {/* §4: page gutter 20 / 32. */}
         <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center gap-6 px-5 lg:px-8">
           <Link href="/" className="flex items-center gap-2">
-            <span aria-hidden className="size-6 rounded-sm bg-accent" />
-            <span className="font-display text-[15px] font-semibold">
-              Build &amp; Launch
+            <span
+              aria-hidden
+              className="flex size-6 items-center justify-center text-accent [filter:drop-shadow(0_0_8px_rgba(200,242,79,0.5))]"
+            >
+              <SparkMark className="size-[22px]" />
+            </span>
+            <span className="font-display text-[15px] font-light tracking-[-0.01em]">
+              Build &amp; <span className="font-semibold text-accent">Launch</span>
             </span>
           </Link>
 
@@ -36,7 +45,6 @@ export default function MarketingLayout({
           </nav>
 
           <div className="ml-auto flex items-center gap-2">
-            <ThemeToggle />
             <Link href="/apply">
               {/* §2: one accent per screen. On the landing page, this is it. */}
               <Button variant="primary" size="sm">

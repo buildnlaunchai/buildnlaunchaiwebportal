@@ -83,14 +83,14 @@ export function ToolCard({
             : { label: "Apply", href: "/apply" };
 
   return (
-    <article className="group relative flex min-h-[224px] flex-col rounded-[14px] border border-line bg-surface p-5 transition-[border-color,transform,box-shadow] duration-micro ease-default [border-top-color:var(--line-strong)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_20px_44px_-26px_rgba(30,60,160,0.6)]">
+    <article className="group relative flex min-h-[224px] flex-col rounded-[14px] border border-line bg-surface p-5 transition-[border-color,transform,box-shadow] duration-micro ease-default [border-top-color:var(--line-strong)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_20px_44px_-26px_rgba(60,140,50,0.55)]">
       {/* header: icon tile + state badge */}
       <div className="flex items-start justify-between gap-3">
         <span
           className={cn(
             "flex size-[38px] items-center justify-center rounded-[10px] border transition-colors duration-micro ease-default",
             "border-line bg-elevated text-text-muted",
-            "group-hover:border-[color:rgba(90,140,255,0.4)] group-hover:bg-accent-quiet group-hover:text-accent",
+            "group-hover:border-[color:rgba(200,242,79,0.4)] group-hover:bg-accent-quiet group-hover:text-accent",
           )}
         >
           <ToolIcon name={tool.icon} className="size-[19px]" />

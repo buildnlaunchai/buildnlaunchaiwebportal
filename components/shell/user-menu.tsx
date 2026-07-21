@@ -50,12 +50,12 @@ export function UserMenu({
     <img
       src={avatarUrl}
       alt=""
-      className="size-[26px] rounded-pill shadow-[0_0_0_2px_rgba(47,107,255,0.35)]"
+      className="size-[26px] rounded-pill shadow-[0_0_0_2px_rgba(200,242,79,0.35)]"
     />
   ) : (
     <span
       aria-hidden
-      className="flex size-[26px] items-center justify-center rounded-pill bg-gradient-to-br from-accent-hover to-accent text-[12px] font-semibold text-accent-text shadow-[0_0_0_2px_rgba(47,107,255,0.35)]"
+      className="flex size-[26px] items-center justify-center rounded-pill bg-gradient-to-br from-accent-hover to-accent text-[12px] font-semibold text-accent-text shadow-[0_0_0_2px_rgba(200,242,79,0.35)]"
     >
       {initial}
     </span>

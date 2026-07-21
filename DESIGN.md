@@ -90,99 +90,111 @@ glass are for the surfaces people pass *through*, not the ones they *work in*.
 
 ## 2. Color
 
-Dark is the primary mode and gets built first. Light mode is a real, supported, equal mode —
-plenty of members work in light, and shipping only dark halves the audience. Build both from
-the same tokens.
+**The "Spark" identity.** The product is a single **dark forest-green** world with one **acid
+lime** accent, matched to the reference (grainy green gradients, a lime glow, a twelve-petal
+daisy mark). It ships dark-only for now: the theme toggle is gone and both `[data-theme]`
+blocks resolve to the same green palette, so a stale preference can never surface a broken
+skin. A genuine **light** mode — the reference's bright cream-green CTA slides — is a
+deferred, marketing-only milestone; when it lands the tokens diverge and the toggle returns.
+Until then, do not build light surfaces ad hoc.
 
-The base is not black. It's a **deep navy-black** — a cool blue cast runs through every
+The base is not black. It's a **deep forest green** — a warm green cast runs through every
 surface step, matched to the landing hero (the visual benchmark for the whole product). Pure
-`#000` with white text is harsh and cheap; a neutral graphite reads flat next to the cobalt
-light, which is why the ground itself carries blue.
+`#000` with white text is harsh and cheap; a neutral graphite reads flat next to the lime
+light, which is why the ground itself carries green. A **grain** film (§6) sits over the whole
+app so those flat green fills read as graded, not plastic.
 
 ### Tokens
 
 ```css
 :root[data-theme="dark"] {
-  /* surfaces — four steps, no more. Deep navy-black, a cool cast in every step. */
-  --canvas:        #080A12;   /* page background — deep navy-black */
-  --surface:       #12151F;   /* cards, panels, inputs */
-  --elevated:      #1A1E2B;   /* dropdowns, dialogs, popovers, hover states */
-  --sunken:        #05060C;   /* code blocks, output wells, terminal areas */
+  /* surfaces — four steps, no more. Deep forest green, a warm cast in every step. */
+  --canvas:        #0B241D;   /* page background — deep forest green */
+  --surface:       #123528;   /* cards, panels, inputs */
+  --elevated:      #1A4535;   /* dropdowns, dialogs, popovers, hover states */
+  --sunken:        #071912;   /* code blocks, output wells, terminal areas */
 
-  /* lines — navy-tinted hairlines. Cards are defined by a border, not a shadow. */
-  --line:          #232838;   /* default hairline */
-  --line-strong:   #353C52;   /* hover, focus-within, active row */
+  /* lines — green-tinted hairlines. Cards are defined by a border, not a shadow. */
+  --line:          #274A3B;   /* default hairline */
+  --line-strong:   #3A604E;   /* hover, focus-within, active row */
 
-  /* text — cool near-white */
-  --text:          #EEF1F7;   /* primary */
-  --text-muted:    #98A1B6;   /* secondary, labels, meta */
-  --text-faint:    #616A82;   /* placeholders, disabled, timestamps */
+  /* text — warm cream, faintly yellow-green */
+  --text:          #EEF4D6;   /* primary */
+  --text-muted:    #9DB8A6;   /* secondary, labels, meta */
+  --text-faint:    #6D8A79;   /* placeholders, disabled, timestamps */
 
-  /* accent — the electric COBALT. Actions, links, focus rings, selected states.
+  /* accent — the acid LIME. Actions, links, focus rings, selected states.
      One hue, three roles: action, light (--glow), data (chart fills). Never a second
-     action colour. */
-  --accent:        #2F6BFF;
-  --accent-hover:  #4D83FF;
-  --accent-quiet:  rgba(47, 107, 255, 0.16);   /* tinted backgrounds */
-  --accent-text:   #FFFFFF;                     /* text on top of --accent */
+     action colour. Lime is LIGHT, so text ON accent is dark forest ink, not white. */
+  --accent:        #C8F24F;
+  --accent-hover:  #D6F96C;
+  --accent-quiet:  rgba(200, 242, 79, 0.15);   /* tinted backgrounds */
+  --accent-text:   #14371E;                     /* dark forest ink on top of --accent */
 
-  /* illumination — a brighter AZURE companion. DATA AND LIGHT ONLY, never an action colour.
+  /* illumination — a brighter LIME companion. DATA AND LIGHT ONLY, never an action colour.
      It exists so charts and glows can read "electric" without inventing a second button hue.
      If it ever fills a button or marks a link, that is the bug. */
-  --illuminate:       #5CC2FF;
-  --illuminate-quiet: rgba(92, 194, 255, 0.14);
+  --illuminate:       #D8F56A;
+  --illuminate-quiet: rgba(216, 245, 106, 0.14);
 
-  /* light as a material (§1). The hero's cobalt sky; scarce in the app (§ two intensities). */
-  --glow:          rgba(60, 120, 255, 0.32);
+  /* light as a material (§1). The hero's lime glow; scarce in the app (§ two intensities). */
+  --glow:          rgba(160, 214, 84, 0.32);
 
-  /* status — semantic only. Never decorative. */
+  /* status — semantic only. Never decorative. Emerald stays distinct from the lime accent
+     so "live" never reads as "action". */
   --live:          #34D399;   /* running, success, active membership, verified key */
-  --live-quiet:    rgba(52, 211, 153, 0.12);
-  --warn:          #FBBF24;   /* pending, locked, coming soon, missing key */
-  --warn-quiet:    rgba(251, 191, 36, 0.12);
-  --danger:        #F87171;   /* error, invalid key, destructive */
-  --danger-quiet:  rgba(248, 113, 113, 0.12);
+  --live-quiet:    rgba(52, 211, 153, 0.14);
+  --warn:          #E6BB45;   /* pending, locked, coming soon, missing key */
+  --warn-quiet:    rgba(230, 187, 69, 0.14);
+  --danger:        #E0705F;   /* error, invalid key, destructive */
+  --danger-quiet:  rgba(224, 112, 95, 0.14);
 }
 
+/* Single dark identity for now: the light block MIRRORS dark, so a stale `light`
+   preference (or an OS forcing it) can never fall back to a broken palette. The genuine
+   cream-green light theme is a deferred marketing milestone; when it lands, these diverge. */
 :root[data-theme="light"] {
-  --canvas:        #F6F8FC;   /* a hair cooler, to carry the blue family */
-  --surface:       #FFFFFF;
-  --elevated:      #FFFFFF;
-  --sunken:        #EEF1F7;
+  --canvas:        #0B241D;
+  --surface:       #123528;
+  --elevated:      #1A4535;
+  --sunken:        #071912;
 
-  --line:          #E2E6F0;
-  --line-strong:   #C8CEE0;
+  --line:          #274A3B;
+  --line-strong:   #3A604E;
 
-  --text:          #0E1220;
-  --text-muted:    #545C72;
-  --text-faint:    #8B93A8;
+  --text:          #EEF4D6;
+  --text-muted:    #9DB8A6;
+  --text-faint:    #6D8A79;
 
-  --accent:        #2563EB;   /* the reference blue, deepened so it reads on white */
-  --accent-hover:  #1D4ED8;
-  --accent-quiet:  rgba(37, 99, 235, 0.1);
-  --accent-text:   #FFFFFF;
+  --accent:        #C8F24F;
+  --accent-hover:  #D6F96C;
+  --accent-quiet:  rgba(200, 242, 79, 0.15);
+  --accent-text:   #14371E;
 
-  --illuminate:       #0284C7;   /* deeper on light, so azure still reads on white */
-  --illuminate-quiet: rgba(2, 132, 199, 0.1);
-  --glow:          rgba(37, 99, 235, 0.12);   /* fainter on light — the ground is already bright */
+  --illuminate:       #D8F56A;
+  --illuminate-quiet: rgba(216, 245, 106, 0.14);
+  --glow:          rgba(160, 214, 84, 0.32);
 
-  --live:          #059669;
-  --live-quiet:    rgba(5, 150, 105, 0.1);
-  --warn:          #B45309;
-  --warn-quiet:    rgba(180, 83, 9, 0.1);
-  --danger:        #DC2626;
-  --danger-quiet:  rgba(220, 38, 38, 0.1);
+  --live:          #34D399;
+  --live-quiet:    rgba(52, 211, 153, 0.14);
+  --warn:          #E6BB45;
+  --warn-quiet:    rgba(230, 187, 69, 0.14);
+  --danger:        #E0705F;
+  --danger-quiet:  rgba(224, 112, 95, 0.14);
 }
 ```
 
 ### Rules
 
-- **One accent per screen — one hue, three roles.** `--accent` (indigo) marks the single most
-  important *action*; if a screen has two indigo buttons, one of them is wrong. The evolution:
+- **One accent per screen — one hue, three roles.** `--accent` (lime) marks the single most
+  important *action*; if a screen has two lime buttons, one of them is wrong. The evolution:
   that one hue may *also* appear as **light** (`--glow`) and as **data** (chart fills). Same
-  indigo, three roles — action, light, data — and still never a second *action* colour.
-- **`--illuminate` is not an accent.** The cyan is for data visualisation and lighting only:
-  a chart's second series, a sparkline's lit endpoint, a highlight inside a glow. It never
+  lime, three roles — action, light, data — and still never a second *action* colour.
+- **Text on lime is dark, not white.** Lime is a light colour; `--accent-text` is a deep forest
+  ink (`#14371E`). A white label on a lime button is unreadable — the one reskin gotcha, since
+  the old cobalt took white. Any on-accent text uses `--accent-text`.
+- **`--illuminate` is not an accent.** The brighter lime is for data visualisation and lighting
+  only: a chart's second series, a sparkline's lit endpoint, a highlight inside a glow. It never
   fills a button, marks a link, or signals a state. The moment it behaves like an action, it
   has become a second accent — which is the one thing the rule above forbids.
 - **Light is scarce and motivated.** `--glow` is *one* soft radial per view, placed as if a
@@ -217,9 +229,9 @@ correct; `✗` is a design bug, not a matter of taste.
 - ✗ Glass on a tool card, a nav rail, a settings panel, a table, or any admin surface.
 - ✗ Glass as a page background, or on more than one or two elements in a single view.
 
-**Cyan** (`--illuminate`)
+**Brighter lime** (`--illuminate`)
 - ✓ The second series in a chart; a sparkline's lit endpoint; a highlight inside a glow.
-- ✗ A cyan button, a cyan link, a cyan active-nav state. That makes it a second action accent.
+- ✗ An illuminate button, link, or active-nav state. That makes it a second action accent.
 
 **Editorial serif** (`--font-serif`, italic)
 - ✓ One or two lifted words in a marketing headline: "ship a new tool every *week*".
@@ -237,14 +249,25 @@ Type is where this product gets its personality. Four faces, four jobs, no excep
 the fourth is a spice, not a staple.
 
 ```css
---font-display: 'Sora', system-ui, sans-serif;            /* 600, 700 */
+--font-display: 'Sora', system-ui, sans-serif;            /* 300, 400, 600, 700 */
 --font-sans:    'Instrument Sans', system-ui, sans-serif;  /* 400, 500, 600 */
 --font-mono:    'JetBrains Mono', ui-monospace, monospace; /* 400, 500 */
 --font-serif:   'Instrument Serif', Georgia, serif;        /* 400 italic — MARKETING EMPHASIS ONLY */
 ```
 
+> **Rendering note.** These four are loaded by `next/font`, which sets `--font-sora` etc. on
+> `<body>`. The `--font-display` / `--font-sans` aliases are declared as *real* variables on
+> `<body>` (not only as `@theme inline` tokens), because the hand-authored type-scale
+> `@utility` rules reference `var(--font-display)` directly — an inline-only token resolves to
+> empty there and silently drops to a system font. If a heading ever looks like the OS default,
+> that variable chain is broken. See the `body { --font-* }` block in `globals.css`.
+
 **Sora** for display: geometric, slightly unusual letterforms, technical without being cold.
-Used only for page titles and the landing page. Never for UI chrome.
+Used only for page titles and the landing page. Never for UI chrome. In the "Spark" identity
+the big display sizes are set **thin** (300–400 weight, wide) the way the reference sets its
+hero words; **emphasis is a bold or serif span inside the line, never the whole heading.**
+Working-UI titles (`h1` and smaller) stay solid — thin type is a marketing gesture, not a
+legibility tax on every page header.
 
 **Instrument Serif**, italic, is the one editorial note — the single premium-layer addition to
 type. It carries **one or two emphasis words** inside a marketing headline ("ship a new tool
@@ -280,8 +303,8 @@ reads as considered rather than default.
 
 | Token | Size / line-height | Weight | Tracking | Face | Use |
 |---|---|---|---|---|---|
-| `display-xl` | 52 / 1.02 | 700 | -0.03em | display | Landing hero only |
-| `display-l` | 36 / 1.1 | 600 | -0.02em | display | Section heads, tool page title |
+| `display-xl` | 54 / 1.04 | 300 | -0.02em | display | Landing hero only (thin) |
+| `display-l` | 36 / 1.12 | 400 | -0.015em | display | Section heads, tool page title (thin) |
 | `h1` | 26 / 1.25 | 600 | -0.01em | display | Page titles in the app |
 | `h2` | 20 / 1.35 | 600 | -0.005em | sans | Card headers, section titles |
 | `h3` | 16 / 1.4 | 600 | 0 | sans | Sub-sections, dialog titles |
@@ -361,15 +384,31 @@ a border and nothing else.
 ```css
 --shadow-pop:   0 4px 12px -2px rgba(0,0,0,0.32);   /* dropdown, tooltip, toast */
 --shadow-modal: 0 24px 56px -16px rgba(0,0,0,0.60); /* dialog, sheet */
---shadow-float: 0 34px 90px -30px rgba(26,54,150,0.62); /* MARKETING floating cards only.
-                   Blue-tinted, not neutral black — a LIT shadow, as if the cobalt sky cast it. */
+--shadow-float: 0 34px 90px -30px rgba(90,170,60,0.45); /* MARKETING floating cards only.
+                   Green-lit, not neutral black — a LIT shadow, as if the lime glow cast it. */
 ```
 
 In light mode, halve the opacity of pop, modal, and float. **In-app content cards still get no
 shadow** — border and hover-lift only; that rule is unchanged and load-bearing. The exceptions
-are marketing-tier: a floating hero card may take `--shadow-float` (soft, cool-tinted — a lit
+are marketing-tier: a floating hero card may take `--shadow-float` (soft, green-tinted — a lit
 shadow, never a grey one), and glass surfaces carry their own light. Neither ever appears on a
 dashboard.
+
+### Grain — the Spark texture
+
+A single fixed, screen-locked film of fractal noise (`.grain`, `mix-blend-mode: soft-light`,
+opacity ~0.4) sits over the whole app and marketing ground, so the flat green fills read as a
+graded surface rather than a plastic gradient. It is mounted **once** per page tree (the app
+shell and the marketing layout each mount one), sits above the shell chrome but below portaled
+overlays (dialogs, the palette), and never intercepts a pointer. It is atmosphere, not an
+element — nothing is ever placed "on" the grain.
+
+### The Spark mark
+
+The brand mark is a **twelve-petal daisy/asterisk** (`components/brand/spark-mark.tsx`),
+petals in `currentColor` so it takes the accent from its wrapper, with a pale-lime center pip.
+It replaces the old gradient square as the logo (app shell + marketing header) and is always
+decorative (`aria-hidden`) — never a substitute for the "Build & Launch" wordmark beside it.
 
 ### Glass — the material, and where it is allowed
 
@@ -378,17 +417,16 @@ The tokens exist; the discipline is that they touch almost nothing.
 
 ```css
 /* Scarce and motivated (§1, §2). Marketing mockups + the run moment (§8) ONLY. */
---glass:       rgba(18, 22, 34, 0.60);      /* dark: navy translucent surface, sits over a glow */
---glass-top:   rgba(160, 190, 255, 0.14);   /* the light-catching top edge — this is what sells it */
---glass-edge:  rgba(150, 175, 255, 0.06);   /* the dimmer side and bottom edges */
+--glass:       rgba(16, 42, 33, 0.60);      /* dark: green translucent surface, sits over a glow */
+--glass-top:   rgba(205, 242, 150, 0.22);   /* the light-catching lime top edge — this sells it */
+--glass-edge:  rgba(160, 210, 120, 0.08);   /* the dimmer side and bottom edges */
 /* apply with: backdrop-filter: blur(20px) saturate(1.5); border-top uses --glass-top,
-   the other edges use --glass-edge. In light mode: --glass rgba(255,255,255,0.62),
-   --glass-top rgba(255,255,255,0.90), --glass-edge rgba(20,40,90,0.06). */
+   the other edges use --glass-edge. (Light mode mirrors dark for now — see §2.) */
 ```
 
 ### Light beams — the hero's signature (marketing only)
 
-The landing hero's cobalt sky is fanned by **soft light beams** — faint god-rays descending
+The landing hero's lime-lit green sky is fanned by **soft light beams** — faint god-rays descending
 from the top, built from a blurred, masked conic gradient (`.hero-beams`), purely decorative
 and static (so reduced-motion is a no-op). They are the loudest single element in the product
 and they live in **exactly one place**: the landing hero. Beams never appear in the app, never

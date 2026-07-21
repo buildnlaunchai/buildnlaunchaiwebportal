@@ -17,99 +17,104 @@
 /* ---------- DESIGN.md §2 — Color ----------------------------------------- */
 
 :root[data-theme="dark"] {
-  /* surfaces — deep navy-black ground, matched to the reference. Not neutral
-     graphite: a cool blue cast runs through every surface step. */
-  --canvas: #080a12; /* page background — deep navy-black */
-  --surface: #12151f; /* cards, panels, inputs */
-  --elevated: #1a1e2b; /* dropdowns, dialogs, hover states */
-  --sunken: #05060c; /* wells, terminal areas */
+  /* surfaces — the "Spark" world: a deep forest-green ground, matched to the
+     reference. Not neutral graphite: a warm green cast runs through every step. */
+  --canvas: #0b241d; /* page background — deep forest green */
+  --surface: #123528; /* cards, panels, inputs */
+  --elevated: #1a4535; /* dropdowns, dialogs, hover states */
+  --sunken: #071912; /* wells, terminal areas */
 
-  /* lines — navy-tinted hairlines */
-  --line: #232838;
-  --line-strong: #353c52;
+  /* lines — green-tinted hairlines */
+  --line: #274a3b;
+  --line-strong: #3a604e;
 
-  /* text — cool near-white, a touch bluer than before */
-  --text: #eef1f7;
-  --text-muted: #98a1b6;
-  --text-faint: #616a82;
+  /* text — warm cream, faintly yellow-green like the reference body copy */
+  --text: #eef4d6;
+  --text-muted: #9db8a6;
+  --text-faint: #6d8a79;
 
-  /* accent — the reference's electric cobalt. One hue, three roles:
-     action, light (--glow), data (chart fills). */
-  --accent: #2f6bff;
-  --accent-hover: #4d83ff;
-  --accent-quiet: rgba(47, 107, 255, 0.16);
-  --accent-text: #ffffff;
+  /* accent — the reference's acid lime. One hue, three roles:
+     action, light (--glow), data (chart fills). Lime is LIGHT, so on-accent
+     text is dark green ink, not white — see --accent-text. */
+  --accent: #c8f24f;
+  --accent-hover: #d6f96c;
+  --accent-quiet: rgba(200, 242, 79, 0.15);
+  --accent-text: #14371e; /* dark forest ink ON lime — the reskin's one gotcha */
 
-  /* illumination — a brighter azure companion for data + light only. */
-  --illuminate: #5cc2ff;
-  --illuminate-quiet: rgba(92, 194, 255, 0.14);
+  /* illumination — a brighter lime companion for data + light only. */
+  --illuminate: #d8f56a;
+  --illuminate-quiet: rgba(216, 245, 106, 0.14);
 
-  /* status — semantic only. Never decorative. */
+  /* status — semantic only. Never decorative. Emerald stays distinct from the
+     lime accent so "live" never reads as "action". */
   --live: #34d399;
-  --live-quiet: rgba(52, 211, 153, 0.12);
-  --warn: #fbbf24;
-  --warn-quiet: rgba(251, 191, 36, 0.12);
-  --danger: #f87171;
-  --danger-quiet: rgba(248, 113, 113, 0.12);
+  --live-quiet: rgba(52, 211, 153, 0.14);
+  --warn: #e6bb45;
+  --warn-quiet: rgba(230, 187, 69, 0.14);
+  --danger: #e0705f;
+  --danger-quiet: rgba(224, 112, 95, 0.14);
 
   /* DESIGN.md §6 — shadows are only for things that float above the page */
-  --shadow-pop-v: 0 4px 12px -2px rgba(0, 0, 0, 0.32);
-  --shadow-modal-v: 0 24px 56px -16px rgba(0, 0, 0, 0.6);
-  /* §6 — the premium float shadow. Blue-tinted (a LIT shadow), bigger + softer. */
-  --shadow-float-v: 0 34px 90px -30px rgba(26, 54, 150, 0.62);
+  --shadow-pop-v: 0 4px 12px -2px rgba(0, 0, 0, 0.4);
+  --shadow-modal-v: 0 24px 56px -16px rgba(0, 0, 0, 0.66);
+  /* §6 — the premium float shadow. Green-lit (a LIT shadow), bigger + softer. */
+  --shadow-float-v: 0 34px 90px -30px rgba(90, 170, 60, 0.45);
 
-  /* Light as a material — the reference's cobalt sky. Used by the hero glow. */
-  --glow: rgba(60, 120, 255, 0.32);
-  /* §6 — glass. Dark navy glass with a light-catching top edge. */
-  --glass: rgba(18, 22, 34, 0.6);
-  --glass-top: rgba(160, 190, 255, 0.14); /* the light-catching top edge */
-  --glass-edge: rgba(150, 175, 255, 0.06);
+  /* Light as a material — the reference's lime glow. Used by the hero glow. */
+  --glow: rgba(160, 214, 84, 0.32);
+  /* §6 — glass. Dark green glass with a light-catching lime top edge. */
+  --glass: rgba(16, 42, 33, 0.6);
+  --glass-top: rgba(205, 242, 150, 0.22); /* the light-catching top edge */
+  --glass-edge: rgba(160, 210, 120, 0.08);
 
-  --backdrop: rgba(2, 4, 12, 0.66);
+  --backdrop: rgba(4, 14, 10, 0.7);
   color-scheme: dark;
 }
 
+/* Spark ships as a single dark-green identity for now (the approved reference is
+   dark-dominant). The light block mirrors dark so a stale `light` preference —
+   or an OS that forces it — never falls back to a broken palette. The genuine
+   cream-green light theme (the reference's bright CTA slides) is a marketing-only
+   milestone; when it lands, these values diverge and the toggle returns. */
 :root[data-theme="light"] {
-  --canvas: #f6f8fc; /* a hair cooler, to carry the blue family */
-  --surface: #ffffff;
-  --elevated: #ffffff;
-  --sunken: #eef1f7;
+  --canvas: #0b241d;
+  --surface: #123528;
+  --elevated: #1a4535;
+  --sunken: #071912;
 
-  --line: #e2e6f0;
-  --line-strong: #c8cee0;
+  --line: #274a3b;
+  --line-strong: #3a604e;
 
-  --text: #0e1220;
-  --text-muted: #545c72;
-  --text-faint: #8b93a8;
+  --text: #eef4d6;
+  --text-muted: #9db8a6;
+  --text-faint: #6d8a79;
 
-  --accent: #2563eb; /* the reference blue, deepened so it reads on white */
-  --accent-hover: #1d4ed8;
-  --accent-quiet: rgba(37, 99, 235, 0.1);
-  --accent-text: #ffffff;
+  --accent: #c8f24f;
+  --accent-hover: #d6f96c;
+  --accent-quiet: rgba(200, 242, 79, 0.15);
+  --accent-text: #14371e;
 
-  --illuminate: #0284c7; /* deeper on light, so azure still reads on white */
-  --illuminate-quiet: rgba(2, 132, 199, 0.1);
+  --illuminate: #d8f56a;
+  --illuminate-quiet: rgba(216, 245, 106, 0.14);
 
-  --live: #059669;
-  --live-quiet: rgba(5, 150, 105, 0.1);
-  --warn: #b45309;
-  --warn-quiet: rgba(180, 83, 9, 0.1);
-  --danger: #dc2626;
-  --danger-quiet: rgba(220, 38, 38, 0.1);
+  --live: #34d399;
+  --live-quiet: rgba(52, 211, 153, 0.14);
+  --warn: #e6bb45;
+  --warn-quiet: rgba(230, 187, 69, 0.14);
+  --danger: #e0705f;
+  --danger-quiet: rgba(224, 112, 95, 0.14);
 
-  /* §6: "In light mode, halve the opacity." */
-  --shadow-pop-v: 0 4px 12px -2px rgba(0, 0, 0, 0.14);
-  --shadow-modal-v: 0 24px 56px -16px rgba(0, 0, 0, 0.28);
-  --shadow-float-v: 0 30px 70px -30px rgba(30, 60, 150, 0.28);
+  --shadow-pop-v: 0 4px 12px -2px rgba(0, 0, 0, 0.4);
+  --shadow-modal-v: 0 24px 56px -16px rgba(0, 0, 0, 0.66);
+  --shadow-float-v: 0 34px 90px -30px rgba(90, 170, 60, 0.45);
 
-  /* fainter on light — the ground is already bright */
-  --glow: rgba(37, 99, 235, 0.12);
-  --glass: rgba(255, 255, 255, 0.62);
-  --glass-top: rgba(255, 255, 255, 0.9);
-  --glass-edge: rgba(20, 40, 90, 0.06);
+  --glow: rgba(160, 214, 84, 0.32);
+  --glass: rgba(16, 42, 33, 0.6);
+  --glass-top: rgba(205, 242, 150, 0.22);
+  --glass-edge: rgba(160, 210, 120, 0.08);
 
-  --backdrop: rgba(6, 10, 24, 0.34);
-  color-scheme: light;
+  --backdrop: rgba(4, 14, 10, 0.7);
+  color-scheme: dark;
 }
 
 /* ---------- Expose the tokens to Tailwind -------------------------------- */
@@ -185,22 +190,42 @@
   --breakpoint-xl: 1280px;
 }
 
+/* next/font exposes --font-sora / --font-instrument-sans / … on <body>. The
+   @theme block above aliases them (--font-display, --font-sans, …) but as
+   `inline` tokens: Tailwind inlines those into the font-* utilities it GENERATES
+   and never emits them as runtime custom properties. Our hand-authored
+   type-scale @utilities below reference var(--font-display) etc. directly, so
+   without a real variable they silently fall back to system fonts everywhere.
+   Define the aliases as real, inheritable variables on <body> — the element
+   that actually carries the next/font variables — so the intended typefaces
+   render across the whole app, not just on raw `font-display` class elements. */
+body {
+  --font-display: var(--font-sora), system-ui, sans-serif;
+  --font-sans: var(--font-instrument-sans), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-serif: var(--font-instrument-serif), Georgia, serif;
+}
+
 /* ---------- DESIGN.md §3 — the type scale -------------------------------- */
 /* Named utilities, because a scale entry is one decision, not four. */
 
+/* §3 — "Spark" display: thin and wide at the big sizes, the way the reference
+   sets its hero words. Emphasis is carried by a bold span inside the line, not
+   by the whole heading. Working-UI titles (h1 and down) stay solid — thin type
+   is a marketing gesture, not a legibility tax on every page header. */
 @utility text-display-xl {
   font-family: var(--font-display);
-  font-size: 52px;
-  line-height: 1.02;
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-size: 54px;
+  line-height: 1.04;
+  font-weight: 300;
+  letter-spacing: -0.02em;
 }
 @utility text-display-l {
   font-family: var(--font-display);
   font-size: 36px;
-  line-height: 1.1;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  line-height: 1.12;
+  font-weight: 400;
+  letter-spacing: -0.015em;
 }
 @utility text-h1 {
   font-family: var(--font-display);
@@ -315,29 +340,29 @@
    the rule. Marketing mockups and the run moment only — never a content card. */
 
 @layer components {
-  /* The hero sky — the reference's signature. A bright cobalt light filling the
-     TOP of the hero and fading into the navy ground, as if lit from above and
-     behind. Layered: a broad ambient wash + a hotter core near the top. The
-     parent must be `relative` (and usually `overflow-hidden`). */
+  /* The hero sky — the reference's signature. A lime-lit green field filling the
+     TOP of the hero and fading into the forest ground, as if lit from above and
+     behind. Layered: a broad ambient green wash + a hotter lime core near the
+     top. The parent must be `relative` (and usually `overflow-hidden`). */
   .glow {
     position: absolute;
     inset: 0;
     pointer-events: none;
     z-index: 0;
     background:
-      /* broad ambient cobalt wash */
+      /* broad ambient green wash */
       radial-gradient(
         145% 72% at 50% -14%,
-        rgba(118, 172, 255, 0.66) 0%,
-        rgba(64, 120, 250, 0.44) 22%,
-        rgba(34, 68, 190, 0.22) 42%,
+        rgba(120, 200, 90, 0.6) 0%,
+        rgba(78, 160, 70, 0.4) 22%,
+        rgba(40, 96, 54, 0.2) 42%,
         transparent 64%
       ),
-      /* the hot core near the very top — a near-white-blue light source */
+      /* the hot core near the very top — a bright chartreuse light source */
       radial-gradient(
         72% 46% at 50% -10%,
-        rgba(198, 224, 255, 0.6) 0%,
-        rgba(120, 175, 255, 0.28) 34%,
+        rgba(214, 245, 120, 0.62) 0%,
+        rgba(170, 224, 90, 0.3) 34%,
         transparent 60%
       );
   }
@@ -356,16 +381,16 @@
     background: conic-gradient(
       from 180deg at 50% 0%,
       transparent 0deg,
-      rgba(200, 224, 255, 0.22) 10deg,
+      rgba(212, 245, 130, 0.22) 10deg,
       transparent 20deg,
       transparent 38deg,
-      rgba(200, 224, 255, 0.16) 50deg,
+      rgba(212, 245, 130, 0.16) 50deg,
       transparent 60deg,
       transparent 120deg,
-      rgba(200, 224, 255, 0.16) 130deg,
+      rgba(212, 245, 130, 0.16) 130deg,
       transparent 140deg,
       transparent 158deg,
-      rgba(200, 224, 255, 0.22) 170deg,
+      rgba(212, 245, 130, 0.22) 170deg,
       transparent 180deg
     );
     -webkit-mask: radial-gradient(74% 72% at 50% 0%, #000 0%, transparent 70%);
@@ -385,7 +410,7 @@
     z-index: 0;
     background: radial-gradient(
       70% 100% at 60% -30%,
-      rgba(60, 120, 255, 0.12),
+      rgba(160, 214, 84, 0.14),
       transparent 64%
     );
   }
@@ -397,9 +422,25 @@
     z-index: 0;
     background: radial-gradient(
       90% 60% at 30% -10%,
-      rgba(60, 120, 255, 0.18),
+      rgba(160, 214, 84, 0.2),
       transparent 66%
     );
+  }
+
+  /* Grain — the reference's signature texture. A fixed, non-interacting film of
+     fractal noise laid over the whole ground in soft-light, so the flat green
+     fills read as a printed/graded surface rather than a plastic gradient. One
+     element, mounted once by the shell; decorative, so reduced-motion is moot. */
+  .grain {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    /* above the shell chrome (sidebar z-30, header z-20) so the film is uniform,
+       but below portaled overlays (dialogs, palette, dropdowns at z-50+). */
+    z-index: 40;
+    opacity: 0.4;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   /* A lit translucent pane. The top edge is brighter than the sides — that
