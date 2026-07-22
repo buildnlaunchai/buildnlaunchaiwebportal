@@ -1,4 +1,13 @@
-import { ArrowRight, LayoutGrid, Package } from "lucide-react";
+import {
+  ArrowRight,
+  FileText,
+  KeyRound,
+  LayoutGrid,
+  Package,
+  Rocket,
+  ShieldCheck,
+  UserCheck,
+} from "lucide-react";
 import Link from "next/link";
 
 import { CatalogCard } from "@/components/marketing/catalog-card";
@@ -19,24 +28,27 @@ export const revalidate = 300;
 
 const WHAT_YOU_GET = [
   {
+    icon: Package,
     title: "A new tool on a cadence",
     body: "I build automation tools in public and ship them here. The catalog gets longer every week; your membership covers all of it.",
   },
   {
+    icon: KeyRound,
     title: "Your keys, your bill",
     body: "Tools run on your own provider API keys. You pay OpenAI or Google directly, at cost, with no markup and nothing running through me.",
   },
   {
+    icon: ShieldCheck,
     title: "No lock-in, no card",
     body: "Membership is free while I build in public. There's no payment, no subscription to cancel, and your keys are yours to remove any time.",
   },
 ];
 
 const HOW_IT_WORKS = [
-  { step: "1", title: "Apply", body: "Tell me what you'd automate first. Takes a minute." },
-  { step: "2", title: "Get approved", body: "I review these personally, usually within a day." },
-  { step: "3", title: "Connect your keys", body: "Add a provider key once. It's encrypted, and no screen can show it back." },
-  { step: "4", title: "Run", body: "Fill in the form, hit run, get your result. That's the whole job." },
+  { step: "1", icon: FileText, title: "Apply", body: "Tell me what you'd automate first. Takes a minute." },
+  { step: "2", icon: UserCheck, title: "Get approved", body: "I review these personally, usually within a day." },
+  { step: "3", icon: KeyRound, title: "Connect your keys", body: "Add a provider key once. It's encrypted, and no screen can show it back." },
+  { step: "4", icon: Rocket, title: "Run", body: "Fill in the form, hit run, get your result. That's the whole job." },
 ];
 
 export default async function LandingPage() {
@@ -83,31 +95,68 @@ export default async function LandingPage() {
         </section>
       )}
 
-      {/* 3 — What you get */}
+      {/* 3 — What you get: glowing feature cards (icon + heading + copy) */}
       <section className="py-24">
-        <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-3">
-          {WHAT_YOU_GET.map((col) => (
-            <div key={col.title}>
-              <h3 className="text-h3">{col.title}</h3>
-              <p className="mt-2 text-small text-text-muted">{col.body}</p>
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          {WHAT_YOU_GET.map(({ icon: Icon, title, body }) => (
+            <div
+              key={title}
+              className="relative flex items-center gap-5 rounded-[20px] border border-line bg-surface/40 p-6 shadow-[0_0_50px_-20px_rgba(200,242,79,0.2)] [border-top-color:rgba(200,242,79,0.16)]"
+            >
+              <span className="relative flex size-24 shrink-0 items-center justify-center">
+                <span
+                  aria-hidden
+                  className="absolute inset-1 rounded-full bg-[radial-gradient(circle,rgba(200,242,79,0.22),transparent_68%)]"
+                />
+                <Icon
+                  aria-hidden
+                  className="relative size-11 text-accent [filter:drop-shadow(0_0_12px_rgba(200,242,79,0.65))]"
+                  strokeWidth={1.4}
+                />
+              </span>
+              <div className="min-w-0">
+                <span aria-hidden className="block h-0.5 w-7 rounded-pill bg-accent" />
+                <h3 className="mt-3 text-h3">{title}</h3>
+                <p className="mt-2 text-small text-text-muted">{body}</p>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* 4 — How access works (a genuine sequence, so it's numbered) */}
+      {/* 4 — How access works: a numbered step flow with connectors */}
       <section className="py-24">
-        <p className="text-eyebrow text-text-faint">How access works</p>
-        <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {HOW_IT_WORKS.map((s) => (
-            <div key={s.step} className="flex flex-col gap-3">
-              <span className="text-mono flex size-8 items-center justify-center rounded-sm border border-line text-text-muted">
-                {s.step}
-              </span>
-              <h3 className="text-h3">{s.title}</h3>
-              <p className="text-small text-text-muted">{s.body}</p>
-            </div>
-          ))}
+        <div className="rounded-[24px] border border-line bg-surface/25 p-6 sm:p-10 [border-top-color:rgba(200,242,79,0.14)]">
+          <p className="text-eyebrow text-accent">How access works</p>
+          <div className="mt-10 grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
+            {HOW_IT_WORKS.map(({ step, icon: Icon, title, body }, i) => (
+              <div key={step} className="relative flex flex-col items-start">
+                <span className="text-body-strong flex size-9 items-center justify-center rounded-pill border border-[color:rgba(200,242,79,0.5)] bg-canvas font-semibold text-accent shadow-[0_0_16px_-2px_rgba(200,242,79,0.55)]">
+                  {step}
+                </span>
+
+                <div className="relative mt-4 flex size-[88px] items-center justify-center rounded-[18px] border border-line bg-surface/50 shadow-[inset_0_0_36px_-12px_rgba(200,242,79,0.4)] [border-top-color:rgba(200,242,79,0.2)]">
+                  <Icon
+                    aria-hidden
+                    className="size-9 text-accent [filter:drop-shadow(0_0_10px_rgba(200,242,79,0.6))]"
+                    strokeWidth={1.4}
+                  />
+                  {i < HOW_IT_WORKS.length - 1 && (
+                    <span
+                      aria-hidden
+                      className="absolute left-full top-1/2 hidden h-px w-[204px] -translate-y-1/2 bg-[color:rgba(200,242,79,0.3)] lg:block"
+                    >
+                      <span className="absolute left-0 top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-pill border border-[color:rgba(200,242,79,0.6)] bg-canvas" />
+                      <span className="absolute right-0 top-1/2 size-2 -translate-y-1/2 translate-x-1/2 rounded-pill border border-[color:rgba(200,242,79,0.6)] bg-canvas" />
+                    </span>
+                  )}
+                </div>
+
+                <h3 className="mt-5 text-h3">{title}</h3>
+                <p className="mt-2 text-small text-text-muted">{body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
