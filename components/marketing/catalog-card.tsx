@@ -35,7 +35,6 @@ const CARD_BG =
  * access live as chips in the body; the lower section fades into near-black.
  */
 export function CatalogCard({ tool }: { tool: ToolCardData }) {
-  const runtimeBadge = RUNTIME_LABEL[tool.runtime].toUpperCase();
   const category = (tool.category ?? RUNTIME_LABEL[tool.runtime]).toUpperCase();
   const runsFree =
     tool.access_type === "public_preview" && tool.required_providers.length === 0;
@@ -99,10 +98,6 @@ export function CatalogCard({ tool }: { tool: ToolCardData }) {
             <ToolIcon name={tool.icon} className="size-10 opacity-60" />
           </div>
         )}
-        <span className="text-mono-chip absolute left-3.5 top-3.5 inline-flex items-center gap-1.5 rounded-[9px] border border-[color:rgba(200,242,79,0.3)] bg-[var(--backdrop)] px-2.5 py-1.5 uppercase tracking-[0.06em] text-accent backdrop-blur-sm">
-          <ToolIcon name={tool.icon} className="size-3.5" />
-          {runtimeBadge}
-        </span>
       </div>
 
       {/* body — name, full tagline, then category + access chips */}
