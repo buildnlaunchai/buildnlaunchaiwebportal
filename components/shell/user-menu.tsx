@@ -1,7 +1,8 @@
 "use client";
 
-import { ChevronDown, LogOut, Settings } from "lucide-react";
+import { ChevronDown, LayoutGrid, LogOut, Settings, Shield } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { signOut } from "@/actions/auth";
@@ -16,14 +17,19 @@ export function UserMenu({
   email,
   fullName,
   avatarUrl,
+  isAdmin = false,
 }: {
   email: string;
   fullName: string | null;
   avatarUrl: string | null;
+  /** Show the cross-link between the member and admin dashboards. */
+  isAdmin?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const onAdmin = pathname.startsWith("/admin");
 
   const name = fullName ?? email;
   const initial = (fullName ?? email).trim().charAt(0).toUpperCase();
@@ -92,6 +98,28 @@ export function UserMenu({
             <p className="truncate text-mono text-text-faint">{email}</p>
           </div>
           <div className="p-1">
+            {isAdmin &&
+              (onAdmin ? (
+                <Link
+                  href="/dashboard"
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
+                  className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-body text-text-muted transition-colors duration-micro ease-default hover:bg-surface hover:text-text"
+                >
+                  <LayoutGrid aria-hidden className="size-4" strokeWidth={1.6} />
+                  Dashboard
+                </Link>
+              ) : (
+                <Link
+                  href="/admin"
+                  role="menuitem"
+                  onClick={() => setOpen(false)}
+                  className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-body text-text-muted transition-colors duration-micro ease-default hover:bg-surface hover:text-text"
+                >
+                  <Shield aria-hidden className="size-4" strokeWidth={1.6} />
+                  Admin Dashboard
+                </Link>
+              ))}
             <Link
               href="/dashboard/settings"
               role="menuitem"

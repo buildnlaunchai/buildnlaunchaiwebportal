@@ -261,6 +261,7 @@ export function AppShell({
               email={user.email}
               fullName={user.fullName}
               avatarUrl={user.avatarUrl}
+              isAdmin={isAdmin}
             />
           </div>
         </header>
