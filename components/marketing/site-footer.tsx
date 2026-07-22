@@ -7,7 +7,7 @@ const YEAR = new Date().getFullYear();
 const LINKS = [
   { href: "/tools", label: "Tools" },
   { href: "/changelog", label: "Changelog" },
-  { href: "/apply", label: "Apply" },
+  { href: "/dashboard", label: "Subscribe" },
   { href: "/login", label: "Log in" },
 ];
 

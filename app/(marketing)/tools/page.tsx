@@ -1,12 +1,12 @@
 import { Sparkles } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
 
+import { SubscribeButton } from "@/components/billing/subscribe-button";
 import { SparkBackground } from "@/components/brand/spark-background";
 import { CatalogCard } from "@/components/marketing/catalog-card";
 import { CatalogHero } from "@/components/marketing/catalog-hero";
 import { CatalogSection } from "@/components/marketing/catalog-section";
-import { Button } from "@/components/ui/button";
+import { getSubscribePriceId } from "@/lib/billing";
 import { getPublicCatalog } from "@/lib/tools";
 
 // ISR: the catalog renders from the database, so refresh the static HTML
@@ -20,7 +20,8 @@ export const metadata: Metadata = {
 };
 
 export default async function ToolsCatalogPage() {
-  const { featured, featuredStats, tools, newCutoff } = await getPublicCatalog();
+  const [{ featured, featuredStats, tools, newCutoff }, priceId] =
+    await Promise.all([getPublicCatalog(), getSubscribePriceId()]);
 
   return (
     <>
@@ -38,8 +39,8 @@ export default async function ToolsCatalogPage() {
         <div>
           <h1 className="text-display-l">The tools</h1>
           <p className="mt-4 max-w-[52ch] text-body text-text-muted">
-            The first tools land here soon. Apply for access and you&apos;ll be
-            first in line.
+            The first tools land here soon. Subscribe and you&apos;ll be first to
+            run them.
           </p>
           {tools.length > 0 && (
             <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -59,13 +60,11 @@ export default async function ToolsCatalogPage() {
         <div>
           <h2 className="text-h2">Want access to all tools?</h2>
           <p className="mt-1 text-small text-text-muted">
-            Access is by application — free while I build in public. I just like to
-            know who&apos;s using what.
+            One membership, the whole catalog. $10/month, and you bring your own
+            API keys.
           </p>
         </div>
-        <Link href="/apply" className="sm:ml-auto">
-          <Button variant="primary">Become a member</Button>
-        </Link>
+        <SubscribeButton priceId={priceId} className="shrink-0 sm:ml-auto" />
       </div>
       </div>
     </>

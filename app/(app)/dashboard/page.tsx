@@ -1,26 +1,26 @@
-import { Clock, LayoutGrid, Rocket } from "lucide-react";
+import { LayoutGrid, Rocket } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { SubscribeButton } from "@/components/billing/subscribe-button";
 import { ToolCard } from "@/components/tools/tool-card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Panel } from "@/components/ui/panel";
 import { CardGridSkeleton } from "@/components/ui/skeletons";
 import { requireUser } from "@/lib/access";
-import { getMyLatestApplication } from "@/lib/applications";
+import { getSubscribePriceId } from "@/lib/billing";
 import { getMyKeyStatusByProvider } from "@/lib/keys";
 import { getMyAccessibleTools, getMyMembership, isMembershipActive } from "@/lib/member";
-import { formatShipDate } from "@/lib/format";
 
 /**
  * The Apps section (§8). The empty state is one of the most important screens in
- * the product (DESIGN.md §12): a new signup has to be sold, oriented, and
- * converted with no data at all. So this branches on where the user actually is:
- *   - has accessible tools → the unlocked grid
- *   - applied, still pending → the queue state
- *   - approved but nothing accessible yet → gentle orientation
- *   - never applied → the apply CTA
+ * the product (DESIGN.md §12): a signed-in non-member has to be sold and
+ * converted with no data at all. With the paid model it branches on membership,
+ * not applications:
+ *   - has accessible tools → the unlocked grid (a non-member still sees previews)
+ *   - active member, nothing unlocked yet → gentle orientation
+ *   - signed in, no membership → the Subscribe moment
  */
 
 /** The dashboard empty state gets vertical presence — it's the whole funnel. */
@@ -32,8 +32,8 @@ function CenteredEmpty({ children }: { children: React.ReactNode }) {
 
 /**
  * The Apps index streams behind an in-page Suspense so the grid skeleton shows
- * while the four queries resolve. This boundary wraps ONLY this page's content —
- * NOT a route-level `loading.tsx`, which would put a Suspense over every nested
+ * while the queries resolve. This boundary wraps ONLY this page's content — NOT a
+ * route-level `loading.tsx`, which would put a Suspense over every nested
  * dashboard route and flush a 200 before a descendant's `notFound()` could set a
  * 404. The runner's access gate (§13) depends on that 404, so loading state here
  * lives in the page, not the segment.
@@ -49,23 +49,24 @@ export default function DashboardPage() {
 async function Apps() {
   await requireUser("/dashboard");
 
-  const [tools, membership, application, keyStatuses] = await Promise.all([
+  const [tools, membership, keyStatuses, priceId] = await Promise.all([
     getMyAccessibleTools(),
     getMyMembership(),
-    getMyLatestApplication(),
     getMyKeyStatusByProvider(),
+    getSubscribePriceId(),
   ]);
 
-  // Has tools → show them. This covers members AND applicants who can run the
-  // public_preview tools (the funnel: run something before you ever apply).
+  const active = isMembershipActive(membership);
+
+  // Has tools → show them. This covers members AND non-members who can run the
+  // public_preview tools (the funnel: run something before you ever pay).
   if (tools.length > 0) {
-    const active = isMembershipActive(membership);
     return (
       <div className="flex flex-col gap-6">
         <p className="text-small text-text-muted">
           {active
             ? `${tools.length} ${tools.length === 1 ? "tool" : "tools"} unlocked.`
-            : "Open to everyone — no key needed. Apply to unlock the rest."}
+            : "Open to everyone — no key needed. Subscribe to unlock the rest."}
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tools.map((tool) => (
@@ -78,48 +79,25 @@ async function Apps() {
           ))}
         </div>
         {!active && (
-          <Panel className="flex items-center justify-between gap-4">
+          <Panel className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
             <p className="text-small text-text-muted">
-              Want the full catalog?{" "}
-              {application?.status === "pending"
-                ? "Your application is in review."
-                : "Access is free while I build in public."}
+              Want the full catalog? $10/month, cancel anytime — you bring your
+              own keys.
             </p>
-            {application?.status !== "pending" && (
-              <Link href="/apply" className="shrink-0">
-                <Button variant="secondary" size="sm">
-                  Apply for access
-                </Button>
-              </Link>
-            )}
+            <SubscribeButton
+              priceId={priceId}
+              variant="secondary"
+              size="sm"
+              className="shrink-0"
+            />
           </Panel>
         )}
       </div>
     );
   }
 
-  // No accessible tools. Orient by application state (§12 voice).
-  if (application?.status === "pending") {
-    return (
-      <CenteredEmpty>
-        <EmptyState
-          icon={Clock}
-          title="You're in the queue"
-          description={`Applied ${formatShipDate(
-            application.created_at,
-          )}. I review these personally, usually within a day. You'll get an email the moment I do.`}
-          action={
-            <Link href="/tools">
-              <Button variant="secondary">Browse the tools</Button>
-            </Link>
-          }
-        />
-      </CenteredEmpty>
-    );
-  }
-
-  if (application?.status === "approved" || isMembershipActive(membership)) {
-    // Approved, but no tools resolved yet (e.g. no member-access tools exist).
+  // No accessible tools yet. An active member is just early.
+  if (active) {
     return (
       <CenteredEmpty>
         <EmptyState
@@ -136,17 +114,20 @@ async function Apps() {
     );
   }
 
-  // Never applied (or waitlisted/rejected) and nothing accessible.
+  // Signed in, no membership — the conversion moment.
   return (
     <CenteredEmpty>
       <EmptyState
         icon={LayoutGrid}
-        title="Nothing here yet"
-        description="Tools unlock when your application is approved. It usually takes a day."
+        title="Unlock the tools"
+        description="Membership is $10/month. Bring your own API keys, run every tool in the catalog, and cancel anytime."
         action={
-          <Link href="/apply">
-            <Button variant="primary">Apply for access</Button>
-          </Link>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <SubscribeButton priceId={priceId} />
+            <Link href="/tools">
+              <Button variant="secondary">Browse the tools</Button>
+            </Link>
+          </div>
         }
       />
     </CenteredEmpty>

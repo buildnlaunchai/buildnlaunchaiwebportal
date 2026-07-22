@@ -81,7 +81,7 @@ export function ToolCard({
           ? { label: isIframe ? "Open" : "Run", href: cardHref }
           : isPublicPreview
             ? { label: "Try it free", href: `/login?next=/dashboard/tools/${tool.slug}` }
-            : { label: "Apply", href: "/apply" };
+            : { label: "View", href: `/tools/${tool.slug}` };
 
   return (
     <article className="group relative flex min-h-[224px] flex-col overflow-hidden rounded-[14px] border border-line bg-surface p-5 transition-[border-color,transform,box-shadow] duration-micro ease-default [border-top-color:var(--line-strong)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_20px_44px_-26px_rgba(60,140,50,0.55)]">

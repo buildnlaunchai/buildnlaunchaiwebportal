@@ -8,7 +8,6 @@ import { getPublicTools } from "@/lib/tools";
 /* CLAUDE.md §8 — admin. Grouped for the sidebar (§10). */
 const NAV: NavItem[] = [
   { href: "/admin", label: "Overview", icon: "overview", section: "Manage" },
-  { href: "/admin/applications", label: "Applications", icon: "applications", section: "Manage" },
   { href: "/admin/users", label: "Users", icon: "users", section: "Manage" },
   { href: "/admin/tools", label: "Tools", icon: "tools", section: "Catalog" },
   { href: "/admin/announcements", label: "Announcements", icon: "announcements", section: "Catalog" },

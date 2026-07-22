@@ -9,7 +9,13 @@ import { cn } from "@/lib/utils";
  * with the live stat cards below. The cube is a CSS approximation of a rendered
  * 3D asset; swap in a real render (an <img>) when there is one.
  */
-export function Hero({ shipped }: { shipped: number }) {
+export function Hero({
+  shipped,
+  priceId,
+}: {
+  shipped: number;
+  priceId: string | null;
+}) {
   return (
     <section className="relative overflow-hidden">
       <div className="glow" aria-hidden />
@@ -40,13 +46,13 @@ export function Hero({ shipped }: { shipped: number }) {
             </h1>
 
             <p className="mt-6 max-w-[52ch] text-body text-text-muted">
-              I ship a new automation tool every week. Approved members run them
-              with their own API keys — you pay your provider directly, and
+              I ship a new automation tool every week. Members run them with their
+              own API keys for $10/month — you pay your provider directly, and
               nothing runs through my bill.
             </p>
 
             <div className="mt-8">
-              <HeroCta />
+              <HeroCta priceId={priceId} />
             </div>
 
             {shipped > 0 && (

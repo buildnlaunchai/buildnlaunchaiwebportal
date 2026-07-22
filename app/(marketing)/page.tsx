@@ -1,19 +1,19 @@
 import {
   ArrowRight,
-  FileText,
+  CreditCard,
   KeyRound,
   LayoutGrid,
   Package,
   Rocket,
   ShieldCheck,
-  UserCheck,
 } from "lucide-react";
 import Link from "next/link";
 
+import { SubscribeButton } from "@/components/billing/subscribe-button";
 import { CatalogCard } from "@/components/marketing/catalog-card";
 import { Hero } from "@/components/marketing/hero";
 import { ShippingLog } from "@/components/marketing/shipping-log";
-import { Button } from "@/components/ui/button";
+import { getSubscribePriceId } from "@/lib/billing";
 import { getPublicTools, getShippingLog } from "@/lib/tools";
 
 // ISR: the shipping log and catalog render from the database, so refresh the
@@ -30,37 +30,37 @@ const WHAT_YOU_GET = [
   {
     icon: Package,
     title: "A new tool on a cadence",
-    body: "I build automation tools in public and ship them here. The catalog gets longer every week; your membership covers all of it.",
+    body: "I build automation tools in public and ship them here. The catalog gets longer every week; your $10/month covers all of it.",
   },
   {
     icon: KeyRound,
     title: "Your keys, your bill",
-    body: "Tools run on your own provider API keys. You pay OpenAI or Google directly, at cost, with no markup and nothing running through me.",
+    body: "Tools run on your own provider API keys. You pay OpenAI or Google directly, at cost — the $10/month is for the tools, not the compute.",
   },
   {
     icon: ShieldCheck,
-    title: "No lock-in, no card",
-    body: "Membership is free while I build in public. There's no payment, no subscription to cancel, and your keys are yours to remove any time.",
+    title: "No lock-in",
+    body: "Ten dollars a month, and you can cancel in a click. No annual commitment, and your keys are yours to remove any time.",
   },
 ];
 
 const HOW_IT_WORKS = [
-  { step: "1", icon: FileText, title: "Apply", body: "Tell me what you'd automate first. Takes a minute." },
-  { step: "2", icon: UserCheck, title: "Get approved", body: "I review these personally, usually within a day." },
-  { step: "3", icon: KeyRound, title: "Connect your keys", body: "Add a provider key once. It's encrypted, and no screen can show it back." },
-  { step: "4", icon: Rocket, title: "Run", body: "Fill in the form, hit run, get your result. That's the whole job." },
+  { step: "1", icon: CreditCard, title: "Subscribe", body: "$10/month, one click. No application, no waiting for approval." },
+  { step: "2", icon: KeyRound, title: "Connect your keys", body: "Add a provider key once. It's encrypted, and no screen can show it back." },
+  { step: "3", icon: Rocket, title: "Run", body: "Fill in the form, hit run, get your result. That's the whole job." },
 ];
 
 export default async function LandingPage() {
-  const [shippingLog, tools] = await Promise.all([
+  const [shippingLog, tools, priceId] = await Promise.all([
     getShippingLog(),
     getPublicTools(),
+    getSubscribePriceId(),
   ]);
 
   return (
     <>
       {/* 1 — Hero (full-bleed: the cobalt sky spans the whole viewport) */}
-      <Hero shipped={shippingLog.length} />
+      <Hero shipped={shippingLog.length} priceId={priceId} />
 
       <div className="mx-auto w-full max-w-[1200px] px-5 lg:px-8">
       {/* 2 — The Shipping Log (the signature) */}
@@ -128,7 +128,7 @@ export default async function LandingPage() {
       <section className="py-24">
         <div className="rounded-[24px] border border-line bg-surface/25 p-6 sm:p-10 [border-top-color:rgba(200,242,79,0.14)]">
           <p className="text-eyebrow text-accent">How access works</p>
-          <div className="mt-10 grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {HOW_IT_WORKS.map(({ step, icon: Icon, title, body }, i) => (
               <div key={step} className="relative flex flex-col items-start">
                 <span className="text-body-strong flex size-9 items-center justify-center rounded-pill border border-[color:rgba(200,242,79,0.5)] bg-canvas font-semibold text-accent shadow-[0_0_16px_-2px_rgba(200,242,79,0.55)]">
@@ -190,13 +190,11 @@ export default async function LandingPage() {
             Ready when you are.
           </h2>
           <p className="prose-measure text-body text-text-muted">
-            Apply once. Free while I build in public.
+            $10/month. Cancel anytime. Your keys, your bill.
           </p>
-          <Link href="/apply" className="mt-2">
-            <Button variant="primary" size="lg">
-              Apply for access
-            </Button>
-          </Link>
+          <div className="mt-2">
+            <SubscribeButton priceId={priceId} size="lg" />
+          </div>
         </div>
       </section>
       </div>

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { SubscribeButton } from "@/components/billing/subscribe-button";
 import { NotifyMeButton } from "@/components/tools/notify-me-button";
 import { ProviderChip } from "@/components/tools/provider-chip";
 import { StatusPill } from "@/components/tools/status-pill";
@@ -10,6 +11,7 @@ import { ToolFormPreview } from "@/components/tools/tool-form-preview";
 import { ToolIcon } from "@/components/tools/tool-icon";
 import { YouTubeEmbed } from "@/components/tools/youtube-embed";
 import { Button } from "@/components/ui/button";
+import { getSubscribePriceId } from "@/lib/billing";
 import { parseInputSchema } from "@/lib/tool-schema";
 import { getPublicTools, getToolBySlug } from "@/lib/tools";
 
@@ -51,18 +53,15 @@ export default async function ToolPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const tool = await getToolBySlug(slug);
+  const [tool, priceId] = await Promise.all([
+    getToolBySlug(slug),
+    getSubscribePriceId(),
+  ]);
   if (!tool) notFound();
 
   const inputSchema = parseInputSchema(tool.input_schema);
   const isComingSoon = tool.status === "coming_soon";
   const isPublicPreview = tool.access_type === "public_preview";
-
-  const cta = isComingSoon
-    ? { label: "Notify me when it ships", href: "/apply" }
-    : isPublicPreview
-      ? { label: "Try it free", href: `/login?next=/dashboard/tools/${tool.slug}` }
-      : { label: "Apply for access", href: "/apply" };
 
   return (
     <article className="mx-auto w-full max-w-[1200px] px-5 py-12 lg:px-8">
@@ -150,16 +149,18 @@ export default async function ToolPage({
             <div className="mt-6">
               {isComingSoon ? (
                 <NotifyMeButton toolId={tool.id} size="md" className="w-full" />
-              ) : (
-                <Link href={cta.href}>
+              ) : isPublicPreview ? (
+                <Link href={`/login?next=/dashboard/tools/${tool.slug}`}>
                   <Button variant="primary" className="w-full">
-                    {cta.label}
+                    Try it free
                   </Button>
                 </Link>
+              ) : (
+                <SubscribeButton priceId={priceId} block />
               )}
               {!isComingSoon && !isPublicPreview && (
                 <p className="mt-3 text-small text-text-muted">
-                  Approved members run this with their own key.
+                  Members run this with their own key.
                 </p>
               )}
             </div>

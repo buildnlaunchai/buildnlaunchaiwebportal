@@ -1,5 +1,4 @@
 import { BarChart3, LineChart } from "lucide-react";
-import Link from "next/link";
 
 import { Panel, SectionHeader } from "@/components/ui/panel";
 import { requireAdmin } from "@/lib/access";
@@ -39,17 +38,9 @@ export default async function AdminOverviewPage() {
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-eyebrow text-text-faint">Last 7 days</h2>
-          {m.pendingApplications > 0 && (
-            <Link href="/admin/applications?status=pending" className="text-small text-accent transition-colors duration-micro ease-default hover:text-accent-hover">
-              {m.pendingApplications} to review →
-            </Link>
-          )}
-        </div>
+        <h2 className="text-eyebrow text-text-faint">Last 7 days</h2>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric label="Pending applications" value={String(m.pendingApplications)} />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Metric label="Active members" value={String(m.activeMembers)} />
           <Metric label="Runs (7d)" value={String(m.runs7d)} />
           <Metric label="Run success rate" value={m.successRate === null ? "—" : `${m.successRate}%`} />

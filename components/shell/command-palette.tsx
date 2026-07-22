@@ -73,7 +73,6 @@ export function CommandPalette({
     const adminNav: Item[] = isAdmin
       ? [
           { id: "a-overview", label: "Admin · Overview", group: "Admin", keywords: "admin overview metrics", run: go("/admin") },
-          { id: "a-apps", label: "Admin · Applications", group: "Admin", keywords: "admin applications review queue", run: go("/admin/applications") },
           { id: "a-users", label: "Admin · Users", group: "Admin", keywords: "admin users members", run: go("/admin/users") },
           { id: "a-tools", label: "Admin · Tools", group: "Admin", keywords: "admin tools editor", run: go("/admin/tools") },
           { id: "a-audit", label: "Admin · Audit log", group: "Admin", keywords: "admin audit log", run: go("/admin/audit") },

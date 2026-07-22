@@ -38,6 +38,15 @@ const nextConfig: NextConfig = {
         : []),
     ],
   },
+  // The free apply flow is retired — membership is a paid Paddle subscription now.
+  // Send old /apply links (and any bookmarks) to where you subscribe; 307 so it's
+  // not cached permanently in case the funnel changes again.
+  async redirects() {
+    return [
+      { source: "/apply", destination: "/dashboard", permanent: false },
+      { source: "/apply/thanks", destination: "/dashboard", permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;

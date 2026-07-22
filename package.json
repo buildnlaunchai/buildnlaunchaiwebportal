@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
+    "@paddle/paddle-js": "^1.6.4",
     "@supabase/ssr": "^0.12.1",
     "@supabase/supabase-js": "^2.110.3",
     "aws4fetch": "^1.0.20",
