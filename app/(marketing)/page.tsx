@@ -1,8 +1,8 @@
 import Link from "next/link";
 
+import { CatalogCard } from "@/components/marketing/catalog-card";
 import { Hero } from "@/components/marketing/hero";
 import { ShippingLog } from "@/components/marketing/shipping-log";
-import { ToolCard } from "@/components/tools/tool-card";
 import { Button } from "@/components/ui/button";
 import { getPublicTools, getShippingLog } from "@/lib/tools";
 
@@ -109,9 +109,9 @@ export default async function LandingPage() {
               See all →
             </Link>
           </div>
-          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {tools.map((tool) => (
-              <ToolCard key={tool.slug} tool={tool} />
+              <CatalogCard key={tool.slug} tool={tool} />
             ))}
           </div>
         </section>

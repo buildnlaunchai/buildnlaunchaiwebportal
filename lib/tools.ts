@@ -86,7 +86,8 @@ export async function getPublicCatalog(): Promise<{
 
   const published = all.filter((t) => t.status === "published");
   const featured = published.find((t) => t.is_featured) ?? published[0] ?? null;
-  const tools = featured ? all.filter((t) => t.id !== featured.id) : all;
+  // The featured tool ALSO appears in the grid (visible under "All"), by request.
+  const tools = all;
 
   let featuredStats: ToolStats | null = null;
   if (featured) {
