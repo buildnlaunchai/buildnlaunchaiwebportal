@@ -43,6 +43,13 @@ export function ToolEmbed({
     // z-40: above the shell's sidebar (z-30) and mobile nav (z-30), below the
     // command palette (z-50). fade-enter: arrives, doesn't pop.
     <div className="fade-enter fixed inset-0 z-40 flex flex-col bg-canvas">
+      {/* Warm the connection to the embedded app's origin as the head parses, so
+          its DNS + TLS handshake is done before the iframe request even fires.
+          React 19 hoists these to <head>. It can't touch the app's own cold
+          start or bundle — that's work on the app's side — but it shaves the
+          round-trip we control. */}
+      <link rel="preconnect" href={src.origin} crossOrigin="anonymous" />
+      <link rel="dns-prefetch" href={src.origin} />
       {/* The one piece of hub chrome: a slim glass bar, same material as the
           shell's top bar. Left: the way out. Middle: which app this is. */}
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line bg-[var(--glass)] px-3 backdrop-blur-[14px] sm:px-4">

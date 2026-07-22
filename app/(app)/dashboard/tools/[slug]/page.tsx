@@ -27,16 +27,19 @@ export default async function RunnerPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ run?: string }>;
 }) {
-  const user = await requireUser();
-  const { slug } = await params;
-  const { run: runId } = await searchParams;
+  const [{ slug }, { run: runId }] = await Promise.all([params, searchParams]);
 
   const supabase = await createClient();
-  const { data: tool } = await supabase
-    .from("tools")
-    .select("id, slug, name, icon, status, runtime, required_providers, input_schema, output_schema")
-    .eq("slug", slug)
-    .maybeSingle();
+  // Auth and the tool lookup are independent — the tool is keyed by slug, not by
+  // the caller — so resolve them together instead of paying two round-trips.
+  const [user, { data: tool }] = await Promise.all([
+    requireUser(),
+    supabase
+      .from("tools")
+      .select("id, slug, name, icon, status, runtime, required_providers, input_schema, output_schema")
+      .eq("slug", slug)
+      .maybeSingle(),
+  ]);
   if (!tool) notFound();
 
   // The access engine — server-side, always (§13). A member without access gets
@@ -65,20 +68,23 @@ export default async function RunnerPage({
   if (isEmbed && !inMaintenance) {
     // tool_secrets is deny-all to every client role, so this needs the service
     // role — and it never reaches the browser as anything but an iframe src.
+    // The secret lookup and the token mint don't depend on each other — one reads
+    // the DB, the other calls the embed-token function — so run them together and
+    // wait once. In the rare misconfigured case (no embed_url) we minted a token
+    // we won't use; that's cheaper than a serial round-trip on every open.
     const admin = createAdminClient();
-    const { data: secret } = await admin
-      .from("tool_secrets")
-      .select("embed_url")
-      .eq("tool_id", tool.id)
-      .maybeSingle();
+    const [{ data: secret }, minted] = await Promise.all([
+      admin.from("tool_secrets").select("embed_url").eq("tool_id", tool.id).maybeSingle(),
+      mintEmbedToken(user, tool.slug),
+    ]);
 
     if (!secret?.embed_url) {
       // A published iframe tool with no embed_url is my mistake, not theirs.
       embedError = "This app isn't wired up yet. I'm on it.";
+    } else if ("error" in minted) {
+      embedError = minted.error;
     } else {
-      const minted = await mintEmbedToken(user, tool.slug);
-      embedError = "error" in minted ? minted.error : null;
-      if (!("error" in minted)) embed = { url: secret.embed_url, token: minted.token };
+      embed = { url: secret.embed_url, token: minted.token };
     }
   }
 

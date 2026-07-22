@@ -75,14 +75,16 @@ function ToggleRow({
         disabled={pending}
         onClick={toggle}
         className={cn(
-          "relative h-5 w-9 shrink-0 rounded-pill transition-colors duration-micro ease-default disabled:opacity-50",
+          "relative h-6 w-11 shrink-0 rounded-pill transition-colors duration-micro ease-default disabled:opacity-50",
           cell.hasGrant ? "bg-accent" : "bg-line-strong",
         )}
       >
         <span
           className={cn(
-            "absolute top-0.5 size-4 rounded-pill bg-canvas transition-transform duration-micro ease-default",
-            cell.hasGrant ? "translate-x-[18px]" : "translate-x-0.5",
+            "absolute top-0.5 size-5 rounded-pill shadow-[0_1px_3px_rgba(0,0,0,0.4)] transition-transform duration-micro ease-default",
+            cell.hasGrant
+              ? "translate-x-[22px] bg-[color:var(--accent-text)]"
+              : "translate-x-0.5 bg-text",
           )}
         />
       </button>
