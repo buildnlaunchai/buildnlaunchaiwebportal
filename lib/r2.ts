@@ -80,7 +80,10 @@ export async function uploadToR2(
     headers: { "content-type": contentType },
   });
   if (!res.ok) {
-    throw new Error(`R2 upload failed (${res.status}).`);
+    // R2/S3 return an XML error body (e.g. <Code>SignatureDoesNotMatch</Code>).
+    // Include it so a failure is diagnosable instead of opaque.
+    const detail = await res.text().catch(() => "");
+    throw new Error(`R2 ${res.status}: ${detail.slice(0, 400)}`);
   }
 
   return `${cfg.publicBaseUrl}/${key}`;
