@@ -16,6 +16,16 @@ const supabaseHost = hostOf(process.env.NEXT_PUBLIC_SUPABASE_URL) ?? "pezsxoynjj
 const r2Host = hostOf(process.env.R2_PUBLIC_BASE_URL);
 
 const nextConfig: NextConfig = {
+  // Server Actions default to a 1 MB request-body cap, which a real cover image
+  // trips (Next rejects it with a 413 before uploadToolCover even runs — that's
+  // the 500). Raise it to Vercel's serverless ceiling (4.5 MB); the action still
+  // validates the image is ≤ 4 MB, and the editor blocks oversized files client-
+  // side so nothing over the limit is ever sent.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "4.5mb",
+    },
+  },
   images: {
     remotePatterns: [
       {

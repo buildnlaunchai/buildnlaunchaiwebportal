@@ -26,8 +26,16 @@ export function CoverImageField({
 
   const pick = () => inputRef.current?.click();
 
+  const MAX_BYTES = 4 * 1024 * 1024; // keep in sync with uploadToolCover
+
   const onFile = async (file: File | undefined) => {
     if (!file) return;
+    // Reject oversized files here so they never hit the Server Action body limit
+    // (which would 500) — instant, clear feedback instead.
+    if (file.size > MAX_BYTES) {
+      setError("Image must be under 4 MB. Try compressing it or exporting smaller.");
+      return;
+    }
     setError(null);
     setBusy(true);
     try {
