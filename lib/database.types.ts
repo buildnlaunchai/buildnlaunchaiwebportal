@@ -422,6 +422,7 @@ export type Database = {
         Row: {
           created_at: string
           expires_at: string | null
+          grandfathered_at: string | null
           granted_by: string | null
           id: string
           is_gift: boolean
@@ -437,6 +438,7 @@ export type Database = {
         Insert: {
           created_at?: string
           expires_at?: string | null
+          grandfathered_at?: string | null
           granted_by?: string | null
           id?: string
           is_gift?: boolean
@@ -452,6 +454,7 @@ export type Database = {
         Update: {
           created_at?: string
           expires_at?: string | null
+          grandfathered_at?: string | null
           granted_by?: string | null
           id?: string
           is_gift?: boolean
@@ -525,6 +528,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      paddle_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          processed_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          processed_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          processed_at?: string
+        }
+        Relationships: []
       }
       plan_tools: {
         Row: {

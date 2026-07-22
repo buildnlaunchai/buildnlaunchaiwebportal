@@ -25,12 +25,9 @@ export default async function AdminUserDetailPage({
   const { profile, membership, plan, application, tools } = detail;
   const active = isMembershipActive(membership);
 
-  // grandfathered_at joins the generated types after `pnpm db:types` (Phase 2
-  // migration). Read it defensively so this compiles before regen and is simply
-  // absent on rows that predate the column.
-  const grandfatheredAt =
-    (membership as { grandfathered_at?: string | null } | null)?.grandfathered_at ??
-    null;
+  // A legacy free member, stamped at the Phase 2 migration. NULL for anyone
+  // created after the switch to paid, including Paddle subscribers.
+  const grandfatheredAt = membership?.grandfathered_at ?? null;
   const isAdmin = profile.role === "admin";
 
   return (
