@@ -2,6 +2,7 @@ import { Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { SparkBackground } from "@/components/brand/spark-background";
 import { CatalogCard } from "@/components/marketing/catalog-card";
 import { CatalogHero } from "@/components/marketing/catalog-hero";
 import { CatalogSection } from "@/components/marketing/catalog-section";
@@ -23,9 +24,8 @@ export default async function ToolsCatalogPage() {
 
   return (
     <>
-      {/* The "Spark" brand gradient — the reference's lime-bloom ground, scoped to
-          the catalog (the landing keeps its own hero glow). Fixed, behind content. */}
-      <div className="spark-bg" aria-hidden />
+      {/* The "Spark" ambient background — gradient + orbit arcs, behind content. */}
+      <SparkBackground />
       <div className="mx-auto w-full max-w-[1200px] px-5 py-14 lg:px-8">
       {featured ? (
         <CatalogSection

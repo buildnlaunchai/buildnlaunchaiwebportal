@@ -1,6 +1,7 @@
 import { Package } from "lucide-react";
 import type { Metadata } from "next";
 
+import { SparkBackground } from "@/components/brand/spark-background";
 import { ShippingLog } from "@/components/marketing/shipping-log";
 import { getShippingLog } from "@/lib/tools";
 
@@ -22,7 +23,9 @@ export default async function ChangelogPage() {
   const launches = await getShippingLog();
 
   return (
-    <div className="mx-auto w-full max-w-[1120px] px-5 py-16 lg:px-8">
+    <>
+      <SparkBackground />
+      <div className="mx-auto w-full max-w-[1120px] px-5 py-16 lg:px-8">
       <span className="text-eyebrow inline-flex items-center gap-2 rounded-pill border border-[color:rgba(200,242,79,0.28)] bg-accent-quiet px-3 py-1.5 text-accent">
         <Package aria-hidden className="size-3.5" strokeWidth={2} />
         The shipping log
@@ -42,6 +45,7 @@ export default async function ChangelogPage() {
           <ShippingLog tools={launches} />
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 
+import { SparkBackground } from "@/components/brand/spark-background";
 import { SparkMark } from "@/components/brand/spark-mark";
 import {
   CommandPalette,
@@ -115,6 +116,9 @@ export function AppShell({
 
   return (
     <div className="min-h-dvh">
+      {/* The "Spark" ambient background — gradient + orbit arcs behind the app.
+          The opaque sidebar sits over its left edge; the working area shows it. */}
+      <SparkBackground />
       {/* Grain film (DESIGN.md §3) — a fixed, screen-locked texture over the
           whole app so the flat green fills read as graded, not plastic.
           pointer-events:none, so it never intercepts a click. */}
