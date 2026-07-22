@@ -84,10 +84,37 @@ export async function revokeTool(
   return { ok: true };
 }
 
-/** Gift a free membership (§1: the admin can gift access to anyone). */
-export async function giftMembership(userId: string): Promise<ActionResult> {
+/**
+ * Grant a membership directly, by name, from /admin/users/[id] — the one lever
+ * that stays after the free apply flow is retired for paid Paddle subs (§1: the
+ * admin can gift access to anyone).
+ *
+ * `durationDays` decides the shape:
+ *   - omitted / 0 / not a positive number  → a PERMANENT comp (status='active',
+ *     never expires). The original gift behaviour, unchanged.
+ *   - a positive whole number N            → an N-day TRIAL (status='trialing',
+ *     expires_at = now + N days).
+ *
+ * Either way it's a direct grant with NO Paddle and NO code to distribute, and it
+ * writes only to `memberships` — the access engine (can_access_tool /
+ * user_tool_access) is never touched. Expiry needs no cron: has_active_membership()
+ * already gates on `expires_at > now()`, so a lapsed trial simply stops granting.
+ */
+export async function giftMembership(
+  userId: string,
+  durationDays?: number,
+): Promise<ActionResult> {
   const admin = await requireAdmin();
   const supabase = await createClient();
+
+  const days =
+    typeof durationDays === "number" && Number.isFinite(durationDays)
+      ? Math.floor(durationDays)
+      : 0;
+  const isTrial = days > 0;
+  const expiresAt = isTrial
+    ? new Date(Date.now() + days * 86_400_000).toISOString()
+    : null;
 
   const { data: plan } = await supabase
     .from("plans")
@@ -101,21 +128,22 @@ export async function giftMembership(userId: string): Promise<ActionResult> {
     {
       user_id: userId,
       plan_id: plan?.id ?? null,
-      status: "active",
+      status: isTrial ? "trialing" : "active",
       is_gift: true,
       source: "gift",
       granted_by: admin.id,
       started_at: new Date().toISOString(),
-      expires_at: null,
+      expires_at: expiresAt,
     },
     { onConflict: "user_id" },
   );
-  if (error) return { error: "Couldn't gift that membership. Try again." };
+  if (error) return { error: "Couldn't grant that membership. Try again." };
 
   await supabase.rpc("log_audit", {
-    p_action: "membership.gift",
+    p_action: isTrial ? "membership.trial" : "membership.gift",
     p_entity_type: "membership",
     p_target_user: userId,
+    p_metadata: isTrial ? { duration_days: days } : null,
   });
   revalidateUser(userId);
   return { ok: true };

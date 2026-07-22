@@ -30,6 +30,11 @@ export function UserControls({ userId, email, hasActiveMembership, suspended }: 
   const [confirming, setConfirming] = useState(false);
   const [typed, setTyped] = useState("");
 
+  // Trial length for a direct grant. Blank/0 = a permanent comp; N = an N-day
+  // trial that auto-expires. No Paddle, no code.
+  const [days, setDays] = useState("");
+  const trialDays = Math.max(0, Math.floor(Number(days) || 0));
+
   const run = (fn: () => Promise<{ error: string } | { ok: true }>) => {
     setError(null);
     startTransition(async () => {
@@ -100,16 +105,41 @@ export function UserControls({ userId, email, hasActiveMembership, suspended }: 
           </div>
         )
       ) : (
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-2">
           <span className="text-small text-text-muted">No active membership.</span>
-          <Button
-            variant="primary"
-            size="sm"
-            pending={pending}
-            onClick={() => run(() => giftMembership(userId))}
-          >
-            Gift membership
-          </Button>
+          <div className="flex items-end gap-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-mono-chip text-text-faint">
+                Trial length (days)
+              </span>
+              <Input
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={days}
+                onChange={(e) => setDays(e.target.value)}
+                placeholder="0 = permanent"
+                className="w-40"
+                aria-label="Trial length in days — blank or 0 grants a permanent membership"
+              />
+            </label>
+            <Button
+              variant="primary"
+              size="sm"
+              pending={pending}
+              onClick={() =>
+                run(() =>
+                  giftMembership(userId, trialDays > 0 ? trialDays : undefined),
+                )
+              }
+            >
+              {trialDays > 0 ? `Grant ${trialDays}-day trial` : "Gift membership"}
+            </Button>
+          </div>
+          <p className="text-mono-chip text-text-faint">
+            Blank or 0 comps a permanent membership. A trial auto-expires — no
+            Paddle, no code to hand out.
+          </p>
         </div>
       )}
 
