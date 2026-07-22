@@ -1,4 +1,5 @@
 import { ArrowRight, Lock } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 import { chipStateFor, type ChipState } from "@/components/tools/key-chip";
@@ -83,23 +84,41 @@ export function ToolCard({
             : { label: "Apply", href: "/apply" };
 
   return (
-    <article className="group relative flex min-h-[224px] flex-col rounded-[14px] border border-line bg-surface p-5 transition-[border-color,transform,box-shadow] duration-micro ease-default [border-top-color:var(--line-strong)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_20px_44px_-26px_rgba(60,140,50,0.55)]">
-      {/* header: icon tile + state badge */}
-      <div className="flex items-start justify-between gap-3">
-        <span
-          className={cn(
-            "flex size-[38px] items-center justify-center rounded-[10px] border transition-colors duration-micro ease-default",
-            "border-line bg-elevated text-text-muted",
-            "group-hover:border-[color:rgba(200,242,79,0.4)] group-hover:bg-accent-quiet group-hover:text-accent",
+    <article className="group relative flex min-h-[224px] flex-col overflow-hidden rounded-[14px] border border-line bg-surface p-5 transition-[border-color,transform,box-shadow] duration-micro ease-default [border-top-color:var(--line-strong)] hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_20px_44px_-26px_rgba(60,140,50,0.55)]">
+      {tool.cover_image_url ? (
+        // cover thumbnail — full-bleed 16:9 banner, badge overlaid, no icon tile
+        <div className="relative -mx-5 -mt-5 mb-4 aspect-[16/9] overflow-hidden border-b border-line bg-elevated">
+          <Image
+            src={tool.cover_image_url}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
+            className="object-cover"
+          />
+          {badge && (
+            <div className="pointer-events-none absolute right-3 top-3">
+              <Badge {...badge} />
+            </div>
           )}
-        >
-          <ToolIcon name={tool.icon} className="size-[19px]" />
-        </span>
-        {badge && <Badge {...badge} />}
-      </div>
+        </div>
+      ) : (
+        // no cover — the original icon tile + badge header
+        <div className="flex items-start justify-between gap-3">
+          <span
+            className={cn(
+              "flex size-[38px] items-center justify-center rounded-[10px] border transition-colors duration-micro ease-default",
+              "border-line bg-elevated text-text-muted",
+              "group-hover:border-[color:rgba(200,242,79,0.4)] group-hover:bg-accent-quiet group-hover:text-accent",
+            )}
+          >
+            <ToolIcon name={tool.icon} className="size-[19px]" />
+          </span>
+          {badge && <Badge {...badge} />}
+        </div>
+      )}
 
       {/* name / slug / tagline */}
-      <h3 className="mt-4 text-h3">
+      <h3 className={cn("text-h3", !tool.cover_image_url && "mt-4")}>
         {/* Stretched link: the whole card is the target. The interactive footer
             action (NotifyMe) sits above the overlay with z-10. No nested <a>. */}
         <Link

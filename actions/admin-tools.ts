@@ -27,6 +27,41 @@ async function announceIfNewlyPublished(
 
 type Result<T = object> = ({ error: string } | ({ ok: true } & T));
 
+const COVER_BUCKET = "tool-covers";
+const COVER_MAX_BYTES = 4 * 1024 * 1024; // 4 MB — a card thumbnail, not a hero.
+const COVER_TYPES = ["image/png", "image/jpeg", "image/webp", "image/avif", "image/gif"];
+
+/**
+ * Upload a tool cover thumbnail. Admin-only, and the file goes to the public
+ * `tool-covers` bucket via the service-role client (the client can't write it).
+ * A cover is not a secret, so routing the bytes through this action is fine —
+ * the §10/§13 "no key transits Vercel" rule is about API keys, not images.
+ * Returns the public URL; the editor stores it on `tools.cover_image_url`.
+ */
+export async function uploadToolCover(formData: FormData): Promise<Result<{ url: string }>> {
+  await requireAdmin();
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "No image selected." };
+  if (!COVER_TYPES.includes(file.type)) return { error: "Use a PNG, JPG, WebP, AVIF, or GIF." };
+  if (file.size > COVER_MAX_BYTES) return { error: "Image must be under 4 MB." };
+
+  const admin = createAdminClient();
+  const ext = (file.name.split(".").pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
+  const path = `${crypto.randomUUID()}.${ext}`;
+
+  const { error } = await admin.storage
+    .from(COVER_BUCKET)
+    .upload(path, new Uint8Array(await file.arrayBuffer()), {
+      contentType: file.type,
+      upsert: false,
+    });
+  if (error) return { error: "Upload failed. Try again." };
+
+  const { data } = admin.storage.from(COVER_BUCKET).getPublicUrl(path);
+  return { ok: true, url: data.publicUrl };
+}
+
 /**
  * All tool config — including tool_secrets — is written here, with the SERVICE
  * ROLE, never the client Supabase instance (§6.6b). The client sends a draft;

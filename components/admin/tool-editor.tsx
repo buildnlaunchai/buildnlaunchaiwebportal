@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { createTool, updateTool } from "@/actions/admin-tools";
+import { CoverImageField } from "@/components/admin/cover-image-field";
 import { FieldBuilder } from "@/components/admin/field-builder";
 import { OutputBuilder } from "@/components/admin/output-builder";
 import { ProviderPicker } from "@/components/admin/provider-picker";
@@ -108,8 +109,8 @@ export function ToolEditor({
           <Field label="Build video URL">
             <Input value={draft.video_url} onChange={(e) => set("video_url", e.target.value)} placeholder="https://youtube.com/…" />
           </Field>
-          <Field label="Cover image URL">
-            <Input value={draft.cover_image_url} onChange={(e) => set("cover_image_url", e.target.value)} />
+          <Field label="Cover image" hint="Shown on the tool card. 16:9 works best." className="sm:col-span-2">
+            <CoverImageField value={draft.cover_image_url ?? ""} onChange={(url) => set("cover_image_url", url)} />
           </Field>
         </div>
       </Section>

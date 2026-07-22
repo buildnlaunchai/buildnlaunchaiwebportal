@@ -15,7 +15,7 @@ export type ToolRuntime = Database["public"]["Enums"]["tool_runtime"];
  * and input/output_schema (large) have no business on a card.
  */
 const CARD_COLUMNS =
-  "id,slug,name,tagline,category,icon,status,access_type,runtime,required_providers,version,launched_at" as const;
+  "id,slug,name,tagline,category,icon,cover_image_url,status,access_type,runtime,required_providers,version,launched_at" as const;
 
 export type ToolCardData = {
   id: string;
@@ -24,6 +24,7 @@ export type ToolCardData = {
   tagline: string;
   category: string | null;
   icon: string | null;
+  cover_image_url: string | null;
   status: ToolStatus;
   access_type: ToolAccessType;
   runtime: ToolRuntime;
@@ -36,7 +37,6 @@ export type ToolCardData = {
 export type ToolDetailData = ToolCardData & {
   description: string | null;
   video_url: string | null;
-  cover_image_url: string | null;
   input_schema: unknown;
   output_schema: unknown;
 };
@@ -63,7 +63,7 @@ export async function getToolBySlug(slug: string): Promise<ToolDetailData | null
   const { data } = await supabase
     .from("tools")
     .select(
-      `${CARD_COLUMNS},description,video_url,cover_image_url,input_schema,output_schema`,
+      `${CARD_COLUMNS},description,video_url,input_schema,output_schema`,
     )
     .eq("slug", slug)
     .maybeSingle();
