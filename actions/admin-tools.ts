@@ -55,7 +55,10 @@ export async function uploadToolCover(formData: FormData): Promise<Result<{ url:
   try {
     const url = await uploadToR2(key, await file.arrayBuffer(), file.type);
     return { ok: true, url };
-  } catch {
+  } catch (e) {
+    // Log the real R2 error (status + response body from lib/r2.ts) server-side
+    // so a future failure is diagnosable from the Vercel logs, not opaque.
+    console.error("[uploadToolCover] R2 upload failed:", e);
     return { error: "Upload failed. Try again." };
   }
 }
