@@ -24,6 +24,13 @@ export default async function AdminUserDetailPage({
 
   const { profile, membership, plan, application, tools } = detail;
   const active = isMembershipActive(membership);
+
+  // grandfathered_at joins the generated types after `pnpm db:types` (Phase 2
+  // migration). Read it defensively so this compiles before regen and is simply
+  // absent on rows that predate the column.
+  const grandfatheredAt =
+    (membership as { grandfathered_at?: string | null } | null)?.grandfathered_at ??
+    null;
   const isAdmin = profile.role === "admin";
 
   return (
@@ -70,6 +77,12 @@ export default async function AdminUserDetailPage({
                 <dt className="text-text-muted">Source</dt>
                 <dd className="text-text">{membership?.source ?? "—"}</dd>
               </div>
+              {grandfatheredAt && (
+                <div className="flex justify-between gap-4">
+                  <dt className="text-text-muted">Grandfathered</dt>
+                  <dd className="text-text">{formatShipDate(grandfatheredAt)}</dd>
+                </div>
+              )}
               <div className="flex justify-between gap-4">
                 <dt className="text-text-muted">Expires</dt>
                 <dd className="text-text">
