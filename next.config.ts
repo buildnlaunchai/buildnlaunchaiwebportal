@@ -1,16 +1,19 @@
 import type { NextConfig } from "next";
 
-/* next/image needs the Supabase Storage host allow-listed to serve tool cover
-   thumbnails from the public `tool-covers` bucket. Derive it from the same env
-   the app already uses; fall back to the known project host if it's unset at
-   build time. Only the public object path is permitted. */
-const supabaseHost = (() => {
+/* next/image must allow-list the hosts that serve tool cover thumbnails. Covers
+   now live on Cloudflare R2 (R2_PUBLIC_BASE_URL); the Supabase public path stays
+   allowed too, harmlessly, for any legacy/Supabase-hosted asset. Both are
+   derived from env so nothing is hardcoded. */
+function hostOf(url: string | undefined): string | null {
   try {
-    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname;
+    return new URL(url ?? "").hostname;
   } catch {
-    return "pezsxoynjjsipfnpfvva.supabase.co";
+    return null;
   }
-})();
+}
+
+const supabaseHost = hostOf(process.env.NEXT_PUBLIC_SUPABASE_URL) ?? "pezsxoynjjsipfnpfvva.supabase.co";
+const r2Host = hostOf(process.env.R2_PUBLIC_BASE_URL);
 
 const nextConfig: NextConfig = {
   images: {
@@ -20,6 +23,9 @@ const nextConfig: NextConfig = {
         hostname: supabaseHost,
         pathname: "/storage/v1/object/public/**",
       },
+      ...(r2Host
+        ? [{ protocol: "https" as const, hostname: r2Host, pathname: "/**" }]
+        : []),
     ],
   },
 };

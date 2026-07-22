@@ -30,15 +30,19 @@ export function CoverImageField({
     if (!file) return;
     setError(null);
     setBusy(true);
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await uploadToolCover(fd);
-    setBusy(false);
-    if ("error" in res) {
-      setError(res.error);
-      return;
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await uploadToolCover(fd);
+      if ("error" in res) setError(res.error);
+      else onChange(res.url);
+    } catch {
+      // A thrown Server Action (network, redirect, unexpected) must never leave
+      // the control stuck on a spinner — surface it and let them retry.
+      setError("Upload failed. Try again.");
+    } finally {
+      setBusy(false);
     }
-    onChange(res.url);
   };
 
   return (

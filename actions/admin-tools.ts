@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/access";
 import { toolPublishedEmail } from "@/lib/email";
 import { notifyActiveMembers } from "@/lib/notify";
+import { uploadToR2, isR2Configured } from "@/lib/r2";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { toolDraftSchema, type ToolDraft } from "@/lib/validation/tool";
 import { compileInputSchema } from "@/lib/schema";
@@ -27,16 +28,15 @@ async function announceIfNewlyPublished(
 
 type Result<T = object> = ({ error: string } | ({ ok: true } & T));
 
-const COVER_BUCKET = "tool-covers";
 const COVER_MAX_BYTES = 4 * 1024 * 1024; // 4 MB — a card thumbnail, not a hero.
 const COVER_TYPES = ["image/png", "image/jpeg", "image/webp", "image/avif", "image/gif"];
 
 /**
- * Upload a tool cover thumbnail. Admin-only, and the file goes to the public
- * `tool-covers` bucket via the service-role client (the client can't write it).
- * A cover is not a secret, so routing the bytes through this action is fine —
- * the §10/§13 "no key transits Vercel" rule is about API keys, not images.
- * Returns the public URL; the editor stores it on `tools.cover_image_url`.
+ * Upload a tool cover thumbnail to Cloudflare R2. Admin-only; the bytes route
+ * through this Server Action (a cover is not a secret, so that's fine — the
+ * §10/§13 "no key transits Vercel" rule is about API keys, not public images).
+ * Returns the object's public URL; the editor stores it on
+ * `tools.cover_image_url`. R2 credentials come from env (see lib/r2.ts).
  */
 export async function uploadToolCover(formData: FormData): Promise<Result<{ url: string }>> {
   await requireAdmin();
@@ -45,21 +45,19 @@ export async function uploadToolCover(formData: FormData): Promise<Result<{ url:
   if (!(file instanceof File) || file.size === 0) return { error: "No image selected." };
   if (!COVER_TYPES.includes(file.type)) return { error: "Use a PNG, JPG, WebP, AVIF, or GIF." };
   if (file.size > COVER_MAX_BYTES) return { error: "Image must be under 4 MB." };
+  if (!isR2Configured()) {
+    return { error: "Image storage isn't configured yet — set the R2_* env vars." };
+  }
 
-  const admin = createAdminClient();
   const ext = (file.name.split(".").pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
-  const path = `${crypto.randomUUID()}.${ext}`;
+  const key = `tool-covers/${crypto.randomUUID()}.${ext}`;
 
-  const { error } = await admin.storage
-    .from(COVER_BUCKET)
-    .upload(path, new Uint8Array(await file.arrayBuffer()), {
-      contentType: file.type,
-      upsert: false,
-    });
-  if (error) return { error: "Upload failed. Try again." };
-
-  const { data } = admin.storage.from(COVER_BUCKET).getPublicUrl(path);
-  return { ok: true, url: data.publicUrl };
+  try {
+    const url = await uploadToR2(key, await file.arrayBuffer(), file.type);
+    return { ok: true, url };
+  } catch {
+    return { error: "Upload failed. Try again." };
+  }
 }
 
 /**
