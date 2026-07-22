@@ -16,7 +16,11 @@ export const config = {
      * you ever catch yourself reasoning "that path is safe because middleware
      * doesn't run on it", you have made a mistake — go and read lib/access.ts,
      * which is what actually guards a page.
+     *
+     * api/webhooks is excluded because a webhook carries no session cookie (so
+     * the refresh is wasted) and authenticates itself by HMAC signature, not by
+     * anything middleware could check. Its guard is in the route, not here.
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff2?)$).*)",
+    "/((?!api/webhooks|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|woff2?)$).*)",
   ],
 };
