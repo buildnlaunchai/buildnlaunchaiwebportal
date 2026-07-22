@@ -1,7 +1,6 @@
 "use client";
 
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 
@@ -63,22 +62,21 @@ export function LogoField({ logoUrl }: { logoUrl: string | null }) {
       />
 
       <div className="flex flex-wrap items-center gap-4">
-        {/* preview — the logo mark, as it appears in the header/sidebar */}
-        <div className="flex size-16 shrink-0 items-center justify-center rounded-lg border border-line bg-[var(--sunken)] [border-top-color:var(--line-strong)]">
+        {/* preview — the logo as it appears in the header/sidebar */}
+        <div className="flex h-20 min-w-20 items-center justify-center rounded-lg border border-line bg-[var(--sunken)] px-6 [border-top-color:var(--line-strong)]">
           <span
             aria-hidden
-            className="flex items-center justify-center text-accent [filter:drop-shadow(0_0_9px_rgba(200,242,79,0.4))]"
+            className="flex items-center text-accent [filter:drop-shadow(0_0_10px_rgba(200,242,79,0.4))]"
           >
             {logoUrl ? (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element -- arbitrary-aspect admin logo
+              <img
                 src={logoUrl}
                 alt="Site logo"
-                width={36}
-                height={36}
-                className="size-9 object-contain"
+                className="h-12 w-auto max-w-[200px] object-contain"
               />
             ) : (
-              <SparkMark className="size-8" />
+              <SparkMark className="size-11" />
             )}
           </span>
         </div>

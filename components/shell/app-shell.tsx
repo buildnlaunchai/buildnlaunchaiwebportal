@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -139,12 +138,17 @@ export function AppShell({
         <div className="relative z-10 flex h-16 items-center gap-[11px] px-3 md:justify-center lg:justify-start lg:px-5">
           <span
             aria-hidden
-            className="flex size-[30px] shrink-0 items-center justify-center text-accent [filter:drop-shadow(0_0_9px_rgba(200,242,79,0.5))]"
+            className="flex shrink-0 items-center justify-center text-accent [filter:drop-shadow(0_0_9px_rgba(200,242,79,0.5))]"
           >
             {logoUrl ? (
-              <Image src={logoUrl} alt="" width={30} height={30} className="size-[30px] object-contain" />
+              // eslint-disable-next-line @next/next/no-img-element -- arbitrary-aspect admin logo
+              <img
+                src={logoUrl}
+                alt="Build & Launch"
+                className="h-8 w-auto max-w-[42px] object-contain lg:h-9 lg:max-w-[168px]"
+              />
             ) : (
-              <SparkMark className="size-[26px]" />
+              <SparkMark className="size-7 lg:size-8" />
             )}
           </span>
         </div>

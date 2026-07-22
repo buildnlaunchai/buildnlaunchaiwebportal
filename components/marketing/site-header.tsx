@@ -1,7 +1,6 @@
 "use client";
 
 import { Home, LayoutGrid, ScrollText } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -31,12 +30,13 @@ export function SiteHeader({ logoUrl }: { logoUrl: string | null }) {
         <Link
           href="/"
           aria-label="Build & Launch — home"
-          className="flex size-9 shrink-0 items-center justify-center rounded-pill text-accent [filter:drop-shadow(0_0_8px_rgba(200,242,79,0.45))]"
+          className="flex h-10 shrink-0 items-center px-1.5 text-accent [filter:drop-shadow(0_0_8px_rgba(200,242,79,0.45))]"
         >
           {logoUrl ? (
-            <Image src={logoUrl} alt="" width={26} height={26} className="size-[26px] object-contain" />
+            // eslint-disable-next-line @next/next/no-img-element -- arbitrary-aspect admin logo
+            <img src={logoUrl} alt="Build & Launch" className="h-9 w-auto max-w-[170px] object-contain" />
           ) : (
-            <SparkMark className="size-[24px]" />
+            <SparkMark className="size-7" />
           )}
         </Link>
 
