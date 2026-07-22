@@ -1099,6 +1099,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      process_paddle_event: {
+        Args: {
+          p_event_id: string
+          p_event_type: string
+          p_subscription_id: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       rate_limit_take: {
         Args: { p_bucket: string; p_limit: number; p_window: string }
         Returns: boolean
