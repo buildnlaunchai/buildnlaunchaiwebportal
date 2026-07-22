@@ -427,6 +427,34 @@ body {
     );
   }
 
+  /* The "Spark" brand background — the reference gradient. A fixed, full-viewport
+     wash: a deep forest-green ground darkening to the bottom-right, with a large
+     lime bloom anchored on the LEFT and a faint cool-teal pool near it. Mounted
+     on the loud (marketing) tier only; sits behind content (z:-1) over the flat
+     body canvas, with the grain film layered on top. */
+  .spark-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      /* faint cool-teal pool, lower-left */
+      radial-gradient(34% 46% at 22% 55%, rgba(120, 190, 150, 0.14), transparent 62%),
+      /* soft upper-left lime spread */
+      radial-gradient(58% 62% at 28% 18%, rgba(190, 222, 92, 0.24), transparent 60%),
+      /* the main lime bloom, blooming in from the left edge */
+      radial-gradient(
+        72% 96% at 3% 43%,
+        rgba(203, 231, 92, 0.55),
+        rgba(150, 190, 68, 0.22) 33%,
+        transparent 66%
+      ),
+      /* dark vignette into the bottom-right */
+      radial-gradient(135% 130% at 82% 96%, transparent 38%, rgba(4, 16, 10, 0.72) 100%),
+      /* opaque deep-green base so the flat body canvas never shows through */
+      #0d2b20;
+  }
+
   /* Grain — the reference's signature texture. A fixed, non-interacting film of
      fractal noise laid over the whole ground in soft-light, so the flat green
      fills read as a printed/graded surface rather than a plastic gradient. One

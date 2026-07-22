@@ -22,7 +22,11 @@ export default async function ToolsCatalogPage() {
   const { featured, featuredStats, tools, newCutoff } = await getPublicCatalog();
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-5 py-14 lg:px-8">
+    <>
+      {/* The "Spark" brand gradient — the reference's lime-bloom ground, scoped to
+          the catalog (the landing keeps its own hero glow). Fixed, behind content. */}
+      <div className="spark-bg" aria-hidden />
+      <div className="mx-auto w-full max-w-[1200px] px-5 py-14 lg:px-8">
       {featured ? (
         <CatalogSection
           tools={tools}
@@ -63,6 +67,7 @@ export default async function ToolsCatalogPage() {
           <Button variant="primary">Become a member</Button>
         </Link>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
