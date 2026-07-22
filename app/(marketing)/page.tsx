@@ -1,3 +1,4 @@
+import { ArrowRight, LayoutGrid, Package } from "lucide-react";
 import Link from "next/link";
 
 import { CatalogCard } from "@/components/marketing/catalog-card";
@@ -53,16 +54,32 @@ export default async function LandingPage() {
       {/* 2 — The Shipping Log (the signature) */}
       {shippingLog.length > 0 && (
         <section className="py-24">
-          <p className="text-eyebrow text-text-faint">The shipping log</p>
-          <h2 className="text-display-l mt-3 max-w-[62ch] text-balance">
-            Everything I&apos;ve shipped, newest first.
+          <span className="text-eyebrow inline-flex items-center gap-2 rounded-pill border border-[color:rgba(200,242,79,0.28)] bg-accent-quiet px-3 py-1.5 text-accent">
+            <Package aria-hidden className="size-3.5" strokeWidth={2} />
+            The shipping log
+          </span>
+          <h2 className="text-display-l mt-4 max-w-[62ch] text-balance">
+            Everything I&apos;ve shipped,{" "}
+            <span className="text-accent">newest first.</span>
           </h2>
           <p className="prose-measure mt-4 text-body text-text-muted">
             No roadmap promises. Just a dated list of what actually went live.
           </p>
-          <div className="mt-12 max-w-[720px]">
-            <ShippingLog tools={shippingLog} />
+          <div className="mt-12">
+            <ShippingLog tools={shippingLog.slice(0, 3)} />
           </div>
+          {shippingLog.length > 0 && (
+            <div className="mt-10 flex justify-center">
+              <Link
+                href="/changelog"
+                className="text-body-strong inline-flex items-center gap-2.5 rounded-pill border border-line-strong bg-surface/50 px-6 py-3.5 text-text transition-colors duration-micro ease-default hover:border-accent hover:text-accent"
+              >
+                <LayoutGrid aria-hidden className="size-4" strokeWidth={1.8} />
+                See all shipped tools
+                <ArrowRight aria-hidden className="size-4" strokeWidth={1.8} />
+              </Link>
+            </div>
+          )}
         </section>
       )}
 
