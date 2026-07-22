@@ -1,14 +1,16 @@
+import { Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { ToolCard } from "@/components/tools/tool-card";
+import { CatalogCard } from "@/components/marketing/catalog-card";
+import { CatalogHero } from "@/components/marketing/catalog-hero";
+import { CatalogSection } from "@/components/marketing/catalog-section";
 import { Button } from "@/components/ui/button";
-import { getPublicTools } from "@/lib/tools";
+import { getPublicCatalog } from "@/lib/tools";
 
-// ISR: the shipping log and catalog render from the database, so refresh the
-// static HTML periodically. A tool published from the admin (Phase 7) appears
-// publicly within this window with no redeploy — which is the whole point of a
-// log that grows as you ship. Phase 7 can also revalidatePath('/') for instant.
+// ISR: the catalog renders from the database, so refresh the static HTML
+// periodically. A tool published (or featured) from the admin appears here within
+// this window; the tool actions also revalidate '/tools' for near-instant updates.
 export const revalidate = 300;
 export const metadata: Metadata = {
   title: "Tools — Build & Launch AI",
@@ -17,40 +19,48 @@ export const metadata: Metadata = {
 };
 
 export default async function ToolsCatalogPage() {
-  const tools = await getPublicTools();
+  const { featured, featuredStats, tools, newCutoff } = await getPublicCatalog();
 
   return (
-    <div className="mx-auto w-full max-w-[1200px] px-5 py-16 lg:px-8">
-      <header className="prose-measure">
-        <h1 className="text-display-l">The tools</h1>
-        <p className="mt-4 text-body text-text-muted">
-          Every tool I&apos;ve shipped, and a few on the way. You run them with
-          your own API keys — so you pay your provider directly, and nothing runs
-          through my bill.
-        </p>
-      </header>
-
-      {tools.length === 0 ? (
-        <p className="mt-12 text-small text-text-faint">
-          The first tools land here soon.
-        </p>
+    <div className="mx-auto w-full max-w-[1200px] px-5 py-14 lg:px-8">
+      {featured ? (
+        <CatalogSection
+          tools={tools}
+          newCutoff={newCutoff}
+          featuredSlot={<CatalogHero tool={featured} stats={featuredStats} />}
+        />
       ) : (
-        // §4: 16px between cards in a grid.
-        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {tools.map((tool) => (
-            <ToolCard key={tool.slug} tool={tool} />
-          ))}
+        // No published tool yet — a calm placeholder, plus any coming-soon tools.
+        <div>
+          <h1 className="text-display-l">The tools</h1>
+          <p className="mt-4 max-w-[52ch] text-body text-text-muted">
+            The first tools land here soon. Apply for access and you&apos;ll be
+            first in line.
+          </p>
+          {tools.length > 0 && (
+            <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {tools.map((tool) => (
+                <CatalogCard key={tool.slug} tool={tool} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      <div className="mt-16 flex flex-col items-center gap-4 rounded-md border border-line bg-surface px-6 py-10 text-center">
-        <h2 className="text-h2">Want in?</h2>
-        <p className="prose-measure text-small text-text-muted">
-          Access is by application. It&apos;s free while I build in public — I just
-          like to know who&apos;s using what.
-        </p>
-        <Link href="/apply">
-          <Button variant="primary">Apply for access</Button>
+      {/* Membership CTA */}
+      <div className="mt-12 flex flex-col items-start gap-5 rounded-[18px] border border-line-strong bg-surface px-6 py-6 sm:flex-row sm:items-center sm:px-8">
+        <span className="flex size-14 shrink-0 items-center justify-center rounded-pill border border-[color:rgba(200,242,79,0.3)] bg-accent-quiet text-accent">
+          <Sparkles aria-hidden className="size-6" strokeWidth={1.8} />
+        </span>
+        <div>
+          <h2 className="text-h2">Want access to all tools?</h2>
+          <p className="mt-1 text-small text-text-muted">
+            Access is by application — free while I build in public. I just like to
+            know who&apos;s using what.
+          </p>
+        </div>
+        <Link href="/apply" className="sm:ml-auto">
+          <Button variant="primary">Become a member</Button>
         </Link>
       </div>
     </div>

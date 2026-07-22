@@ -65,6 +65,9 @@ export const toolDraftSchema = z.object({
   access_type: z.enum(["public_preview", "members", "plan", "manual"]),
   runtime: z.enum(["edge_function", "internal", "iframe", "external_link"]),
 
+  // Showcase this tool in the catalog's featured hero.
+  is_featured: z.boolean().optional(),
+
   timeout_seconds: z.coerce.number().int().min(5).max(400),
   rate_limit_per_day: z.coerce.number().int().min(1).nullable().optional(),
 

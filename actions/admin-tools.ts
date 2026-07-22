@@ -82,6 +82,7 @@ function splitDraft(d: ToolDraft) {
     status: d.status,
     access_type: d.access_type,
     runtime: d.runtime,
+    is_featured: d.is_featured ?? false,
     timeout_seconds: d.timeout_seconds,
     rate_limit_per_day: d.rate_limit_per_day ?? null,
     required_providers: d.required_providers,
@@ -130,6 +131,7 @@ export async function createTool(raw: unknown): Promise<Result<{ id: string }>> 
 
   revalidatePath("/admin/tools");
   revalidatePath("/");
+  revalidatePath("/tools");
   return { ok: true, id: tool.id };
 }
 
@@ -175,6 +177,7 @@ export async function updateTool(id: string, raw: unknown): Promise<Result> {
   revalidatePath("/admin/tools");
   revalidatePath(`/admin/tools/${id}`);
   revalidatePath("/");
+  revalidatePath("/tools");
   return { ok: true };
 }
 
@@ -221,6 +224,7 @@ export async function deleteTool(id: string): Promise<Result> {
   await admin.rpc("log_audit", { p_action: "tool.delete", p_entity_type: "tool", p_entity_id: id });
   revalidatePath("/admin/tools");
   revalidatePath("/");
+  revalidatePath("/tools");
   return { ok: true };
 }
 
@@ -235,6 +239,7 @@ export async function reorderTools(orderedIds: string[]): Promise<Result> {
   );
   revalidatePath("/admin/tools");
   revalidatePath("/");
+  revalidatePath("/tools");
   return { ok: true };
 }
 

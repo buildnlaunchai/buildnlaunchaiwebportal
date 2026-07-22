@@ -22,6 +22,7 @@ import { ProviderPicker } from "@/components/admin/provider-picker";
 import { TestRunPanel } from "@/components/admin/test-run-panel";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input, Label } from "@/components/ui/input";
 import { Panel, SectionHeader } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
@@ -145,6 +146,19 @@ export function ToolEditor({
             <Input type="number" value={draft.rate_limit_per_day ?? ""} onChange={(e) => set("rate_limit_per_day", e.target.value ? Number(e.target.value) : null)} />
           </Field>
         </div>
+        <label className="mt-4 flex cursor-pointer select-none items-start gap-2.5">
+          <Checkbox
+            className="mt-0.5"
+            checked={draft.is_featured ?? false}
+            onChange={(e) => set("is_featured", e.target.checked)}
+          />
+          <span>
+            <span className="text-label">Feature on the catalog</span>
+            <span className="ml-2 text-small text-text-faint">
+              — showcase this tool in the big hero on /tools. One at a time.
+            </span>
+          </span>
+        </label>
       </Section>
 
       <Section icon={KeyRound} title="Required keys (BYOK)" hint="Which provider keys a member must connect to run this.">

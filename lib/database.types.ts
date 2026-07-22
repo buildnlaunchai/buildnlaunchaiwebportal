@@ -808,6 +808,7 @@ export type Database = {
           id: string
           input_schema: Json
           internal_key: string | null
+          is_featured: boolean
           launched_at: string | null
           name: string
           output_schema: Json
@@ -833,6 +834,7 @@ export type Database = {
           id?: string
           input_schema?: Json
           internal_key?: string | null
+          is_featured?: boolean
           launched_at?: string | null
           name: string
           output_schema?: Json
@@ -858,6 +860,7 @@ export type Database = {
           id?: string
           input_schema?: Json
           internal_key?: string | null
+          is_featured?: boolean
           launched_at?: string | null
           name?: string
           output_schema?: Json
@@ -1074,6 +1077,13 @@ export type Database = {
         Returns: boolean
       }
       redeem_access_code: { Args: { p_code: string }; Returns: Json }
+      tool_public_stats: {
+        Args: { p_tool_id: string }
+        Returns: {
+          avg_ms: number
+          run_count: number
+        }[]
+      }
     }
     Enums: {
       api_provider:
