@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -49,6 +50,8 @@ type AppShellProps = {
   isAdmin?: boolean;
   /** The sidebar footer — plan/role and status. Omitted → no footer. */
   plan?: ShellPlan;
+  /** Admin-uploaded logo URL; falls back to the built-in daisy mark when null. */
+  logoUrl?: string | null;
   /** Placeholder for the top-bar search. */
   searchHint?: string;
   /** Command palette sources (DESIGN.md §9). Users are admin-only. */
@@ -83,6 +86,7 @@ export function AppShell({
   user,
   isAdmin = false,
   plan,
+  logoUrl,
   searchHint = "Search…",
   paletteTools = [],
   paletteUsers = [],
@@ -137,7 +141,11 @@ export function AppShell({
             aria-hidden
             className="flex size-[30px] shrink-0 items-center justify-center text-accent [filter:drop-shadow(0_0_9px_rgba(200,242,79,0.5))]"
           >
-            <SparkMark className="size-[26px]" />
+            {logoUrl ? (
+              <Image src={logoUrl} alt="" width={30} height={30} className="size-[30px] object-contain" />
+            ) : (
+              <SparkMark className="size-[26px]" />
+            )}
           </span>
           <span className="hidden font-display text-[15px] font-light tracking-[-0.01em] lg:inline">
             Build &amp; <span className="font-semibold text-accent">Launch</span>

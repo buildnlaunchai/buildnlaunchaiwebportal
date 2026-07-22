@@ -2,6 +2,7 @@ import { AppShell, type NavItem } from "@/components/shell/app-shell";
 import { requireAdmin } from "@/lib/access";
 import { getUsersForAdmin } from "@/lib/admin-users";
 import { getMyNotifications } from "@/lib/notifications";
+import { getLogoUrl } from "@/lib/settings";
 import { getPublicTools } from "@/lib/tools";
 
 /* CLAUDE.md §8 — admin. Grouped for the sidebar (§10). */
@@ -14,6 +15,7 @@ const NAV: NavItem[] = [
   { href: "/admin/codes", label: "Codes", icon: "codes", section: "Catalog" },
   { href: "/admin/requests", label: "Requests", icon: "requests", section: "Signals" },
   { href: "/admin/audit", label: "Audit", icon: "audit", section: "Signals" },
+  { href: "/admin/settings", label: "Settings", icon: "settings", section: "System" },
 ];
 
 export default async function AdminLayout({
@@ -28,10 +30,11 @@ export default async function AdminLayout({
   const user = await requireAdmin();
 
   // Command-palette sources: the admin can jump to any tool or any user by name.
-  const [tools, users, notifications] = await Promise.all([
+  const [tools, users, notifications, logoUrl] = await Promise.all([
     getPublicTools(),
     getUsersForAdmin(),
     getMyNotifications(),
+    getLogoUrl(),
   ]);
 
   return (
@@ -46,6 +49,7 @@ export default async function AdminLayout({
       }}
       isAdmin
       plan={{ label: "Admin", sublabel: "Full access" }}
+      logoUrl={logoUrl}
       searchHint="Search users, tools…"
       paletteTools={tools.map((t) => ({ slug: t.slug, name: t.name }))}
       paletteUsers={users.map((u) => ({

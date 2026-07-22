@@ -1,13 +1,16 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { SparkMark } from "@/components/brand/spark-mark";
 import { Button } from "@/components/ui/button";
+import { getLogoUrl } from "@/lib/settings";
 
-export default function MarketingLayout({
+export default async function MarketingLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const logoUrl = await getLogoUrl();
   return (
     <div className="flex min-h-dvh flex-col">
       {/* Grain film (DESIGN.md §3) — same screen-locked texture the app carries,
@@ -22,7 +25,11 @@ export default function MarketingLayout({
               aria-hidden
               className="flex size-6 items-center justify-center text-accent [filter:drop-shadow(0_0_8px_rgba(200,242,79,0.5))]"
             >
-              <SparkMark className="size-[22px]" />
+              {logoUrl ? (
+                <Image src={logoUrl} alt="" width={24} height={24} className="size-6 object-contain" />
+              ) : (
+                <SparkMark className="size-[22px]" />
+              )}
             </span>
             <span className="font-display text-[15px] font-light tracking-[-0.01em]">
               Build &amp; <span className="font-semibold text-accent">Launch</span>

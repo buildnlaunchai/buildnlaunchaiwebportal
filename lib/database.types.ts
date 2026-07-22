@@ -168,6 +168,7 @@ export type Database = {
           default_plan_id: string | null
           discord_webhook_url: string | null
           id: boolean
+          logo_url: string | null
           maintenance_mode: boolean
           skool_invite_url: string | null
           trial_days: number
@@ -179,6 +180,7 @@ export type Database = {
           default_plan_id?: string | null
           discord_webhook_url?: string | null
           id?: boolean
+          logo_url?: string | null
           maintenance_mode?: boolean
           skool_invite_url?: string | null
           trial_days?: number
@@ -190,6 +192,7 @@ export type Database = {
           default_plan_id?: string | null
           discord_webhook_url?: string | null
           id?: boolean
+          logo_url?: string | null
           maintenance_mode?: boolean
           skool_invite_url?: string | null
           trial_days?: number
@@ -988,14 +991,17 @@ export type Database = {
       app_settings_public: {
         Row: {
           applications_open: boolean | null
+          logo_url: string | null
           maintenance_mode: boolean | null
         }
         Insert: {
           applications_open?: boolean | null
+          logo_url?: string | null
           maintenance_mode?: boolean | null
         }
         Update: {
           applications_open?: boolean | null
+          logo_url?: string | null
           maintenance_mode?: boolean | null
         }
         Relationships: []

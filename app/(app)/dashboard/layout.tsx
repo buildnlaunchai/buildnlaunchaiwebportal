@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/access";
 import { getLatestPublishedAnnouncement } from "@/lib/announcements";
 import { getMyMembership, isMembershipActive } from "@/lib/member";
 import { getMyNotifications } from "@/lib/notifications";
+import { getLogoUrl } from "@/lib/settings";
 import { getPublicTools } from "@/lib/tools";
 
 /* CLAUDE.md §8 — the member app. Grouped for the sidebar (§10). */
@@ -25,11 +26,12 @@ export default async function DashboardLayout({
   // server, against a revalidated session, and does not care what middleware
   // decided. Mutations check again for themselves.
   const user = await requireUser("/dashboard");
-  const [tools, notifications, announcement, membership] = await Promise.all([
+  const [tools, notifications, announcement, membership, logoUrl] = await Promise.all([
     getPublicTools(),
     getMyNotifications(),
     getLatestPublishedAnnouncement(),
     getMyMembership(),
+    getLogoUrl(),
   ]);
 
   const plan = isMembershipActive(membership)
@@ -48,6 +50,7 @@ export default async function DashboardLayout({
       }}
       isAdmin={user.profile.role === "admin"}
       plan={plan}
+      logoUrl={logoUrl}
       searchHint="Search tools, runs, keys…"
       paletteTools={tools.map((t) => ({ slug: t.slug, name: t.name }))}
       notifications={notifications}
