@@ -45,7 +45,14 @@ export const toolDraftSchema = z.object({
   slug: z
     .string()
     .min(1)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug: lowercase words separated by hyphens."),
+    // Allow BOTH hyphen and underscore separators: existing tools were seeded
+    // with underscore slugs (image_animator, cinematic_workflow) that are used
+    // in live URLs, embed tokens, and handler dispatch — hyphen-only rejected
+    // them on save.
+    .regex(
+      /^[a-z0-9]+(?:[-_][a-z0-9]+)*$/,
+      "Slug: lowercase words separated by hyphens or underscores.",
+    ),
   name: z.string().min(1, "Name is required."),
   tagline: z.string().min(1, "A one-line tagline is required."),
   description: z.string().optional().or(z.literal("")),
