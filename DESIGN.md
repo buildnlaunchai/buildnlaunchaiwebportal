@@ -109,10 +109,10 @@ app so those flat green fills read as graded, not plastic.
 ```css
 :root[data-theme="dark"] {
   /* surfaces — four steps, no more. Deep forest green, a warm cast in every step. */
-  --canvas:        #0B241D;   /* page background — deep forest green */
+  --canvas:        #08180E;   /* page background — deep forest green */
   --surface:       #123528;   /* cards, panels, inputs */
   --elevated:      #1A4535;   /* dropdowns, dialogs, popovers, hover states */
-  --sunken:        #071912;   /* code blocks, output wells, terminal areas */
+  --sunken:        #050F09;   /* code blocks, output wells, terminal areas */
 
   /* lines — green-tinted hairlines. Cards are defined by a border, not a shadow. */
   --line:          #274A3B;   /* default hairline */
@@ -154,10 +154,10 @@ app so those flat green fills read as graded, not plastic.
    preference (or an OS forcing it) can never fall back to a broken palette. The genuine
    cream-green light theme is a deferred marketing milestone; when it lands, these diverge. */
 :root[data-theme="light"] {
-  --canvas:        #0B241D;
+  --canvas:        #08180E;
   --surface:       #123528;
   --elevated:      #1A4535;
-  --sunken:        #071912;
+  --sunken:        #050F09;
 
   --line:          #274A3B;
   --line-strong:   #3A604E;
