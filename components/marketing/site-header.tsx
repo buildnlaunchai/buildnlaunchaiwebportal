@@ -34,9 +34,9 @@ export function SiteHeader({ logoUrl }: { logoUrl: string | null }) {
         >
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- arbitrary-aspect admin logo
-            <img src={logoUrl} alt="Build & Launch" className="h-9 w-auto max-w-[170px] object-contain" />
+            <img src={logoUrl} alt="Build & Launch" className="h-7 w-auto max-w-[150px] object-contain" />
           ) : (
-            <SparkMark className="size-7" />
+            <SparkMark className="size-6" />
           )}
         </Link>
 
