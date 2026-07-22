@@ -74,10 +74,16 @@ export async function uploadToR2(
 
   // R2's S3 API, path-style: https://<account>.r2.cloudflarestorage.com/<bucket>/<key>
   const endpoint = `https://${cfg.accountId}.r2.cloudflarestorage.com/${cfg.bucket}/${key}`;
+  // R2 requires an explicit Content-Length on PUT and returns 411 without it.
+  // aws4fetch wraps the body in a Request (a stream), so fetch won't infer the
+  // length — set it ourselves from the known byte size.
   const res = await client.fetch(endpoint, {
     method: "PUT",
     body,
-    headers: { "content-type": contentType },
+    headers: {
+      "content-type": contentType,
+      "content-length": String(body.byteLength),
+    },
   });
   if (!res.ok) {
     // R2/S3 return an XML error body (e.g. <Code>SignatureDoesNotMatch</Code>).
