@@ -63,26 +63,23 @@ export function LogoField({ logoUrl }: { logoUrl: string | null }) {
       />
 
       <div className="flex flex-wrap items-center gap-4">
-        {/* preview — the logo lockup, as it appears in the header */}
-        <div className="flex items-center gap-2.5 rounded-lg border border-line bg-[var(--sunken)] px-4 py-3 [border-top-color:var(--line-strong)]">
+        {/* preview — the logo mark, as it appears in the header/sidebar */}
+        <div className="flex size-16 shrink-0 items-center justify-center rounded-lg border border-line bg-[var(--sunken)] [border-top-color:var(--line-strong)]">
           <span
             aria-hidden
-            className="flex size-8 shrink-0 items-center justify-center text-accent [filter:drop-shadow(0_0_9px_rgba(200,242,79,0.4))]"
+            className="flex items-center justify-center text-accent [filter:drop-shadow(0_0_9px_rgba(200,242,79,0.4))]"
           >
             {logoUrl ? (
               <Image
                 src={logoUrl}
                 alt="Site logo"
-                width={30}
-                height={30}
-                className="size-[30px] object-contain"
+                width={36}
+                height={36}
+                className="size-9 object-contain"
               />
             ) : (
-              <SparkMark className="size-[26px]" />
+              <SparkMark className="size-8" />
             )}
-          </span>
-          <span className="font-display text-[15px] font-light tracking-[-0.01em]">
-            Build &amp; <span className="font-semibold text-accent">Launch</span>
           </span>
         </div>
 
@@ -117,8 +114,8 @@ export function LogoField({ logoUrl }: { logoUrl: string | null }) {
       </div>
 
       <p className="text-small text-text-faint">
-        A square PNG or WebP with a transparent background works best. It replaces
-        the daisy mark; the &ldquo;Build &amp; Launch&rdquo; wordmark stays beside it.
+        A square PNG or WebP with a transparent background works best. Shown in the
+        marketing header and the app sidebar.
       </p>
       {error && <p className="text-small text-danger">{error}</p>}
     </div>

@@ -147,9 +147,6 @@ export function AppShell({
               <SparkMark className="size-[26px]" />
             )}
           </span>
-          <span className="hidden font-display text-[15px] font-light tracking-[-0.01em] lg:inline">
-            Build &amp; <span className="font-semibold text-accent">Launch</span>
-          </span>
         </div>
 
         {/* nav */}
