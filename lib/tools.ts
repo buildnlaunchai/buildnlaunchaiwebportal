@@ -46,11 +46,30 @@ export type ToolDetailData = ToolCardData & {
 };
 
 /**
- * The public catalog: every tool a visitor may see, in display order. RLS
- * already restricts this to published / coming_soon / maintenance rows, so
- * there is no status filter here — the database is the boundary, not this query.
+ * Slugs hidden from every PUBLIC / unauthenticated surface — the landing grid,
+ * /tools, /pricing, the /tools/[slug] page + its OpenGraph metadata, and the
+ * shipping log (landing + /changelog). They stay FULLY available to signed-in
+ * members and admins: the dashboard grid resolves access through the engine
+ * (getMyAccessibleTools), the runner queries `tools` directly, and the command
+ * palettes pass { includeHidden: true }.
+ *
+ * youtube-lead-finder: its public "list of creators to reach / find a contact"
+ * framing reads to Paddle's crawler as prohibited outbound-marketing / list-
+ * building and blocked live domain approval. Kept off every crawlable page.
  */
-export async function getPublicTools(): Promise<ToolCardData[]> {
+const PUBLIC_HIDDEN_SLUGS = new Set<string>(["youtube-lead-finder"]);
+
+const publiclyVisible = (t: { slug: string }) => !PUBLIC_HIDDEN_SLUGS.has(t.slug);
+
+/**
+ * The public catalog: every tool a visitor may see, in display order. RLS
+ * already restricts this to published / coming_soon / maintenance rows; on top
+ * of that we drop PUBLIC_HIDDEN_SLUGS, unless `includeHidden` (used only by the
+ * auth-gated member/admin command palettes, which are never crawled).
+ */
+export async function getPublicTools(opts?: {
+  includeHidden?: boolean;
+}): Promise<ToolCardData[]> {
   const supabase = createPublicClient();
   const { data, error } = await supabase
     .from("tools")
@@ -58,7 +77,8 @@ export async function getPublicTools(): Promise<ToolCardData[]> {
     .order("sort_order", { ascending: true });
 
   if (error) throw error;
-  return data ?? [];
+  const all = data ?? [];
+  return opts?.includeHidden ? all : all.filter(publiclyVisible);
 }
 
 /**
@@ -82,7 +102,7 @@ export async function getPublicCatalog(): Promise<{
     .select(CARD_COLUMNS)
     .order("sort_order", { ascending: true });
   if (error) throw error;
-  const all = data ?? [];
+  const all = (data ?? []).filter(publiclyVisible);
 
   const published = all.filter((t) => t.status === "published");
   const featured = published.find((t) => t.is_featured) ?? published[0] ?? null;
@@ -107,6 +127,10 @@ export async function getPublicCatalog(): Promise<{
 
 /** One tool's public page. Returns null if the slug isn't a visible tool. */
 export async function getToolBySlug(slug: string): Promise<ToolDetailData | null> {
+  // Hidden from public: the /tools/[slug] page 404s and its OG metadata falls
+  // back to "not found" — members reach it through the dashboard runner instead.
+  if (PUBLIC_HIDDEN_SLUGS.has(slug)) return null;
+
   const supabase = createPublicClient();
   const { data } = await supabase
     .from("tools")
@@ -133,5 +157,5 @@ export async function getShippingLog(): Promise<ToolCardData[]> {
     .order("launched_at", { ascending: false });
 
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).filter(publiclyVisible);
 }

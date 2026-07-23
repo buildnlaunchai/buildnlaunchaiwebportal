@@ -30,7 +30,9 @@ export default async function DashboardLayout({
   // decided. Mutations check again for themselves.
   const user = await requireUser("/dashboard");
   const [tools, notifications, announcement, membership, logoUrl] = await Promise.all([
-    getPublicTools(),
+    // includeHidden: this feeds the ⌘K palette (auth-gated, never crawled), so a
+    // member keeps reach to tools hidden from public surfaces.
+    getPublicTools({ includeHidden: true }),
     getMyNotifications(),
     getLatestPublishedAnnouncement(),
     getMyMembership(),

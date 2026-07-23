@@ -29,8 +29,10 @@ export default async function AdminLayout({
   const user = await requireAdmin();
 
   // Command-palette sources: the admin can jump to any tool or any user by name.
+  // includeHidden: the palette is auth-gated (never crawled), so admins keep
+  // reach to tools hidden from public surfaces.
   const [tools, users, notifications, logoUrl] = await Promise.all([
-    getPublicTools(),
+    getPublicTools({ includeHidden: true }),
     getUsersForAdmin(),
     getMyNotifications(),
     getLogoUrl(),
