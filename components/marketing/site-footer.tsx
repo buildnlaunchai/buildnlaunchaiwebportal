@@ -13,6 +13,14 @@ const LINKS = [
   { href: "/login", label: "Log in" },
 ];
 
+// Legal / policy links — required for Paddle (merchant of record) live approval.
+const LEGAL_LINKS = [
+  { href: "/terms", label: "Terms" },
+  { href: "/privacy", label: "Privacy" },
+  { href: "/refund", label: "Refunds" },
+  { href: "/contact", label: "Contact" },
+];
+
 /**
  * The marketing site footer — a giant ghosted wordmark filling the ground, with
  * a small link row and the copyright above it (the AssetBender treatment, in the
@@ -37,6 +45,17 @@ export function SiteFooter() {
               key={l.href}
               href={l.href}
               className="transition-colors duration-micro ease-default hover:text-text"
+            >
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+        <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-mono-chip text-text-faint">
+          {LEGAL_LINKS.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className="transition-colors duration-micro ease-default hover:text-text-muted"
             >
               {l.label}
             </Link>
