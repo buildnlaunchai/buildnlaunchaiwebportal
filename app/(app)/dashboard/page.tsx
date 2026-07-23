@@ -47,7 +47,7 @@ export default function DashboardPage() {
 }
 
 async function Apps() {
-  await requireUser("/dashboard");
+  const user = await requireUser("/dashboard");
 
   const [tools, membership, keyStatuses, priceId] = await Promise.all([
     getMyAccessibleTools(),
@@ -56,7 +56,11 @@ async function Apps() {
     getSubscribePriceId(),
   ]);
 
-  const active = isMembershipActive(membership);
+  // "Full access" for display = an active membership OR admin. Admins reach every
+  // tool through the access engine with no membership row, so they must never see
+  // the subscribe upsell or "Subscribe to unlock the rest."
+  const hasFullAccess =
+    isMembershipActive(membership) || user.profile.role === "admin";
 
   // Has tools → show them. This covers members AND non-members who can run the
   // public_preview tools (the funnel: run something before you ever pay).
@@ -64,7 +68,7 @@ async function Apps() {
     return (
       <div className="flex flex-col gap-6">
         <p className="text-small text-text-muted">
-          {active
+          {hasFullAccess
             ? `${tools.length} ${tools.length === 1 ? "tool" : "tools"} unlocked.`
             : "Open to everyone — no key needed. Subscribe to unlock the rest."}
         </p>
@@ -78,7 +82,7 @@ async function Apps() {
             />
           ))}
         </div>
-        {!active && (
+        {!hasFullAccess && (
           <Panel className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center sm:gap-4">
             <p className="text-small text-text-muted">
               Want the full catalog? $10/month, cancel anytime — you bring your
@@ -96,8 +100,8 @@ async function Apps() {
     );
   }
 
-  // No accessible tools yet. An active member is just early.
-  if (active) {
+  // No accessible tools yet. An active member (or admin) is just early.
+  if (hasFullAccess) {
     return (
       <CenteredEmpty>
         <EmptyState

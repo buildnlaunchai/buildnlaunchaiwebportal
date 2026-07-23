@@ -9,11 +9,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-import { SubscribeButton } from "@/components/billing/subscribe-button";
+import { MemberCta } from "@/components/billing/member-cta";
 import { CatalogCard } from "@/components/marketing/catalog-card";
 import { Hero } from "@/components/marketing/hero";
 import { ShippingLog } from "@/components/marketing/shipping-log";
-import { getSubscribePriceId } from "@/lib/billing";
 import { getPublicTools, getShippingLog } from "@/lib/tools";
 
 // ISR: the shipping log and catalog render from the database, so refresh the
@@ -51,16 +50,15 @@ const HOW_IT_WORKS = [
 ];
 
 export default async function LandingPage() {
-  const [shippingLog, tools, priceId] = await Promise.all([
+  const [shippingLog, tools] = await Promise.all([
     getShippingLog(),
     getPublicTools(),
-    getSubscribePriceId(),
   ]);
 
   return (
     <>
       {/* 1 — Hero (full-bleed: the cobalt sky spans the whole viewport) */}
-      <Hero shipped={shippingLog.length} priceId={priceId} />
+      <Hero shipped={shippingLog.length} />
 
       <div className="mx-auto w-full max-w-[1200px] px-5 lg:px-8">
       {/* 2 — The Shipping Log (the signature) */}
@@ -193,7 +191,7 @@ export default async function LandingPage() {
             $10/month. Cancel anytime. Your keys, your bill.
           </p>
           <div className="mt-2">
-            <SubscribeButton priceId={priceId} size="lg" />
+            <MemberCta size="lg" />
           </div>
         </div>
       </section>

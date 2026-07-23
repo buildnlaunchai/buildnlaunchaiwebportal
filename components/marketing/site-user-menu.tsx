@@ -72,10 +72,10 @@ export function SiteUserMenu() {
         >
           Log in
         </Link>
-        {/* Checkout needs an account to attach the membership to, so a signed-out
-            visitor logs in first, then lands on the dashboard to subscribe. */}
+        {/* Only signed-out visitors see this; it funnels to /pricing, where the
+            checkout lives (and which sends them to log in before paying). */}
         <Link
-          href="/login?next=/dashboard"
+          href="/pricing"
           className="rounded-pill bg-accent px-4 py-2 text-small font-semibold text-accent-text transition-colors duration-micro ease-default hover:bg-accent-hover"
         >
           Subscribe

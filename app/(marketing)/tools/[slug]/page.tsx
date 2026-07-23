@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { SubscribeButton } from "@/components/billing/subscribe-button";
+import { MemberCta } from "@/components/billing/member-cta";
 import { NotifyMeButton } from "@/components/tools/notify-me-button";
 import { ProviderChip } from "@/components/tools/provider-chip";
 import { StatusPill } from "@/components/tools/status-pill";
@@ -11,7 +11,6 @@ import { ToolFormPreview } from "@/components/tools/tool-form-preview";
 import { ToolIcon } from "@/components/tools/tool-icon";
 import { YouTubeEmbed } from "@/components/tools/youtube-embed";
 import { Button } from "@/components/ui/button";
-import { getSubscribePriceId } from "@/lib/billing";
 import { parseInputSchema } from "@/lib/tool-schema";
 import { getPublicTools, getToolBySlug } from "@/lib/tools";
 
@@ -53,10 +52,7 @@ export default async function ToolPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [tool, priceId] = await Promise.all([
-    getToolBySlug(slug),
-    getSubscribePriceId(),
-  ]);
+  const tool = await getToolBySlug(slug);
   if (!tool) notFound();
 
   const inputSchema = parseInputSchema(tool.input_schema);
@@ -156,7 +152,7 @@ export default async function ToolPage({
                   </Button>
                 </Link>
               ) : (
-                <SubscribeButton priceId={priceId} block />
+                <MemberCta block />
               )}
               {!isComingSoon && !isPublicPreview && (
                 <p className="mt-3 text-small text-text-muted">

@@ -7,7 +7,9 @@ const YEAR = new Date().getFullYear();
 const LINKS = [
   { href: "/tools", label: "Tools" },
   { href: "/changelog", label: "Changelog" },
-  { href: "/dashboard", label: "Subscribe" },
+  // Neutral label (not "Subscribe") so an active member browsing marketing pages
+  // never sees a subscribe CTA in the footer (Bug 2). /pricing itself is member-aware.
+  { href: "/pricing", label: "Pricing" },
   { href: "/login", label: "Log in" },
 ];
 

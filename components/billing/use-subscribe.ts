@@ -99,7 +99,10 @@ export function useSubscribe(priceId: string | null, loginNext = "/dashboard") {
       settings: {
         displayMode: "overlay",
         theme: "dark",
-        successUrl: `${window.location.origin}/dashboard`,
+        // ?checkout=1 lets the dashboard watch for the async webhook to activate
+        // the membership and refresh itself — otherwise the page renders before
+        // subscription.activated lands and shows the stale pre-payment state.
+        successUrl: `${window.location.origin}/dashboard?checkout=1`,
       },
     });
   }, [state, priceId, loginNext, router, ensurePaddle]);

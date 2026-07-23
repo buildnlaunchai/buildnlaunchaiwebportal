@@ -1,12 +1,11 @@
 import { Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 
-import { SubscribeButton } from "@/components/billing/subscribe-button";
+import { MemberCta } from "@/components/billing/member-cta";
 import { SparkBackground } from "@/components/brand/spark-background";
 import { CatalogCard } from "@/components/marketing/catalog-card";
 import { CatalogHero } from "@/components/marketing/catalog-hero";
 import { CatalogSection } from "@/components/marketing/catalog-section";
-import { getSubscribePriceId } from "@/lib/billing";
 import { getPublicCatalog } from "@/lib/tools";
 
 // ISR: the catalog renders from the database, so refresh the static HTML
@@ -20,8 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ToolsCatalogPage() {
-  const [{ featured, featuredStats, tools, newCutoff }, priceId] =
-    await Promise.all([getPublicCatalog(), getSubscribePriceId()]);
+  const { featured, featuredStats, tools, newCutoff } = await getPublicCatalog();
 
   return (
     <>
@@ -64,7 +62,7 @@ export default async function ToolsCatalogPage() {
             API keys.
           </p>
         </div>
-        <SubscribeButton priceId={priceId} className="shrink-0 sm:ml-auto" />
+        <MemberCta className="shrink-0 sm:ml-auto" />
       </div>
       </div>
     </>

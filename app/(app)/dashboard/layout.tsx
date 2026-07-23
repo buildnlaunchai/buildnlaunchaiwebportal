@@ -1,3 +1,6 @@
+import { Suspense } from "react";
+
+import { MembershipActivationWatcher } from "@/components/billing/membership-activation-watcher";
 import { AnnouncementBanner } from "@/components/shell/announcement-banner";
 import { AppShell, type NavItem } from "@/components/shell/app-shell";
 import { requireUser } from "@/lib/access";
@@ -34,9 +37,14 @@ export default async function DashboardLayout({
     getLogoUrl(),
   ]);
 
-  const plan = isMembershipActive(membership)
-    ? { label: "Member", sublabel: "Active · all tools" }
-    : { label: "Applicant", sublabel: "Browse the free tools" };
+  // Derive the badge from actual access, not membership status alone: an admin
+  // has full access with no membership row, so they must never read "Applicant".
+  const isAdmin = user.profile.role === "admin";
+  const plan = isAdmin
+    ? { label: "Admin", sublabel: "Full access" }
+    : isMembershipActive(membership)
+      ? { label: "Member", sublabel: "Active · all tools" }
+      : { label: "Applicant", sublabel: "Browse the free tools" };
 
   return (
     <AppShell
@@ -55,6 +63,9 @@ export default async function DashboardLayout({
       paletteTools={tools.map((t) => ({ slug: t.slug, name: t.name }))}
       notifications={notifications}
     >
+      <Suspense fallback={null}>
+        <MembershipActivationWatcher />
+      </Suspense>
       <AnnouncementBanner announcement={announcement} />
       {children}
     </AppShell>
