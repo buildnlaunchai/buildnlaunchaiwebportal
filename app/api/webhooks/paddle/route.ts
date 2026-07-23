@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { getSubscribePriceId } from "@/lib/billing";
+import { clientIp, ipAllowed } from "@/lib/paddle/ip-allowlist";
 import { verifyPaddleSignature } from "@/lib/paddle/signature";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -16,8 +18,22 @@ type PaddleEvent = {
     id?: string; // sub_… on subscription.*; txn_… on transaction.*
     subscription_id?: string; // present on transaction.*
     custom_data?: { user_id?: string } | null;
+    items?: Array<{ price?: { id?: string } | null; price_id?: string } | null> | null;
+    price_id?: string;
   };
 };
+
+/** Every price id an event references (subscription/transaction items + top-level). */
+function priceIdsFromEvent(event: PaddleEvent): string[] {
+  const ids = new Set<string>();
+  const data = event.data ?? {};
+  for (const item of data.items ?? []) {
+    const id = item?.price?.id ?? item?.price_id;
+    if (id) ids.add(id);
+  }
+  if (data.price_id) ids.add(data.price_id);
+  return [...ids];
+}
 
 /**
  * Paddle Billing webhook. Order matters and is the security model:
@@ -39,6 +55,19 @@ export async function POST(req: Request) {
     return new NextResponse("not configured", { status: 500 });
   }
 
+  // Source-IP allowlist — defence in depth, IN ADDITION TO the HMAC check below,
+  // never instead of it. Rejects anything not from Paddle before we read the body
+  // or do crypto. A null (undeterminable) IP defers to HMAC. Set
+  // PADDLE_IP_ENFORCE=false to run log-only (monitor mode) — deploy that way first
+  // to confirm real deliveries arrive on allowlisted IPs, then enforce.
+  const ip = clientIp(req.headers);
+  if (!ipAllowed(ip)) {
+    console.warn(`[paddle] webhook from non-allowlisted IP: ${ip ?? "unknown"}`);
+    if (process.env.PADDLE_IP_ENFORCE !== "false") {
+      return new NextResponse("forbidden", { status: 403 });
+    }
+  }
+
   const raw = await req.text();
   const signature = req.headers.get("paddle-signature");
   if (!verifyPaddleSignature(raw, signature, secret)) {
@@ -57,6 +86,22 @@ export async function POST(req: Request) {
   const eventType = event.event_type;
   if (!eventId || !eventType) {
     return new NextResponse("missing event_id or event_type", { status: 400 });
+  }
+
+  // Shared Paddle account: this destination also receives the OTHER product's
+  // (AssetBender's) events. Act ONLY on events for OUR membership price — read
+  // from plans.provider_price_id so sandbox↔live needs no code change — and
+  // ack-and-ignore everything else, so a foreign subscription can never reach,
+  // let alone FK-fail against, our memberships table. Not even claimed in
+  // paddle_events. Fail OPEN if our price is somehow unset (misconfig): process
+  // rather than silently drop a real membership.
+  const ourPriceId = await getSubscribePriceId();
+  if (ourPriceId) {
+    if (!priceIdsFromEvent(event).includes(ourPriceId)) {
+      return NextResponse.json({ ok: true, ignored: "not-our-price" });
+    }
+  } else {
+    console.warn("[paddle] member price id unset — skipping price filter (fail-open)");
   }
 
   const data = event.data ?? {};
