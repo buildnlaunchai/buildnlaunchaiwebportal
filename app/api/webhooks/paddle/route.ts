@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { clientIp, ipAllowed } from "@/lib/paddle/ip-allowlist";
 import { verifyPaddleSignature } from "@/lib/paddle/signature";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -37,6 +38,19 @@ export async function POST(req: Request) {
   if (!secret) {
     console.error("[paddle] PADDLE_WEBHOOK_SECRET is not set");
     return new NextResponse("not configured", { status: 500 });
+  }
+
+  // Source-IP allowlist — defence in depth, IN ADDITION TO the HMAC check below,
+  // never instead of it. Rejects anything not from Paddle before we read the body
+  // or do crypto. A null (undeterminable) IP defers to HMAC. Set
+  // PADDLE_IP_ENFORCE=false to run log-only (monitor mode) — deploy that way first
+  // to confirm real deliveries arrive on allowlisted IPs, then enforce.
+  const ip = clientIp(req.headers);
+  if (!ipAllowed(ip)) {
+    console.warn(`[paddle] webhook from non-allowlisted IP: ${ip ?? "unknown"}`);
+    if (process.env.PADDLE_IP_ENFORCE !== "false") {
+      return new NextResponse("forbidden", { status: 403 });
+    }
   }
 
   const raw = await req.text();
