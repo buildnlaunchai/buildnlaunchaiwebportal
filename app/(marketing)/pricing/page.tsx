@@ -11,12 +11,11 @@ import type { Metadata } from "next";
 import { SubscribeButton } from "@/components/billing/subscribe-button";
 import { SparkBackground } from "@/components/brand/spark-background";
 import { CatalogCard } from "@/components/marketing/catalog-card";
-import { getSubscribePriceId } from "@/lib/billing";
 import { getPublicTools } from "@/lib/tools";
 
 // ISR: the tool catalog on this page is pulled live from the database, so refresh
 // the static HTML periodically — a tool published from the admin appears here
-// within the window, with no redeploy. The price id is read from plans, too.
+// within the window, with no redeploy.
 export const revalidate = 300;
 
 export const metadata: Metadata = {
@@ -70,7 +69,7 @@ const FAQ = [
   },
   {
     q: "Who handles the payment?",
-    a: "Paddle — our merchant of record. Paddle securely processes the payment, sends your receipt, and handles any applicable sales tax or VAT. I never see or store your card details.",
+    a: "Creem — our merchant of record. Creem securely processes the payment, sends your receipt, and handles any applicable sales tax or VAT. Because they're the seller on the transaction, the charge shows up under their name on your statement. I never see or store your card details.",
   },
   {
     q: "What happens to my data?",
@@ -79,10 +78,7 @@ const FAQ = [
 ];
 
 export default async function PricingPage() {
-  const [priceId, tools] = await Promise.all([
-    getSubscribePriceId(),
-    getPublicTools(),
-  ]);
+  const tools = await getPublicTools();
 
   return (
     <>
@@ -141,7 +137,6 @@ export default async function PricingPage() {
 
               <div className="mt-7">
                 <SubscribeButton
-                  priceId={priceId}
                   label="Get instant access"
                   size="lg"
                   block
@@ -149,7 +144,7 @@ export default async function PricingPage() {
               </div>
               <p className="text-mono-chip mt-3 flex items-center justify-center gap-1.5 text-text-faint">
                 <ShieldCheck aria-hidden className="size-3.5" strokeWidth={1.8} />
-                Secure checkout via Paddle · no card stored by us
+                Secure checkout via Creem · no card stored by us
               </p>
             </div>
           </div>
@@ -227,13 +222,14 @@ export default async function PricingPage() {
           </div>
         </section>
 
-        {/* Paddle merchant-of-record note */}
+        {/* Creem merchant-of-record note */}
         <section className="border-t border-line pt-10 text-center">
           <p className="prose-measure mx-auto text-small text-text-faint">
-            Payments are processed by <span className="text-text-muted">Paddle</span>,
-            our merchant of record. Paddle handles billing, your receipt, and any
-            applicable sales tax or VAT. Prices are in USD. You can cancel anytime
-            from your receipt link or your dashboard.
+            Payments are processed by <span className="text-text-muted">Creem</span>,
+            our merchant of record. Creem handles billing, your receipt, and any
+            applicable sales tax or VAT, and appears as the seller on your
+            statement. Prices are in USD. You can cancel anytime from your receipt
+            link or your dashboard.
           </p>
         </section>
       </div>

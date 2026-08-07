@@ -39,12 +39,17 @@ export default function RefundPage() {
         </p>
       </Section>
 
-      <Section title="How billing works with Paddle">
+      <Section title="How billing works with Creem">
         <p>
-          Paddle.com is our merchant of record and processes all payments. If you
-          have a payment-specific issue (e.g., a card was charged incorrectly), you
-          can also contact Paddle support directly, as they handle the actual
-          transaction.
+          Creem is our merchant of record and processes all payments, so charges
+          appear on your statement under their name rather than ours.
+        </p>
+        <p>
+          Refund requests go through us first &mdash; we&rsquo;re the seller, and
+          we can resolve almost everything faster directly. If you have a
+          payment-specific issue we can&rsquo;t resolve (e.g., a card was charged
+          incorrectly), you can escalate to Creem at{" "}
+          <a href="mailto:support@creem.io">support@creem.io</a>.
         </p>
       </Section>
     </LegalShell>

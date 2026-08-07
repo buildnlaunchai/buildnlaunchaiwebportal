@@ -337,6 +337,24 @@ export type Database = {
           },
         ]
       }
+      creem_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          processed_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          processed_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          processed_at?: string
+        }
+        Relationships: []
+      }
       feature_request_votes: {
         Row: {
           created_at: string
@@ -1098,6 +1116,15 @@ export type Database = {
           p_target_user?: string
         }
         Returns: undefined
+      }
+      process_creem_event: {
+        Args: {
+          p_event_id: string
+          p_event_type: string
+          p_subscription_id: string
+          p_user_id: string
+        }
+        Returns: string
       }
       process_paddle_event: {
         Args: {

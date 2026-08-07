@@ -9,10 +9,13 @@ import { cn } from "@/lib/utils";
  * Reused wherever a member joins: the landing close, the catalog, a locked tool
  * page, the dashboard empty state. It swaps its own label to "Visit dashboard"
  * for a member who's already active, so nobody double-subscribes. Custom-styled
- * placements (the hero, the header) use the useSubscribe hook directly instead.
+ * placements can use the useSubscribe hook directly instead.
+ *
+ * There is no `priceId` prop any more: Creem checkout resolves the product from
+ * `plans` server-side in /api/checkout, so the id no longer has to be fetched on
+ * every page that renders a CTA and threaded down through props.
  */
 export function SubscribeButton({
-  priceId,
   variant = "primary",
   size,
   className,
@@ -21,7 +24,6 @@ export function SubscribeButton({
   memberLabel = "Visit dashboard",
   loginNext = "/dashboard",
 }: {
-  priceId: string | null;
   variant?: ButtonProps["variant"];
   size?: ButtonProps["size"];
   className?: string;
@@ -32,13 +34,13 @@ export function SubscribeButton({
   /** Where a signed-out visitor lands after logging in. */
   loginNext?: string;
 }) {
-  const { state, act } = useSubscribe(priceId, loginNext);
+  const { state, act } = useSubscribe(loginNext);
 
   return (
     <Button
       variant={variant}
       size={size}
-      onClick={() => void act()}
+      onClick={act}
       className={cn(block && "w-full", className)}
     >
       {state === "member" ? memberLabel : label}

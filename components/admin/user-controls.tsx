@@ -138,7 +138,7 @@ export function UserControls({ userId, email, hasActiveMembership, suspended }: 
           </div>
           <p className="text-mono-chip text-text-faint">
             Blank or 0 comps a permanent membership. A trial auto-expires — no
-            Paddle, no code to hand out.
+            checkout, no code to hand out.
           </p>
         </div>
       )}

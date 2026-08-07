@@ -27,9 +27,10 @@ export default function ContactPage() {
 
       <Section title="Billing & payments">
         <p>
-          For billing or payment issues specifically, you can also reach
-          Paddle.com support directly, as they process all payments on our behalf
-          as merchant of record.
+          Creem processes all payments on our behalf as merchant of record. Email
+          us first for anything billing-related &mdash; we can usually sort it out
+          faster. If we can&rsquo;t, you can escalate to Creem at{" "}
+          <a href="mailto:support@creem.io">support@creem.io</a>.
         </p>
       </Section>
 
