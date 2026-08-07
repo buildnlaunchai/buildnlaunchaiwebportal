@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "vercel:env": "node --env-file-if-exists=.env.local scripts/vercel-env-push.mjs",
     "db:types": "node --env-file-if-exists=.env.local scripts/supabase-env.mjs --out lib/database.types.ts -- gen types typescript --project-id pezsxoynjjsipfnpfvva --schema public",
     "db:push": "node --env-file-if-exists=.env.local scripts/supabase-env.mjs --require SUPABASE_DB_PASSWORD -- db push",
     "verify:rls": "node --env-file=.env.local scripts/verify-rls.mjs",
