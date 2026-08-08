@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { MemberCta } from "@/components/billing/member-cta";
+import { AiAttribution } from "@/components/tools/ai-attribution";
 import { NotifyMeButton } from "@/components/tools/notify-me-button";
 import { ProviderChip } from "@/components/tools/provider-chip";
 import { StatusPill } from "@/components/tools/status-pill";
@@ -94,6 +95,14 @@ export default async function ToolPage({
 
           <h1 className="text-display-l mt-6">{tool.name}</h1>
           <p className="mt-3 text-h3 font-normal text-text-muted">{tool.tagline}</p>
+
+          {/* Third-party AI attribution, directly under the title where a reviewer
+              (and a buyer) will actually see it — not buried at the page foot. */}
+          <AiAttribution
+            slug={tool.slug}
+            providers={tool.required_providers}
+            className="text-mono-chip mt-4 text-text-faint"
+          />
 
           {tool.video_url && (
             <div className="mt-8">

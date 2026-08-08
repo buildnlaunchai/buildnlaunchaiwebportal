@@ -64,6 +64,18 @@ export function SiteFooter() {
         <p className="text-mono-chip uppercase tracking-[0.12em] text-text-faint">
           © {YEAR} Build &amp; Launch AI. All rights reserved.
         </p>
+        {/* Third-party AI transparency. Required by payment providers reviewing
+            "AI wrapper" businesses, and true regardless: some tools call models
+            we neither own nor represent. The per-tool half of this — which model
+            powers which tool — is <AiAttribution>, under each tool's title.
+            Deliberately in the footer so it appears on every marketing page. */}
+        <p className="prose-measure mx-auto mt-4 text-center text-small text-text-faint">
+          Build &amp; Launch AI is an independent product. Some tools use
+          third-party AI models through APIs you connect with your own keys. We
+          are not affiliated with, endorsed by, or sponsored by any AI model
+          provider, and all product names and trademarks belong to their
+          respective owners.
+        </p>
       </div>
     </footer>
   );

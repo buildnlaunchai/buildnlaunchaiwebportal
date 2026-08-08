@@ -2,6 +2,7 @@ import { KeyRound, Wrench } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AiAttribution } from "@/components/tools/ai-attribution";
 import { RunnerClient } from "@/components/tools/runner-client";
 import { ToolEmbed } from "@/components/tools/tool-embed";
 import { ToolIcon } from "@/components/tools/tool-icon";
@@ -125,6 +126,14 @@ export default async function RunnerPage({
             <p className="text-mono text-text-faint">{tool.slug}</p>
           </div>
         </div>
+
+        {/* Same third-party AI attribution as the public tool page. A member who
+            only ever sees the runner still gets told what is behind the tool. */}
+        <AiAttribution
+          slug={tool.slug}
+          providers={tool.required_providers ?? []}
+          className="text-mono-chip mt-4 text-text-faint"
+        />
       </div>
 
       {inMaintenance && (
