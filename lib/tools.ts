@@ -56,8 +56,16 @@ export type ToolDetailData = ToolCardData & {
  * youtube-lead-finder: its public "list of creators to reach / find a contact"
  * framing reads to Paddle's crawler as prohibited outbound-marketing / list-
  * building and blocked live domain approval. Kept off every crawlable page.
+ *
+ * raw-footage-real-story: a desktop product with its own launch, not yet
+ * announced here. It exists as a tools row so the access engine can answer the
+ * desktop app's licence check (§7) — that is a backend need, not a reason to
+ * publish a catalog page for it. Remove this entry when it launches publicly.
  */
-const PUBLIC_HIDDEN_SLUGS = new Set<string>(["youtube-lead-finder"]);
+const PUBLIC_HIDDEN_SLUGS = new Set<string>([
+  "youtube-lead-finder",
+  "raw-footage-real-story",
+]);
 
 const publiclyVisible = (t: { slug: string }) => !PUBLIC_HIDDEN_SLUGS.has(t.slug);
 

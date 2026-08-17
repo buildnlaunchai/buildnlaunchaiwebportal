@@ -128,5 +128,13 @@ export function providerName(value: string): string {
 
 // The honesty statement — verbatim from CLAUDE.md §10 / DESIGN.md §12. Nothing
 // stronger than this may appear anywhere in the product.
+//
+// Amended when the desktop app shipped. The previous wording ended at "or to
+// me", which was true while every tool ran inside our own Edge Functions and
+// stopped being true the moment desktop-keys could hand a decrypted key to an
+// app on the member's machine. §10 is explicit that an over-promise here is
+// worse than no promise, because the audience is technical and will work it
+// out — so the sentence names the desktop case rather than hoping nobody reads
+// the changelog. Every clause is still literally, defensibly true.
 export const KEY_HONESTY_COPY =
-  "Your key is encrypted before it's stored. No screen in this product can show it back to you — or to me. A leaked database is useless without a key I keep off the server.";
+  "Your key is encrypted before it's stored. No screen in this product will show it back to you — or to me. The only thing that can read it is a tool you run, and desktop apps only after you allow them, per app. A leaked database is useless without a key I keep off the server.";

@@ -62,7 +62,7 @@ const FAQ = [
   },
   {
     q: "Why bring my own keys instead of paying for usage?",
-    a: "Two reasons. It's cheaper — you pay the provider at cost with no middleman. And it's safer — your key is encrypted before it's stored, no screen in the product can show it back (not even to me), and it never touches software I don't control.",
+    a: "Two reasons. It's cheaper — you pay the provider at cost with no middleman. And it's safer — your key is encrypted before it's stored, no screen in the product will show it back (not even to me), and the only thing that can read it is a tool you run. The desktop app is the one exception, and only after you allow it, per key, from the vault.",
   },
   {
     q: "Can I cancel anytime?",

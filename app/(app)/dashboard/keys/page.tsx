@@ -1,5 +1,9 @@
+import { Monitor } from "lucide-react";
+import Link from "next/link";
+
 import { KeyVault } from "@/components/keys/key-vault";
 import { requireUser } from "@/lib/access";
+import { canAccessDesktopApp } from "@/lib/desktop";
 import { getMyKeys } from "@/lib/keys";
 import { PROVIDER_BY_VALUE } from "@/lib/providers";
 
@@ -15,7 +19,11 @@ export default async function KeysPage({
 }) {
   await requireUser("/dashboard/keys");
 
-  const [keys, { provider }] = await Promise.all([getMyKeys(), searchParams]);
+  const [keys, { provider }, hasDesktopApp] = await Promise.all([
+    getMyKeys(),
+    searchParams,
+    canAccessDesktopApp(),
+  ]);
 
   // Deep-link target from a tool card's "needs: openai" chip.
   const preselect =
@@ -30,6 +38,30 @@ export default async function KeysPage({
       <div className="mt-6">
         <KeyVault keys={keys} preselect={preselect} />
       </div>
+
+      {/* Only for members who actually have the desktop app: a permissions link
+          for software you can't run is a puzzle, not a feature. */}
+      {hasDesktopApp && (
+        <Link
+          href="/dashboard/keys/desktop"
+          className="mt-6 flex items-center gap-3 rounded-lg border border-line bg-surface px-5 py-4 transition-colors duration-micro ease-default hover:bg-elevated [border-top-color:var(--line-strong)]"
+        >
+          <Monitor
+            aria-hidden
+            className="size-[18px] shrink-0 text-text-muted"
+            strokeWidth={1.5}
+          />
+          <span className="min-w-0">
+            <span className="block text-body-strong text-text">
+              Desktop app permissions
+            </span>
+            <span className="block text-small text-text-muted">
+              Choose which keys the desktop app may read, and see every time it
+              has.
+            </span>
+          </span>
+        </Link>
+      )}
     </div>
   );
 }

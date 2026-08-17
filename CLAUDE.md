@@ -1274,10 +1274,20 @@ out.
 The true claim is strong enough. **This is the exact copy. Use it verbatim in the key vault, and
 say nothing stronger anywhere else in the product:**
 
-> Your key is encrypted before it's stored. No screen in this product can show it back to you —
-> or to me. A leaked database is useless without a key I keep off the server.
+> Your key is encrypted before it's stored. No screen in this product will show it back to you —
+> or to me. The only thing that can read it is a tool you run, and desktop apps only after you
+> allow them, per app. A leaked database is useless without a key I keep off the server.
 
 Every clause of that is literally, defensibly true.
+
+**Amended for the desktop app.** The original sentence ended at "or to me". That held while every
+tool ran inside our own Edge Functions and a decrypted key died with the isolate that spent it. It
+stopped holding when `desktop-keys` shipped: a native app reads the plaintext onto hardware we do
+not control. Rather than quietly leave a false claim in the product — the precise failure this
+section warns against — the copy names the case. The guarantees that make it acceptable are
+structural, not promises: consent is per-provider and explicit (`desktop_key_consent`, no client
+write policy), revocable at `/dashboard/keys/desktop`, and every release is logged to
+`desktop_key_access`, which the member can read and the admin cannot hide.
 
 ### Verification
 
@@ -1631,10 +1641,15 @@ Before this is called done, all of these must be true:
       through Vercel, in memory or in transit. (§13)
 - [ ] A member cannot read their own `ciphertext` column from the browser, as themselves.
 - [ ] A member cannot read any row of `tool_secrets`, from the browser, as themselves.
-- [ ] No API key ever appears in `tool_runs`, in a log line, or in a client payload.
-- [ ] **No member's API key is ever sent to software I do not control.** There is no third-party
-      execution engine in the path, so there is no vendor setting that could betray this by
-      default.
+- [ ] No API key ever appears in `tool_runs`, in a log line, or in a web client payload. **The one
+      exception is the `desktop-keys` response**, which returns a decrypted key to the member's own
+      desktop app — and only for a provider that member explicitly allowed, only while their
+      licence is active, and never without a `desktop_key_access` row they can read. Anything
+      beyond that single endpoint is still a bug.
+- [ ] **No member's API key is ever sent to software I do not control**, except the desktop app
+      they installed and consented to, running on their own machine under their own account.
+      There is still no third-party execution engine in the path, so there is no vendor setting
+      that could betray this by default.
 - [ ] The platform's compute bill for any member's usage is exactly zero. The Supabase plan is a
       fixed cost and does not scale with members.
 - [ ] A run that fails on a bad key says so plainly and links to the fix.

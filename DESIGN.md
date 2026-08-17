@@ -896,8 +896,16 @@ Copy is design material. It's most of what the user actually experiences.
 > `[Connect a key]`
 
 **Key vault, what we do with the key — this exact wording, and nothing stronger, anywhere:**
-> Your key is encrypted before it's stored. No screen in this product can show it back to you —
-> or to me. A leaked database is useless without a key I keep off the server.
+> Your key is encrypted before it's stored. No screen in this product will show it back to you —
+> or to me. The only thing that can read it is a tool you run, and desktop apps only after you
+> allow them, per app. A leaked database is useless without a key I keep off the server.
+
+> **Amended when the desktop app shipped.** The sentence used to stop at "or to me", which was
+> true while every tool ran inside our own Edge Functions. The desktop app reads a decrypted key
+> onto the member's own machine, so the old wording became an over-promise — exactly the thing
+> the note below says not to write. The clause naming desktop apps is not a softening; it is the
+> repair. Consent is per-provider, revocable at `/dashboard/keys/desktop`, and every read is
+> listed there.
 
 > The temptation is to write "not even I can read it." Don't. I hold the encryption key and the
 > database credentials; with enough determination I could decrypt anything in here, and the

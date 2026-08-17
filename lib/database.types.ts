@@ -337,6 +337,105 @@ export type Database = {
           },
         ]
       }
+      creem_events: {
+        Row: {
+          event_id: string
+          event_type: string
+          processed_at: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          processed_at?: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          processed_at?: string
+        }
+        Relationships: []
+      }
+      desktop_key_access: {
+        Row: {
+          created_at: string
+          id: string
+          provider: Database["public"]["Enums"]["api_provider"]
+          tool_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          provider: Database["public"]["Enums"]["api_provider"]
+          tool_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          provider?: Database["public"]["Enums"]["api_provider"]
+          tool_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "desktop_key_access_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "tools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "desktop_key_access_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      desktop_key_consent: {
+        Row: {
+          granted_at: string
+          id: string
+          provider: Database["public"]["Enums"]["api_provider"]
+          revoked_at: string | null
+          tool_id: string
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string
+          id?: string
+          provider: Database["public"]["Enums"]["api_provider"]
+          revoked_at?: string | null
+          tool_id: string
+          user_id: string
+        }
+        Update: {
+          granted_at?: string
+          id?: string
+          provider?: Database["public"]["Enums"]["api_provider"]
+          revoked_at?: string | null
+          tool_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "desktop_key_consent_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "tools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "desktop_key_consent_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_request_votes: {
         Row: {
           created_at: string
@@ -1084,6 +1183,14 @@ export type Database = {
       }
       claim_referral: { Args: { p_code: string }; Returns: Json }
       has_active_membership: { Args: { uid?: string }; Returns: boolean }
+      has_desktop_consent: {
+        Args: {
+          p_provider: Database["public"]["Enums"]["api_provider"]
+          p_tool_id: string
+          uid?: string
+        }
+        Returns: boolean
+      }
       has_required_keys: {
         Args: { p_tool_id: string; uid?: string }
         Returns: boolean
@@ -1098,6 +1205,15 @@ export type Database = {
           p_target_user?: string
         }
         Returns: undefined
+      }
+      process_creem_event: {
+        Args: {
+          p_event_id: string
+          p_event_type: string
+          p_subscription_id: string
+          p_user_id: string
+        }
+        Returns: string
       }
       process_paddle_event: {
         Args: {
