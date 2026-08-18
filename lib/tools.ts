@@ -57,15 +57,17 @@ export type ToolDetailData = ToolCardData & {
  * framing reads to Paddle's crawler as prohibited outbound-marketing / list-
  * building and blocked live domain approval. Kept off every crawlable page.
  *
- * raw-footage-real-story: a desktop product with its own launch, not yet
- * announced here. It exists as a tools row so the access engine can answer the
- * desktop app's licence check (§7) — that is a backend need, not a reason to
- * publish a catalog page for it. Remove this entry when it launches publicly.
+ * raw-footage-real-story was removed from this set on 2026-08-19: the desktop
+ * app is now public. Its /tools/[slug] entry is superseded by the dedicated
+ * static route at app/(marketing)/tools/raw-footage-real-story/page.tsx, which
+ * outranks the dynamic segment and is the page the catalog card now leads to.
+ * Going public was a deliberate call taken with three things knowingly
+ * outstanding, recorded here so they read as follow-ups rather than oversights:
+ * the release build is still unsigned with VITE_AUTH_GATE not yet flipped on,
+ * Windows OAuth is untested, and support@buildnlaunchai.com is not confirmed
+ * monitored.
  */
-const PUBLIC_HIDDEN_SLUGS = new Set<string>([
-  "youtube-lead-finder",
-  "raw-footage-real-story",
-]);
+const PUBLIC_HIDDEN_SLUGS = new Set<string>(["youtube-lead-finder"]);
 
 const publiclyVisible = (t: { slug: string }) => !PUBLIC_HIDDEN_SLUGS.has(t.slug);
 
