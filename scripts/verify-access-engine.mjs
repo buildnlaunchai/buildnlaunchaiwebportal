@@ -90,8 +90,30 @@ try {
   const auditMember = await fetch(`${URL}/rest/v1/audit_logs?select=action`, { headers: { apikey: ANON, Authorization: `Bearer ${memberTok}` } }).then((r) => r.json());
   check(Array.isArray(auditMember) && auditMember.length === 0, "a member sees 0 audit rows");
 } finally {
-  for (const id of [memberId, adminId, applicantId]) if (id) await svc(`/auth/v1/admin/users/${id}`, { method: "DELETE" });
-  console.log("\n  (probe users deleted)");
+  // CLEANUP IS ORDERED, and the order is not cosmetic.
+  //
+  // §6 approves the applicant's application AS THE ADMIN, which sets
+  // applications.reviewed_by = adminId. That column references profiles(id)
+  // with no `on delete` clause — NO ACTION — so the admin cannot be deleted
+  // while that application row exists.
+  //
+  // The old order was [member, admin, applicant]: the admin's delete was
+  // attempted while the applicant (and therefore the application) was still
+  // there, so it was REFUSED. `fetch` does not throw on a 4xx, so the refusal
+  // was silent — the run printed "probe users deleted" and left a real
+  // role='admin' account in production. Seven of them built up that way.
+  //
+  // Drop the dependent rows explicitly rather than relying on a lucky delete
+  // order, then the users. Same shape as verify-desktop's cleanup.
+  if (applicantId) await svc(`/rest/v1/applications?user_id=eq.${applicantId}`, { method: "DELETE" });
+  if (applicantId) await svc(`/rest/v1/memberships?user_id=eq.${applicantId}`, { method: "DELETE" });
+  for (const id of [applicantId, memberId, adminId]) if (id) await svc(`/auth/v1/admin/users/${id}`, { method: "DELETE" });
+
+  // Assert it worked. A silent refusal is exactly how this leaked for a month;
+  // a failing check is how it stops leaking quietly.
+  const strays = (await svc(`/rest/v1/profiles?select=email&email=like.ae-*`).then((r) => r.json()) ?? [])
+    .map((p) => p.email);
+  check(strays.length === 0, "cleanup left no probe accounts behind", strays.join(", ") || "clean");
 }
 console.log(`\n${"=".repeat(56)}\n  ${pass} passed, ${fail} failed\n${"=".repeat(56)}`);
 process.exit(fail ? 1 : 0);

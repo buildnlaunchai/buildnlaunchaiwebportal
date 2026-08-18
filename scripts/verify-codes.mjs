@@ -21,6 +21,9 @@ const B = `codeuser-b-${Date.now()}@example.com`;
 const admin = `codeadmin-${Date.now()}@example.com`;
 let aId, bId, adminId;
 const madeCodeIds = [];
+// Declared out here, not in the try: the finally has to be able to delete these
+// even if §7 throws halfway through creating them.
+const refIds = [];
 try {
   aId = await mk(A); bId = await mk(B); adminId = await mk(admin);
   await new Promise(r => setTimeout(r, 700));
@@ -76,7 +79,6 @@ try {
   // Reset A to have no membership so we can see the auto-grant fire (A got one from the code above).
   await svc(`/rest/v1/memberships?user_id=eq.${aId}`, { method: "DELETE" });
   // Make 3 referred users pointing at A (simulating 3 sign-ups via A's link).
-  const refIds = [];
   for (let i = 0; i < 3; i++) {
     const id = await mk(`ref-${i}-${Date.now()}@example.com`);
     refIds.push(id);
@@ -100,11 +102,38 @@ try {
   const selfClaim = await rpcAs(aTok, "claim_referral", { p_code: selfCode });
   check(selfClaim.body?.claimed === false, "a user can't refer themselves", JSON.stringify(selfClaim.body));
 
-  for (const id of refIds) await svc(`/auth/v1/admin/users/${id}`, { method: "DELETE" });
 } finally {
+  // CLEANUP IS ORDERED, and the order is not cosmetic. Six columns reference
+  // profiles(id) with no `on delete` clause — NO ACTION — so a probe user with
+  // any of them still pointing at it simply refuses to delete. `fetch` does not
+  // throw on a 4xx, so that refusal is SILENT: the run prints "probe users
+  // deleted" and leaves the account in production forever. Seven of them
+  // accumulated that way before anyone noticed.
+  //
+  // Dependents first, then users:
+
+  // access_codes.created_by → the admin. NO ACTION.
   for (const id of madeCodeIds) await svc(`/rest/v1/access_codes?id=eq.${id}`, { method: "DELETE" });
+
+  // profiles.referred_by → A. NO ACTION, so a referred user outliving A blocks
+  // A's own delete.
+  for (const id of refIds) if (id) await svc(`/auth/v1/admin/users/${id}`, { method: "DELETE" });
+
+  // memberships.granted_by → A. THIS is what leaked: §7's referral auto-grant
+  // writes a row with BOTH user_id = A and granted_by = A. user_id cascades,
+  // granted_by does not, and NO ACTION wins — so a self-granted membership
+  // pins its own owner in place. The mid-script delete at §7 runs BEFORE that
+  // row exists, which is why it never caught it.
+  for (const id of [aId, bId]) if (id) await svc(`/rest/v1/memberships?user_id=eq.${id}`, { method: "DELETE" });
+
   for (const id of [aId, bId, adminId]) if (id) await svc(`/auth/v1/admin/users/${id}`, { method: "DELETE" });
-  console.log("\n  (probe users + codes deleted)");
+
+  // Assert the cleanup actually happened. Without this the next silent refusal
+  // is invisible again, and this whole class of bug comes straight back.
+  const left = await svc(`/rest/v1/profiles?select=email&email=like.codeuser-*`).then((r) => r.json());
+  const leftRef = await svc(`/rest/v1/profiles?select=email&email=like.ref-*`).then((r) => r.json());
+  const strays = [...(left ?? []), ...(leftRef ?? [])].map((p) => p.email);
+  check(strays.length === 0, "cleanup left no probe accounts behind", strays.join(", ") || "clean");
 }
 console.log(`\n${"=".repeat(56)}\n  ${pass} passed, ${fail} failed\n${"=".repeat(56)}`);
 process.exit(fail ? 1 : 0);
