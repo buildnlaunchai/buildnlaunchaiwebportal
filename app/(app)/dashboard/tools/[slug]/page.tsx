@@ -1,14 +1,16 @@
-import { KeyRound, Wrench } from "lucide-react";
+import { Download, KeyRound, Wrench } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AiAttribution } from "@/components/tools/ai-attribution";
+import { Markdown } from "@/components/tools/markdown";
 import { RunnerClient } from "@/components/tools/runner-client";
 import { ToolEmbed } from "@/components/tools/tool-embed";
 import { ToolIcon } from "@/components/tools/tool-icon";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { BackLink } from "@/components/ui/page-header";
+import { Panel } from "@/components/ui/panel";
 import { requireUser } from "@/lib/access";
 import { mintEmbedToken } from "@/lib/embed";
 import { getMyRun } from "@/lib/runs";
@@ -37,7 +39,9 @@ export default async function RunnerPage({
     requireUser(),
     supabase
       .from("tools")
-      .select("id, slug, name, icon, status, runtime, required_providers, input_schema, output_schema")
+      .select(
+        "id, slug, name, icon, status, runtime, required_providers, input_schema, output_schema, tagline, description",
+      )
       .eq("slug", slug)
       .maybeSingle(),
   ]);
@@ -52,6 +56,12 @@ export default async function RunnerPage({
 
   const inMaintenance = tool.status === "maintenance";
   const isEmbed = tool.runtime === "iframe";
+  // external_link: nothing executes here. No form, no run row, no key check —
+  // the hub's whole job for this runtime is the access check above, then handing
+  // over the link. Rendering the edge_function runner for it was the bug: it
+  // offered a Run button that could never run and demanded keys this page has no
+  // use for, because `runtime` was only ever branched on for `iframe`.
+  const isExternal = tool.runtime === "external_link";
 
   // ---- the iframe branch -------------------------------------------------
   //
@@ -89,13 +99,42 @@ export default async function RunnerPage({
     }
   }
 
-  const { data: hasKeys } = isEmbed
-    ? { data: true }
-    : await supabase.rpc("has_required_keys", { p_tool_id: tool.id });
+  // ---- the external_link branch ------------------------------------------
+  //
+  // Same shape as the iframe branch, one runtime over: read the URL from
+  // tool_secrets (deny-all to every client role, so service role), and hand it
+  // over. A tool in maintenance resolves nothing — the same rule as an embed
+  // minting no token and startRun refusing to run.
+  let externalUrl: string | null = null;
+  let externalError: string | null = null;
+  if (isExternal && !inMaintenance) {
+    const admin = createAdminClient();
+    const { data: secret } = await admin
+      .from("tool_secrets")
+      .select("external_url")
+      .eq("tool_id", tool.id)
+      .maybeSingle();
+
+    if (!secret?.external_url) {
+      // A published external tool with no URL is my mistake, not theirs.
+      externalError = "This app isn't wired up yet. I'm on it.";
+    } else {
+      externalUrl = secret.external_url;
+    }
+  }
+
+  // The key check gates the RUN button, so it is only meaningful for the
+  // runtime that has one. An embed brings its own keys; an external app spends
+  // them on the member's own machine, under the consent gate at
+  // /dashboard/keys — neither is something this page can or should block.
+  const { data: hasKeys } =
+    isEmbed || isExternal
+      ? { data: true }
+      : await supabase.rpc("has_required_keys", { p_tool_id: tool.id });
 
   // Resume: ?run=<id> loads a prior run (their own). If it's still running the
   // client re-subscribes; if terminal, it renders instantly with no ceremony.
-  const initialRun = isEmbed || !runId ? null : await getMyRun(runId);
+  const initialRun = isEmbed || isExternal || !runId ? null : await getMyRun(runId);
 
   // An embedded app gets FOCUS MODE: the whole viewport, nothing of the shell
   // behind it (so there is nothing to scroll back to), one slim bar home. The
@@ -160,13 +199,51 @@ export default async function RunnerPage({
         </Callout>
       )}
 
-      {embedError && (
+      {(embedError || externalError) && (
         <Callout tone="warn" icon={Wrench}>
-          {embedError}
+          {embedError ?? externalError}
         </Callout>
       )}
 
-      {!isEmbed && (
+      {/* external_link: the hand-off, not a runner. Description, one primary
+          action out, and — only as information — where the keys it uses live. */}
+      {isExternal && externalUrl && (
+        <Panel className="flex flex-col gap-5">
+          {tool.description ? (
+            <Markdown source={tool.description} />
+          ) : (
+            <p className="text-body text-text-muted">{tool.tagline}</p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <a href={externalUrl} target="_blank" rel="noopener noreferrer">
+              <Button variant="primary">
+                <Download aria-hidden className="size-4" strokeWidth={1.5} />
+                Download
+              </Button>
+            </a>
+            <span className="text-mono-chip text-text-faint">
+              opens in a new tab
+            </span>
+          </div>
+
+          {(tool.required_providers ?? []).length > 0 && (
+            <p className="text-small text-text-muted">
+              It runs on your own {(tool.required_providers ?? []).join(", ")}{" "}
+              key — nothing runs on my bill. Manage what it may read in your{" "}
+              <Link
+                href="/dashboard/keys"
+                className="text-accent hover:text-accent-hover"
+              >
+                key vault
+              </Link>
+              .
+            </p>
+          )}
+        </Panel>
+      )}
+
+      {!isEmbed && !isExternal && (
         <RunnerClient
           slug={tool.slug}
           inputSchema={parseInputSchema(tool.input_schema)}

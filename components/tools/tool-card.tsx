@@ -41,6 +41,11 @@ export function ToolCard({
   const isPublicPreview = tool.access_type === "public_preview";
   const isUnlocked = variant === "unlocked";
   const isIframe = tool.runtime === "iframe";
+  // external_link is not run in the browser at all — it is software you install
+  // or a page you open. It must never advertise a Run affordance or a key
+  // prompt: there is no form here, and the keys (if any) are spent by whatever
+  // is on the other side of the link, not by us.
+  const isExternal = tool.runtime === "external_link";
   const isLocked = !isUnlocked && !isPublicPreview && !isComingSoon;
 
   const cardHref = isUnlocked
@@ -54,7 +59,7 @@ export function ToolCard({
       ? { label: "soon", tone: "warn" as const, dot: true }
       : isMaintenance
         ? { label: "maintenance", tone: "warn" as const, dot: true }
-        : isIframe
+        : isIframe || isExternal
           ? { label: "app", tone: "neutral" as const }
           : tool.category
             ? { label: tool.category, tone: "neutral" as const }
@@ -67,6 +72,7 @@ export function ToolCard({
     isLocked,
     isComingSoon,
     isMaintenance,
+    isExternal,
     keyStatuses,
   });
 
@@ -78,7 +84,10 @@ export function ToolCard({
       : isComingSoon
         ? null // the NotifyMeButton renders here instead
         : isUnlocked
-          ? { label: isIframe ? "Open" : "Run", href: cardHref }
+          ? {
+              label: isExternal ? "Download" : isIframe ? "Open" : "Run",
+              href: cardHref,
+            }
           : isPublicPreview
             ? { label: "Try it free", href: `/login?next=/dashboard/tools/${tool.slug}` }
             : { label: "View", href: `/tools/${tool.slug}` };
@@ -206,6 +215,7 @@ function footerMeta({
   isLocked,
   isComingSoon,
   isMaintenance,
+  isExternal,
   keyStatuses,
 }: {
   tool: ToolCardData;
@@ -213,6 +223,7 @@ function footerMeta({
   isLocked: boolean;
   isComingSoon: boolean;
   isMaintenance: boolean;
+  isExternal: boolean;
   keyStatuses?: Record<string, KeyStatus>;
 }) {
   const wrap = (node: React.ReactNode) => (
@@ -237,6 +248,18 @@ function footerMeta({
       <>
         <Lock aria-hidden className="size-3.5 shrink-0 text-text-faint" strokeWidth={1.8} />
         <span className="truncate">members only</span>
+      </>,
+    );
+  }
+
+  // An external tool is never blocked on OUR key check — nothing executes here,
+  // so a missing key is not a missing prerequisite for this card's action. Say
+  // where the click goes; never render the amber "you can't go yet".
+  if (isExternal) {
+    return wrap(
+      <>
+        {dot("bg-text-faint")}
+        <span className="truncate">opens externally</span>
       </>,
     );
   }
