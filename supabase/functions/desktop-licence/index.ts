@@ -20,9 +20,11 @@
 import { mintLicenceToken } from "../_shared/hub-jwt.ts";
 import {
   DESKTOP_TOOL_SLUG,
+  type LicenceDenialReason,
   corsHeaders,
   gate,
   json,
+  licenceDenialReason,
 } from "../_shared/desktop.ts";
 
 Deno.serve(async (req) => {
@@ -56,6 +58,27 @@ Deno.serve(async (req) => {
 
     const expiresAt = (membership?.expires_at as string | null) ?? null;
 
+    // WHY it is a no. Only on the denial path: an entitled member costs no
+    // extra round trip, and a denied one is already looking at a wall.
+    //
+    // is_suspended is read here rather than carried by gate() because gate()
+    // serves desktop-keys too, which refuses outright and has no use for it —
+    // the shared gate should not buy a column for a caller that never reads it.
+    let reason: LicenceDenialReason | null = null;
+    if (!g.hasAccess) {
+      const { data: profile } = await g.supabase
+        .from("profiles")
+        .select("is_suspended")
+        .eq("id", g.userId)
+        .maybeSingle();
+
+      reason = licenceDenialReason({
+        suspended: profile?.is_suspended === true,
+        membershipStatus: (membership?.status as string | null) ?? null,
+        membershipExpiresAt: expiresAt,
+      });
+    }
+
     const { token, expiresAt: tokenExpiresAt, checkedAt } = await mintLicenceToken({
       userId: g.userId,
       email: g.email,
@@ -63,10 +86,13 @@ Deno.serve(async (req) => {
       active: g.hasAccess,
       plan,
       membershipExpiresAt: expiresAt,
+      reason,
     });
 
     return json({
       active: g.hasAccess,
+      // Mirrors the signed `reason` claim. null whenever active is true.
+      reason,
       plan,
       // The MEMBERSHIP's expiry — null means "never expires". Not the same date
       // as cache_expires_at below, and the desktop app must not conflate them.

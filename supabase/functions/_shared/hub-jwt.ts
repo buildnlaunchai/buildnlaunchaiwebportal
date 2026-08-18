@@ -11,6 +11,8 @@
 
 import { importPKCS8, SignJWT } from "https://esm.sh/jose@5.10.0";
 
+import type { LicenceDenialReason } from "./desktop.ts";
+
 // Importing the PEM parses it. Cached against the raw env value so a key
 // rotation still takes effect without a redeploy, while a warm isolate doesn't
 // re-parse on every mint.
@@ -138,6 +140,15 @@ export type LicenceTokenInput = {
   plan: string | null;
   /** ISO, or null for a membership that never expires. */
   membershipExpiresAt: string | null;
+  /**
+   * Why `active` is false — null whenever it is true.
+   *
+   * A SIGNED claim, not just an envelope field, and that is the point: the app
+   * caches this token to disk and renders its wall from the cache. A reason
+   * that lived only in the JSON would be gone the moment the app went offline,
+   * and the suspended member would be back to reading "no active subscription".
+   */
+  reason: LicenceDenialReason | null;
 };
 
 /**
@@ -184,6 +195,9 @@ export async function mintLicenceToken(input: LicenceTokenInput): Promise<{
   const token = await new SignJWT({
     email: input.email,
     active: input.active,
+    // Always present, explicitly null on a positive, so the app can read
+    // payload.reason without existence checks on either path.
+    reason: input.active ? null : input.reason,
     plan: input.plan,
     membership_expires_at: input.membershipExpiresAt,
     checked_at: checkedAt,

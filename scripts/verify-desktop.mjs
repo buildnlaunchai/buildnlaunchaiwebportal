@@ -10,6 +10,8 @@
  *   - a licence token's exp is CLAMPED to the membership expiry
  *   - a licence minted for this app is rejected by any other audience
  *   - a released key is logged, and a REFUSED one is not
+ *   - suspension beats a live membership, and says so: `reason: "suspended"`,
+ *     signed, so a paid-up suspended member is never sent to checkout
  *
  * Licence tokens are verified with the real `jose` against the public key in
  * secrets/ — the same half the desktop binary will carry — not a
@@ -98,6 +100,12 @@ try {
   check(negClaims?.active === false, "the CLAIM says false too, not just the JSON");
   const negTtl = (negClaims?.exp ?? 0) - (negClaims?.iat ?? 0);
   check(negTtl <= 3600, "a negative is cached for ~1h, not 30 days", `ttl=${negTtl}s`);
+  check(neg.reason === "no_membership", "reason: no_membership", String(neg.reason));
+  check(
+    negClaims?.reason === "no_membership",
+    "the reason is a SIGNED claim — survives into the offline cache",
+    String(negClaims?.reason),
+  );
 
   // ---- 3. licence: active membership -----------------------------------
   console.log("\n3. An active member gets a signed positive:");
@@ -107,6 +115,7 @@ try {
   check(ok.active === true, "active: true");
   check(ok.plan === "founding" || ok.plan === null, "plan reported", String(ok.plan));
   check(typeof ok.checked_at === "string", "checked_at present");
+  check(ok.reason === null, "reason is null when active — no wall to explain", String(ok.reason));
   let claims = null;
   try {
     const { payload, protectedHeader } = await jwtVerify(ok.licence_token, pubKey, verifyAs(SLUG));
@@ -228,7 +237,48 @@ try {
   check(!susBody.includes(FAKE_OPENAI), "no plaintext for a suspended user");
   const susLic = await call(LICENCE_FN, tokOk).then((r) => r.json());
   check(susLic.active === false, "desktop-licence → active: false for a suspended user");
+
+  // The distinct signal. The membership below is live and unexpired, so a
+  // reason derived in the wrong order would say "no_membership" here and send a
+  // paid-up suspended member to checkout to fix something checkout cannot fix.
+  check(susLic.reason === "suspended", "reason: suspended, NOT no_membership", String(susLic.reason));
+  let susClaims = null;
+  try {
+    susClaims = (await jwtVerify(susLic.licence_token, pubKey, verifyAs(SLUG))).payload;
+  } catch (e) {
+    check(false, "the suspended negative verifies", e.message);
+  }
+  check(susClaims?.active === false, "the signed claim agrees: active false");
+  check(
+    susClaims?.reason === "suspended",
+    "the signed claim carries the reason — an offline app still says 'suspended'",
+    String(susClaims?.reason),
+  );
+  const susTtl = (susClaims?.exp ?? 0) - (susClaims?.iat ?? 0);
+  check(susTtl <= 3600, "the suspension negative is cached ~1h, not 30 days", `ttl=${susTtl}s`);
+  check(
+    new Date(susLic.checked_at).getTime() > Date.now() - 120_000,
+    "checked_at is THIS call — the answer is read live, never cached server-side",
+    String(susLic.checked_at),
+  );
+
+  // Unsuspending is equally immediate, in the same direction. A suspension that
+  // could not be undone on the next call would be a support problem, not a
+  // security feature.
   await svc(`/rest/v1/profiles?id=eq.${uidOk}`, { method: "PATCH", body: JSON.stringify({ is_suspended: false }) });
+  const unsus = await call(LICENCE_FN, tokOk).then((r) => r.json());
+  check(unsus.active === true, "unsuspending restores active on the very next call");
+  check(unsus.reason === null, "and the reason clears with it", String(unsus.reason));
+
+  // ---- 11b. an expired membership is its own reason --------------------
+  console.log("\n11b. An expired membership reads as expired, not as suspended:");
+  const past = new Date(Date.now() - 86400 * 1000).toISOString();
+  await svc(`/rest/v1/memberships?id=eq.${membershipId}`, { method: "PATCH", body: JSON.stringify({ status: "expired", expires_at: past }) });
+  const expLic = await call(LICENCE_FN, tokOk).then((r) => r.json());
+  check(expLic.active === false, "active: false once the membership has lapsed");
+  check(expLic.reason === "membership_inactive", "reason: membership_inactive", String(expLic.reason));
+  check(expLic.expires_at !== null, "expires_at still carries the date to show the member", String(expLic.expires_at));
+  await svc(`/rest/v1/memberships?id=eq.${membershipId}`, { method: "PATCH", body: JSON.stringify({ status: "active", expires_at: null }) });
 
   // ---- 12. the member can read their own trail, and only their own -----
   console.log("\n12. The access log is the MEMBER's to read:");

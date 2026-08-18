@@ -26,6 +26,71 @@ export const DESKTOP_TOOL_SLUG = "raw-footage-real-story";
 export const DESKTOP_PROVIDERS = ["openai", "elevenlabs"] as const;
 export type DesktopProvider = (typeof DESKTOP_PROVIDERS)[number];
 
+/**
+ * Why a licence came back inactive — so the desktop app can say the true thing
+ * instead of "no active subscription" to someone who has one.
+ *
+ * This vocabulary is the other half of a contract with the binary, exactly like
+ * DESKTOP_TOOL_SLUG above: adding a value is safe (an older build falls through
+ * to its generic wall), renaming or removing one is not.
+ *
+ * It explains `active`; it never decides it. can_access_tool is the only thing
+ * that decides, and this is computed only when that engine has already said no.
+ *
+ *   suspended            The account is suspended. Nothing the member can fix —
+ *                        the app should send them to support, not to checkout.
+ *   no_membership        No membership row at all. Send them to subscribe.
+ *   membership_inactive  A membership row that is expired or revoked. Covers
+ *                        BOTH: the member sees "ended", and `expires_at` in the
+ *                        same response carries the date to show.
+ *   no_access            A live, unsuspended membership that still cannot open
+ *                        this app — the tool is unpublished, or its access_type
+ *                        is manual/plan and this member is not on the list.
+ *                        Ours to fix, so the app should say "contact support"
+ *                        rather than blame the member's billing.
+ */
+export type LicenceDenialReason =
+  | "suspended"
+  | "no_membership"
+  | "membership_inactive"
+  | "no_access";
+
+/**
+ * Derive the reason behind a denial.
+ *
+ * THE ORDER HERE MIRRORS can_access_tool's OWN ORDER, and that is the whole
+ * correctness argument: suspension is checked before membership there (§7,
+ * "suspended beats everything, incl. admin"), so it is checked first here too.
+ * Reorder this and you get a licence that says `active: false` with
+ * `reason: "no_membership"` for a suspended member who is paid up — a wrong
+ * answer that sends them to checkout to fix something checkout cannot fix.
+ */
+export function licenceDenialReason(input: {
+  suspended: boolean;
+  /** memberships.status, or null when there is no row. */
+  membershipStatus: string | null;
+  /** memberships.expires_at — null means it never expires. */
+  membershipExpiresAt: string | null;
+}): LicenceDenialReason {
+  if (input.suspended) return "suspended";
+  if (!input.membershipStatus) return "no_membership";
+
+  const live =
+    input.membershipStatus === "active" || input.membershipStatus === "trialing";
+
+  // Same NaN guard as the exp clamp in hub-jwt.ts: a malformed timestamp must
+  // not become "not expired" through a failed comparison.
+  const endedAt = input.membershipExpiresAt
+    ? new Date(input.membershipExpiresAt).getTime()
+    : null;
+  const ended =
+    endedAt !== null && Number.isFinite(endedAt) && endedAt <= Date.now();
+
+  if (!live || ended) return "membership_inactive";
+
+  return "no_access";
+}
+
 export const corsHeaders = {
   // Auth is the bearer token, not a cookie, so there is no CSRF surface to
   // protect with an origin restriction. Same reasoning as key-vault.
