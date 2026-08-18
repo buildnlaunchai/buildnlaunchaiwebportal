@@ -183,7 +183,20 @@ try {
   check(nc.mode === "byok", "mode: byok is declared");
   check(nc.openai?.present === false, "openai withheld despite the key existing");
   check(nc.openai?.reason === "consent_required", "reason names the fix", String(nc.openai?.reason));
-  check(typeof nc.openai?.consent_url === "string", "consent_url points at the vault page");
+  // The base URL comes from the function's own PUBLIC_SITE_URL secret, which
+  // this script cannot read — so derive it from the answer rather than
+  // hardcoding a host, and assert the PATH, which is the part that is ours.
+  check(
+    /\/dashboard\/keys\/desktop$/.test(String(nc.openai?.consent_url)),
+    "consent_required → the DESKTOP page (the only place consent can be granted)",
+    String(nc.openai?.consent_url),
+  );
+  const SITE = String(nc.openai?.consent_url ?? "").replace(/\/dashboard\/keys\/desktop$/, "");
+  check(
+    nc.elevenlabs?.consent_url === `${SITE}/dashboard/keys/desktop`,
+    "elevenlabs gets the same consent page — the two providers are symmetric",
+    String(nc.elevenlabs?.consent_url),
+  );
   check(!JSON.stringify(nc).includes(FAKE_OPENAI), "THE PLAINTEXT IS NOT IN THE RESPONSE");
 
   const logAfterRefusal = await svc(`/rest/v1/desktop_key_access?user_id=eq.${uidOk}&select=id`).then((r) => r.json());
@@ -202,6 +215,34 @@ try {
   const invalidRes = await call(KEYS_FN, tokOk).then((r) => r.json());
   check(invalidRes.openai?.present === false, "consent alone does NOT release a broken key");
   check(invalidRes.openai?.reason === "key_invalid", "reason distinguishes 'broken' from 'never added'", String(invalidRes.openai?.reason));
+  check(
+    invalidRes.openai?.consent_url === `${SITE}/dashboard/keys?provider=openai`,
+    "key_invalid → the VAULT, provider preselected (replacing a key is not a consent problem)",
+    String(invalidRes.openai?.consent_url),
+  );
+
+  // ---- 8c. no_key: consented, but nothing stored -----------------------
+  //
+  // The one refusal the suite never exercised, and the one whose URL the
+  // desktop app was hardcoding. elevenlabs has consent here but no key row.
+  console.log("\n8c. Consented, but no key stored at all:");
+  await svc("/rest/v1/desktop_key_consent", { method: "POST", body: JSON.stringify({ user_id: uidOk, tool_id: toolId, provider: "elevenlabs" }) });
+  const noKeyRes = await call(KEYS_FN, tokOk).then((r) => r.json());
+  check(noKeyRes.elevenlabs?.present === false, "elevenlabs withheld — consent without a key releases nothing");
+  check(noKeyRes.elevenlabs?.reason === "no_key", "reason: no_key", String(noKeyRes.elevenlabs?.reason));
+  check(
+    noKeyRes.elevenlabs?.consent_url === `${SITE}/dashboard/keys?provider=elevenlabs`,
+    "no_key → the VAULT with ?provider=elevenlabs, symmetric with openai",
+    String(noKeyRes.elevenlabs?.consent_url),
+  );
+  // Every withheld slot carries a URL now — that is what lets the app stop guessing.
+  const withheld = ["openai", "elevenlabs"].map((p) => noKeyRes[p]).filter((s) => s && s.present === false);
+  check(
+    withheld.length > 0 && withheld.every((s) => typeof s.consent_url === "string" && s.consent_url.startsWith("http")),
+    "EVERY withheld slot carries a consent_url",
+    `${withheld.length} withheld, all with a URL`,
+  );
+  await svc(`/rest/v1/desktop_key_consent?user_id=eq.${uidOk}&tool_id=eq.${toolId}&provider=eq.elevenlabs`, { method: "DELETE" });
   check(!JSON.stringify(invalidRes).includes(FAKE_OPENAI), "no plaintext for an invalid key");
 
   // ---- 9. keys: with consent AND a usable key --------------------------

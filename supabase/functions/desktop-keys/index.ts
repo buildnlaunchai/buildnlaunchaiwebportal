@@ -37,8 +37,24 @@ import {
   siteUrl,
 } from "../_shared/desktop.ts";
 
+/**
+ * `consent_url` is REQUIRED on every withheld slot, not optional.
+ *
+ * It used to be set only on `consent_required`, which left the desktop app
+ * guessing a URL for the other two reasons — and a guess is a hardcoded copy of
+ * a route this repo is free to change. Every "no" now names the page that fixes
+ * it, so the app can render the link it was given and never construct one.
+ *
+ * The name is kept despite now being wider than consent: a shipped binary reads
+ * this field, and renaming it would break every install already out there for a
+ * cosmetic gain. Read it as "where the member goes to fix this".
+ */
 type KeySlot =
-  | { present: false; reason: "no_key" | "consent_required" | "key_invalid"; consent_url?: string }
+  | {
+      present: false;
+      reason: "no_key" | "consent_required" | "key_invalid";
+      consent_url: string;
+    }
   | { present: true; key: string };
 
 Deno.serve(async (req) => {
@@ -56,7 +72,24 @@ Deno.serve(async (req) => {
     return json({ error: "no active licence for this app" }, 403);
   }
 
+  // TWO different destinations, because the three refusals are three different
+  // problems and only one of them is about consent.
+  //
+  //   consent_required -> the key exists (or may not) but this app is not
+  //                       allowed to read it. Only /dashboard/keys/desktop can
+  //                       grant that; the vault page has no consent control.
+  //   no_key           -> there is nothing to release. They must ADD one, which
+  //   key_invalid         only the vault does. Same for replacing a key the
+  //                       provider has already rejected.
+  //
+  // Sending "add a key" to the consent page would show them a permission switch
+  // for a key they do not have, which reads as broken.
   const consentUrl = `${siteUrl()}/dashboard/keys/desktop`;
+  // ?provider= pre-selects that provider in the vault's "Connect a key" form.
+  // Validated against PROVIDER_BY_VALUE on the page, and both of DESKTOP_PROVIDERS
+  // are in it — openai and elevenlabs behave identically here.
+  const vaultUrl = (provider: string) =>
+    `${siteUrl()}/dashboard/keys?provider=${encodeURIComponent(provider)}`;
 
   try {
     // One query for every provider the app may ask for, rather than one per
@@ -105,12 +138,20 @@ Deno.serve(async (req) => {
 
       const row = byProvider.get(provider);
       if (!row) {
-        out[provider] = { present: false, reason: "no_key" };
+        out[provider] = {
+          present: false,
+          reason: "no_key",
+          consent_url: vaultUrl(provider),
+        };
         continue;
       }
 
       if (row.status === "invalid") {
-        out[provider] = { present: false, reason: "key_invalid" };
+        out[provider] = {
+          present: false,
+          reason: "key_invalid",
+          consent_url: vaultUrl(provider),
+        };
         continue;
       }
 
