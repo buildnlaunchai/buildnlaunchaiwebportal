@@ -257,6 +257,25 @@ try {
   check(withConsent.openai?.present === true, "openai released");
   check(withConsent.openai?.key === FAKE_OPENAI, "the plaintext round-trips correctly through AES-GCM");
   check(withConsent.elevenlabs?.present === false, "elevenlabs still withheld — consent is PER PROVIDER");
+  check(
+    withConsent.openai?.manage_url === `${SITE}/dashboard/keys?provider=openai`,
+    "a RELEASED key carries manage_url → the vault, for review/replace",
+    String(withConsent.openai?.manage_url),
+  );
+  check(
+    withConsent.openai?.consent_url === undefined,
+    "a released slot carries no consent_url — one URL per slot, and the field names which",
+    String(withConsent.openai?.consent_url),
+  );
+  // The invariant the desktop app can actually rely on: every slot, in either
+  // state, hands back exactly one link. No state needs the app to build a URL.
+  const allSlots = ["openai", "elevenlabs"].map((p) => withConsent[p]).filter(Boolean);
+  check(
+    allSlots.length === 2 &&
+      allSlots.every((s) => typeof (s.present ? s.manage_url : s.consent_url) === "string"),
+    "EVERY slot carries a link, released or withheld",
+    `${allSlots.length} slots`,
+  );
 
   const log = await svc(`/rest/v1/desktop_key_access?user_id=eq.${uidOk}&select=provider`).then((r) => r.json());
   check(log.length === 1 && log[0].provider === "openai", "exactly one access row, naming openai", `${log.length} rows`);

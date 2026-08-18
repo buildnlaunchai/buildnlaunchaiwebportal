@@ -48,6 +48,12 @@ import {
  * The name is kept despite now being wider than consent: a shipped binary reads
  * this field, and renaming it would break every install already out there for a
  * cosmetic gain. Read it as "where the member goes to fix this".
+ *
+ * A RELEASED slot carries `manage_url` instead — a separate name, deliberately.
+ * Overloading `consent_url` onto a slot with nothing to consent to and nothing
+ * to fix would make the field mean two different things depending on a sibling
+ * boolean, which is how a client ends up reading it wrong. Every slot now
+ * carries exactly one URL, and which field it arrives in says what it is for.
  */
 type KeySlot =
   | {
@@ -55,7 +61,7 @@ type KeySlot =
       reason: "no_key" | "consent_required" | "key_invalid";
       consent_url: string;
     }
-  | { present: true; key: string };
+  | { present: true; key: string; manage_url: string };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -72,18 +78,22 @@ Deno.serve(async (req) => {
     return json({ error: "no active licence for this app" }, 403);
   }
 
-  // TWO different destinations, because the three refusals are three different
-  // problems and only one of them is about consent.
+  // TWO destinations for four states, and the rule dividing them is one line:
+  // THE VAULT MANAGES A KEY, THE DESKTOP PAGE MANAGES PERMISSION.
   //
-  //   consent_required -> the key exists (or may not) but this app is not
-  //                       allowed to read it. Only /dashboard/keys/desktop can
-  //                       grant that; the vault page has no consent control.
-  //   no_key           -> there is nothing to release. They must ADD one, which
-  //   key_invalid         only the vault does. Same for replacing a key the
-  //                       provider has already rejected.
+  //   consent_required -> desktop page. The key may well exist; this app is not
+  //                       allowed to read it. Only that page can grant consent —
+  //                       the vault has no permission control at all.
+  //   no_key           -> vault. There is nothing to release; they must ADD one.
+  //   key_invalid      -> vault. What is stored has already been rejected by the
+  //                       provider, so it needs replacing.
+  //   present: true    -> vault. "Manage key" means review or replace the key,
+  //                       which is the vault's whole job.
   //
-  // Sending "add a key" to the consent page would show them a permission switch
-  // for a key they do not have, which reads as broken.
+  // Both wrong answers read as broken to a member: sending "add a key" to the
+  // consent page shows a permission switch for a key they do not have, and
+  // sending "grant consent" to the vault shows a form for a key they already
+  // added, with no way to grant the permission they actually lack.
   const consentUrl = `${siteUrl()}/dashboard/keys/desktop`;
   // ?provider= pre-selects that provider in the vault's "Connect a key" form.
   // Validated against PROVIDER_BY_VALUE on the page, and both of DESKTOP_PROVIDERS
@@ -162,6 +172,17 @@ Deno.serve(async (req) => {
           iv: row.iv,
           authTag: row.auth_tag,
         }),
+        // The VAULT, not the consent page. Someone with a working key who opens
+        // "Manage key" wants to see or replace the key itself — its hint, its
+        // verified status, Verify, Delete — and none of that exists on the
+        // consent page, which only has permission switches.
+        //
+        // It also fails in the better direction. The vault links onward to
+        // /dashboard/keys/desktop for anyone who actually meant to revoke this
+        // app's access; the consent page offers no route back to key
+        // management. One of these two pages is a hub and the other is a leaf,
+        // so the hub is the honest default.
+        manage_url: vaultUrl(provider),
       };
       released.push(provider);
     }
