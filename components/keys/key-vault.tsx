@@ -29,32 +29,63 @@ async function invokeVault(body: Record<string, unknown>): Promise<VaultResult> 
   const supabase = createClient();
   const { data, error } = await supabase.functions.invoke("key-vault", { body });
   if (error) {
-    // functions.invoke wraps non-2xx; try to read the function's message.
-    let message = "Something went wrong. Try again.";
+    // functions.invoke wraps non-2xx; try to read the function's message. When
+    // there isn't one — a network failure, or a gateway rejection that never
+    // reached our code — say so with the status rather than falling back to a
+    // shrug. A vault action that fails must never look like one that did
+    // nothing.
+    const ctx = (error as { context?: Response }).context;
+    let message = ctx
+      ? `The key vault refused that (HTTP ${ctx.status}).`
+      : "Couldn't reach the key vault. Check your connection and try again.";
     try {
-      const ctx = (error as { context?: Response }).context;
-      if (ctx) message = (await ctx.json())?.error ?? message;
+      if (ctx) message = (await ctx.clone().json())?.error ?? message;
     } catch {
-      /* keep the default */
+      /* not JSON — keep the status message */
     }
     return { error: message };
   }
   return { data };
 }
 
-function KeyRow({ keyMeta }: { keyMeta: KeyMeta }) {
+function KeyRow({
+  keyMeta,
+  onDeleted,
+}: {
+  keyMeta: KeyMeta;
+  /** Keyed by provider: the vault holds exactly one key per provider (§10). */
+  onDeleted: (provider: NonNullable<KeyMeta["provider"]>) => void;
+}) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  // Which action is in flight, not just "something is". Sharing one flag meant
+  // Verify's spinner disabled Delete and vice versa.
+  const [busy, setBusy] = useState<"verify" | "delete" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const meta = keyMeta.provider ? PROVIDER_BY_VALUE[keyMeta.provider] : undefined;
 
-  const act = (body: Record<string, unknown>) => {
+  // The request is awaited OUTSIDE the transition, and only the refresh goes
+  // inside it. Awaiting in there tied the buttons' enabled state to the RSC
+  // refetch as well as the request, so anything that stalled the refresh left
+  // the row wedged with no error and nothing visibly happening.
+  const act = async (action: "verify" | "delete") => {
+    if (busy) return;
+    setBusy(action);
     setError(null);
-    startTransition(async () => {
-      const res = await invokeVault(body);
-      if ("error" in res) setError(res.error);
-      else router.refresh();
-    });
+
+    const res = await invokeVault({ action, provider: keyMeta.provider });
+    setBusy(null);
+
+    if ("error" in res) {
+      setError(res.error);
+      return;
+    }
+
+    // A 2xx from key-vault means the row is gone — it returns 500 if the delete
+    // itself failed. Drop it from the list now rather than trusting the refetch
+    // to be what removes it, then reconcile with the server.
+    if (action === "delete" && keyMeta.provider) onDeleted(keyMeta.provider);
+    startTransition(() => router.refresh());
   };
 
   return (
@@ -77,20 +108,24 @@ function KeyRow({ keyMeta }: { keyMeta: KeyMeta }) {
 
       <div className="flex shrink-0 items-center gap-1">
         <Button
+          type="button"
           variant="ghost"
           size="sm"
-          pending={pending}
-          onClick={() => act({ action: "verify", provider: keyMeta.provider })}
+          pending={busy === "verify"}
+          disabled={busy !== null}
+          onClick={() => act("verify")}
           aria-label="Verify key"
           title="Verify"
         >
           <RotateCw aria-hidden className="size-4" strokeWidth={1.5} />
         </Button>
         <Button
+          type="button"
           variant="ghost"
           size="sm"
-          pending={pending}
-          onClick={() => act({ action: "delete", provider: keyMeta.provider })}
+          pending={busy === "delete"}
+          disabled={busy !== null}
+          onClick={() => act("delete")}
           aria-label="Delete key"
           title="Delete"
           className="hover:text-danger"
@@ -102,42 +137,56 @@ function KeyRow({ keyMeta }: { keyMeta: KeyMeta }) {
   );
 }
 
-function AddKeyForm({ preselect }: { preselect?: string }) {
+function AddKeyForm({
+  preselect,
+  onSaved,
+}: {
+  preselect?: string;
+  /** Un-hides a provider the member deleted and then re-added in one visit. */
+  onSaved: (provider: string) => void;
+}) {
   const router = useRouter();
   const [provider, setProvider] = useState(preselect ?? "openai");
   const [plaintext, setPlaintext] = useState("");
   const [label, setLabel] = useState("");
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
+  const [, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const meta = PROVIDER_BY_VALUE[provider];
 
-  const save = () => {
+  // Same shape as KeyRow.act: await the request, settle the UI, and only then
+  // hand the refresh to a transition. The button re-enables on the response,
+  // not on the refetch.
+  const save = async () => {
     setError(null);
     setNotice(null);
     if (!plaintext.trim()) {
       setError("Paste your key first.");
       return;
     }
-    startTransition(async () => {
-      const res = await invokeVault({ action: "save", provider, label, plaintext });
-      if ("error" in res) {
-        setError(res.error);
-        return;
-      }
-      const status = (res.data as { status?: string })?.status;
-      setPlaintext("");
-      setLabel("");
-      setNotice(
-        status === "valid"
-          ? "Saved and verified."
-          : status === "invalid"
-            ? "Saved — but the provider rejected this key. Double-check and re-paste."
-            : "Saved. I couldn't verify it automatically; a run will confirm it.",
-      );
-      router.refresh();
-    });
+    setPending(true);
+
+    const res = await invokeVault({ action: "save", provider, label, plaintext });
+    setPending(false);
+    if ("error" in res) {
+      setError(res.error);
+      return;
+    }
+
+    onSaved(provider);
+    const status = (res.data as { status?: string })?.status;
+    setPlaintext("");
+    setLabel("");
+    setNotice(
+      status === "valid"
+        ? "Saved and verified."
+        : status === "invalid"
+          ? "Saved — but the provider rejected this key. Double-check and re-paste."
+          : "Saved. I couldn't verify it automatically; a run will confirm it.",
+    );
+    startTransition(() => router.refresh());
   };
 
   return (
@@ -225,7 +274,7 @@ function AddKeyForm({ preselect }: { preselect?: string }) {
           </p>
         )}
 
-        <Button variant="primary" pending={pending} onClick={save}>
+        <Button type="button" variant="primary" pending={pending} onClick={save}>
           Save key
         </Button>
       </div>
@@ -240,6 +289,14 @@ export function KeyVault({
   keys: KeyMeta[];
   preselect?: string;
 }) {
+  // `keys` is a Server Component prop, so it only changes when the RSC payload
+  // is refetched. A confirmed delete removes the row here immediately instead of
+  // waiting on that refetch — and because this filters the LIVE prop rather than
+  // holding its own copy, the next refresh reconciles it for free: once the
+  // server stops sending the row, the filter is a no-op and nothing is stale.
+  const [deleted, setDeleted] = useState<string[]>([]);
+  const rows = keys.filter((k) => !k.provider || !deleted.includes(k.provider));
+
   return (
     <div className="flex flex-col gap-6">
       {/* The honesty statement — verbatim, nothing stronger anywhere (§10). */}
@@ -252,11 +309,16 @@ export function KeyVault({
         <p className="text-small text-text">{KEY_HONESTY_COPY}</p>
       </div>
 
-      <AddKeyForm preselect={preselect} />
+      <AddKeyForm
+        preselect={preselect}
+        onSaved={(provider) =>
+          setDeleted((prev) => prev.filter((p) => p !== provider))
+        }
+      />
 
       <div className="flex flex-col gap-4">
         <SectionHeader icon={KeyRound} title="Connected keys" />
-        {keys.length === 0 ? (
+        {rows.length === 0 ? (
           <Panel>
             <EmptyState
               icon={KeyRound}
@@ -267,8 +329,16 @@ export function KeyVault({
           </Panel>
         ) : (
           <Panel flush>
-            {keys.map((k) => (
-              <KeyRow key={k.id} keyMeta={k} />
+            {rows.map((k) => (
+              <KeyRow
+                key={k.id}
+                keyMeta={k}
+                onDeleted={(provider) =>
+                  setDeleted((prev) =>
+                    prev.includes(provider) ? prev : [...prev, provider],
+                  )
+                }
+              />
             ))}
           </Panel>
         )}
