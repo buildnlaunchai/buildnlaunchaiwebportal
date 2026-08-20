@@ -389,3 +389,16 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # gate. key-vault keeps verify_jwt on (default): it's called by members.
 [functions.run-tool]
 verify_jwt = false
+
+# desktop-config is genuinely public, and unlike run-tool it has no compensating
+# check inside — because it has nothing to compensate for. It reads no database,
+# takes no input, holds no secret, and returns the same constant to everyone.
+#
+# verify_jwt MUST stay off. This is the endpoint a desktop install calls when
+# its sign-in is broken or its build is too old to authenticate at all; gating
+# it behind a token would silence the one thing that can tell that user to
+# update. An anon key would not save it either — an outdated build may not have
+# a usable one, and requiring any credential reintroduces a failure mode into
+# the endpoint whose whole job is explaining failures.
+[functions.desktop-config]
+verify_jwt = false
