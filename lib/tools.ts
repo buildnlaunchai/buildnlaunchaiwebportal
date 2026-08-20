@@ -57,26 +57,26 @@ export type ToolDetailData = ToolCardData & {
  * framing reads to Paddle's crawler as prohibited outbound-marketing / list-
  * building and blocked live domain approval. Kept off every crawlable page.
  *
- * raw-footage-real-story: RE-HIDDEN 2026-08-19, hours after being published in
- * 65a06a9. The catalog was sending new visitors to download a build with no
- * login or licence enforcement in it — VITE_AUTH_GATE is not flipped on until
- * v0.2.0. Hiding it here stops the discovery path immediately.
+ * raw-footage-real-story: published 65a06a9, re-hidden 8d028be when the catalog
+ * turned out to be handing new visitors an ungated build, and UNHIDDEN AGAIN
+ * 2026-08-21 now that the thing it links to is actually gated. Its catalog page
+ * is the dedicated static route at
+ * app/(marketing)/tools/raw-footage-real-story/page.tsx, which outranks the
+ * dynamic [slug] segment.
  *
- * Unhide it again ONLY once the gated v0.2.0 build is confirmed published.
+ * What made it safe this time is a fact about the download, not a judgement
+ * about the code: that page resolves its links from the releases repo's
+ * `releases/latest` at build/revalidate time, and latest is now v0.2.0, which
+ * requires an account with an active subscription. v0.1.0-beta.1 — the build
+ * that opened for anyone — was deleted outright, release, assets and tag, so it
+ * is not reachable by direct link either.
  *
- * NOTE WHAT THIS DOES NOT DO. This set governs the PUBLIC catalog surfaces
- * only. The static route at app/(marketing)/tools/raw-footage-real-story/page.tsx
- * still answers that URL and still serves direct .dmg/.exe links, because it is
- * a separate file this set cannot reach — and tool_secrets.external_url points
- * members' own Download button at it, so it cannot simply be deleted without
- * breaking the member path. Anyone holding the link, or finding it in a search
- * index, can still download. Removing discovery is not the same as removing
- * access.
+ * THE CHECK THAT MATTERS BEFORE EVER TOUCHING THIS AGAIN: the page serves
+ * whatever GitHub calls `latest`, not whatever was verified locally. Re-hiding
+ * happened because latest was still the ungated build while everyone assumed it
+ * was not. Confirm what `releases/latest` actually returns before publishing.
  */
-const PUBLIC_HIDDEN_SLUGS = new Set<string>([
-  "youtube-lead-finder",
-  "raw-footage-real-story",
-]);
+const PUBLIC_HIDDEN_SLUGS = new Set<string>(["youtube-lead-finder"]);
 
 const publiclyVisible = (t: { slug: string }) => !PUBLIC_HIDDEN_SLUGS.has(t.slug);
 
