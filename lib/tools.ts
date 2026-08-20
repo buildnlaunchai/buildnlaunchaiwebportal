@@ -57,17 +57,26 @@ export type ToolDetailData = ToolCardData & {
  * framing reads to Paddle's crawler as prohibited outbound-marketing / list-
  * building and blocked live domain approval. Kept off every crawlable page.
  *
- * raw-footage-real-story was removed from this set on 2026-08-19: the desktop
- * app is now public. Its /tools/[slug] entry is superseded by the dedicated
- * static route at app/(marketing)/tools/raw-footage-real-story/page.tsx, which
- * outranks the dynamic segment and is the page the catalog card now leads to.
- * Going public was a deliberate call taken with three things knowingly
- * outstanding, recorded here so they read as follow-ups rather than oversights:
- * the release build is still unsigned with VITE_AUTH_GATE not yet flipped on,
- * Windows OAuth is untested, and support@buildnlaunchai.com is not confirmed
- * monitored.
+ * raw-footage-real-story: RE-HIDDEN 2026-08-19, hours after being published in
+ * 65a06a9. The catalog was sending new visitors to download a build with no
+ * login or licence enforcement in it — VITE_AUTH_GATE is not flipped on until
+ * v0.2.0. Hiding it here stops the discovery path immediately.
+ *
+ * Unhide it again ONLY once the gated v0.2.0 build is confirmed published.
+ *
+ * NOTE WHAT THIS DOES NOT DO. This set governs the PUBLIC catalog surfaces
+ * only. The static route at app/(marketing)/tools/raw-footage-real-story/page.tsx
+ * still answers that URL and still serves direct .dmg/.exe links, because it is
+ * a separate file this set cannot reach — and tool_secrets.external_url points
+ * members' own Download button at it, so it cannot simply be deleted without
+ * breaking the member path. Anyone holding the link, or finding it in a search
+ * index, can still download. Removing discovery is not the same as removing
+ * access.
  */
-const PUBLIC_HIDDEN_SLUGS = new Set<string>(["youtube-lead-finder"]);
+const PUBLIC_HIDDEN_SLUGS = new Set<string>([
+  "youtube-lead-finder",
+  "raw-footage-real-story",
+]);
 
 const publiclyVisible = (t: { slug: string }) => !PUBLIC_HIDDEN_SLUGS.has(t.slug);
 
