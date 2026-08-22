@@ -94,7 +94,16 @@ export function ToolEmbed({
         //
         // allow-downloads: the animator's whole point is exporting a video.
         // allow-forms: any real app has one eventually; costs nothing here.
-        sandbox="allow-same-origin allow-scripts allow-forms allow-downloads"
+        //
+        // allow-popups + allow-popups-to-escape-sandbox: an embedded app sends
+        // people OUT to set themselves up — Cinematic's storage wizard links to
+        // the Cloudflare R2 dashboard. Without allow-popups a target="_blank"
+        // link does nothing at all, silently, which reads as a broken button.
+        // The second flag is what makes the new tab usable: a popup inherits its
+        // opener's sandbox by default, so Cloudflare would open with an opaque
+        // origin and no cookies — a login page that can never log you in.
+        // Escaping applies only to the tab that leaves; the frame stays sandboxed.
+        sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups allow-popups-to-escape-sandbox"
         // Permissions policy: the apps copy share links (clipboard-write) and
         // may go fullscreen for video review. Granted to the frame explicitly —
         // without this, clipboard calls inside the iframe fail silently.
