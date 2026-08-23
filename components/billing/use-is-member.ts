@@ -10,7 +10,8 @@ import { createClient } from "@/lib/supabase/client";
  * that would otherwise say "Subscribe" show "Visit dashboard" to someone who has
  * already paid (Bug 2: an active member must never see a Subscribe CTA).
  *
- * Lightweight on purpose: unlike useSubscribe it never loads Paddle.js, so it's
+ * Lightweight on purpose: unlike useSubscribe it resolves nothing but the
+ * membership — no checkout path at all, so it's
  * cheap to drop on every marketing CTA.
  */
 export function useIsActiveMember(): boolean {

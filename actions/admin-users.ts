@@ -86,7 +86,7 @@ export async function revokeTool(
 
 /**
  * Grant a membership directly, by name, from /admin/users/[id] — the one lever
- * that stays after the free apply flow is retired for paid Paddle subs (§1: the
+ * that stays after the free apply flow is retired for paid subscriptions (§1: the
  * admin can gift access to anyone).
  *
  * `durationDays` decides the shape:
@@ -95,7 +95,7 @@ export async function revokeTool(
  *   - a positive whole number N            → an N-day TRIAL (status='trialing',
  *     expires_at = now + N days).
  *
- * Either way it's a direct grant with NO Paddle and NO code to distribute, and it
+ * Either way it's a direct grant with NO payment provider and NO code to hand out, and it
  * writes only to `memberships` — the access engine (can_access_tool /
  * user_tool_access) is never touched. Expiry needs no cron: has_active_membership()
  * already gates on `expires_at > now()`, so a lapsed trial simply stops granting.

@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 /**
- * After a Paddle checkout, Paddle returns the buyer to /dashboard?checkout=1 —
+ * After checkout, Creem returns the buyer to /dashboard?checkout=1 —
  * but the membership is activated ASYNCHRONOUSLY by the webhook, which can land a
  * few seconds after the redirect. Without this, the dashboard renders the
  * pre-payment ("Applicant") state and never updates until a manual reload — the

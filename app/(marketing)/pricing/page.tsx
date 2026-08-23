@@ -11,12 +11,11 @@ import type { Metadata } from "next";
 import { SubscribeButton } from "@/components/billing/subscribe-button";
 import { SparkBackground } from "@/components/brand/spark-background";
 import { CatalogCard } from "@/components/marketing/catalog-card";
-import { getSubscribePriceId } from "@/lib/billing";
 import { getPublicTools } from "@/lib/tools";
 
 // ISR: the tool catalog on this page is pulled live from the database, so refresh
 // the static HTML periodically — a tool published from the admin appears here
-// within the window, with no redeploy. The price id is read from plans, too.
+// within the window, with no redeploy.
 export const revalidate = 300;
 
 export const metadata: Metadata = {
@@ -79,10 +78,7 @@ const FAQ = [
 ];
 
 export default async function PricingPage() {
-  const [priceId, tools] = await Promise.all([
-    getSubscribePriceId(),
-    getPublicTools(),
-  ]);
+  const tools = await getPublicTools();
 
   return (
     <>
@@ -141,7 +137,6 @@ export default async function PricingPage() {
 
               <div className="mt-7">
                 <SubscribeButton
-                  priceId={priceId}
                   label="Get instant access"
                   size="lg"
                   block

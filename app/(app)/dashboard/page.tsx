@@ -9,7 +9,6 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Panel } from "@/components/ui/panel";
 import { CardGridSkeleton } from "@/components/ui/skeletons";
 import { requireUser } from "@/lib/access";
-import { getSubscribePriceId } from "@/lib/billing";
 import { getMyKeyStatusByProvider } from "@/lib/keys";
 import { getMyAccessibleTools, getMyMembership, isMembershipActive } from "@/lib/member";
 
@@ -49,11 +48,10 @@ export default function DashboardPage() {
 async function Apps() {
   const user = await requireUser("/dashboard");
 
-  const [tools, membership, keyStatuses, priceId] = await Promise.all([
+  const [tools, membership, keyStatuses] = await Promise.all([
     getMyAccessibleTools(),
     getMyMembership(),
     getMyKeyStatusByProvider(),
-    getSubscribePriceId(),
   ]);
 
   // "Full access" for display = an active membership OR admin. Admins reach every
@@ -89,7 +87,6 @@ async function Apps() {
               own keys.
             </p>
             <SubscribeButton
-              priceId={priceId}
               variant="secondary"
               size="sm"
               className="shrink-0"
@@ -127,7 +124,7 @@ async function Apps() {
         description="Membership is $10/month. Bring your own API keys, run every tool in the catalog, and cancel anytime."
         action={
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <SubscribeButton priceId={priceId} />
+            <SubscribeButton />
             <Link href="/tools">
               <Button variant="secondary">Browse the tools</Button>
             </Link>
