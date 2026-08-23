@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
     webhookSecret,
 
     // ---- GRANT -----------------------------------------------------------
-    // The three types the brief maps to a grant. The SQL holds the mapping; the
+    // The four types the SQL maps to a grant. The SQL holds the mapping; the
     // route only supplies (event type, event id, user, subscription).
 
     onCheckoutCompleted: async (data) => {
@@ -116,6 +116,34 @@ export async function POST(req: NextRequest) {
     onSubscriptionTrialing: async (data) => {
       await apply(
         "subscription.trialing",
+        data.webhookId,
+        userIdFromMetadata(data.metadata),
+        data.id,
+      );
+    },
+
+    /**
+     * The recovery path, and the reason a paying member does not get stranded.
+     *
+     * process_creem_event has listed 'subscription.paid' as a GRANT since
+     * migration 20260808130000, but nothing ever emitted it — this callback was
+     * missing, so that SQL branch was unreachable and the failure the migration
+     * was written to prevent was live anyway:
+     *
+     *   card fails      -> subscription.past_due -> membership revoked
+     *   Creem retries, payment SUCCEEDS -> subscription.paid -> ...nothing
+     *
+     * The member is paying and locked out, permanently, because nothing else in
+     * the system will ever restore them. subscription.active is documented as a
+     * CREATION event and is not relied on to re-fire after past_due.
+     *
+     * This also lands on every ordinary renewal, where the upsert simply
+     * rewrites an already-active membership to the same values — which is why
+     * wiring it is safe as well as necessary.
+     */
+    onSubscriptionPaid: async (data) => {
+      await apply(
+        "subscription.paid",
         data.webhookId,
         userIdFromMetadata(data.metadata),
         data.id,
@@ -195,6 +223,44 @@ export async function POST(req: NextRequest) {
     onSubscriptionScheduledCancel: async (data) => {
       console.log(
         `[creem] subscription.scheduled_cancel (${data.id}) — access retained until expiry`,
+      );
+    },
+
+    // ---- RECORD ONLY -----------------------------------------------------
+    // These two DO call apply(). They fall through process_creem_event's `else`
+    // branch, which claims the event id and records it without touching the
+    // membership — so they change no access, but they stop being lost.
+    //
+    // Why that matters more than it sounds: an unwired callback is not an
+    // error. The SDK calls `options.onX?.(...)`, so it is a no-op, and the
+    // route still answers 200. Creem marks the delivery successful and never
+    // retries, and the event is gone with no row in creem_events and no trace
+    // anywhere. Silent loss behind a success response is worse than a failure,
+    // because nothing surfaces it.
+
+    /**
+     * Paused is NOT treated as a revoke here, and that is an open question
+     * rather than a settled answer: a paused subscription is not being billed,
+     * so a paused member currently keeps full access for free. Recording it
+     * first means the decision can be made on real data instead of guesses.
+     */
+    onSubscriptionPaused: async (data) => {
+      console.log(`[creem] subscription.paused (${data.id}) — recorded, access unchanged`);
+      await apply(
+        "subscription.paused",
+        data.webhookId,
+        userIdFromMetadata(data.metadata),
+        data.id,
+      );
+    },
+
+    /** Plan/quantity/metadata changes. No access effect today. */
+    onSubscriptionUpdate: async (data) => {
+      await apply(
+        "subscription.update",
+        data.webhookId,
+        userIdFromMetadata(data.metadata),
+        data.id,
       );
     },
   });
