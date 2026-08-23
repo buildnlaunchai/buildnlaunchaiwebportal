@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, LayoutGrid, LogOut, Settings, Shield } from "lucide-react";
+import { ChevronDown, LayoutGrid, LifeBuoy, LogOut, Settings, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -129,6 +129,17 @@ export function UserMenu({
               <Settings aria-hidden className="size-4" strokeWidth={1.6} />
               Settings
             </Link>
+            {/* A plain <a>, not next/link: mailto: is not an app route, and
+                routing it through the client router would do nothing. */}
+            <a
+              href="mailto:support@buildnlaunchai.com"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-body text-text-muted transition-colors duration-micro ease-default hover:bg-surface hover:text-text"
+            >
+              <LifeBuoy aria-hidden className="size-4" strokeWidth={1.6} />
+              Support
+            </a>
             <button
               type="button"
               role="menuitem"
