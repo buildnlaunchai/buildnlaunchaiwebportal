@@ -13,7 +13,7 @@ const LINKS = [
   { href: "/login", label: "Log in" },
 ];
 
-// Legal / policy links — required for Paddle (merchant of record) live approval.
+// Legal / policy links — required by Creem (merchant of record) for live approval.
 const LEGAL_LINKS = [
   { href: "/terms", label: "Terms" },
   { href: "/privacy", label: "Privacy" },

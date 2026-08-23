@@ -26,7 +26,7 @@ export default async function AdminUserDetailPage({
   const active = isMembershipActive(membership);
 
   // A legacy free member, stamped at the Phase 2 migration. NULL for anyone
-  // created after the switch to paid, including Paddle subscribers.
+  // created after the switch to paid, including every paying subscriber.
   const grandfatheredAt = membership?.grandfathered_at ?? null;
   const isAdmin = profile.role === "admin";
 

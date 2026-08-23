@@ -54,8 +54,10 @@ export type ToolDetailData = ToolCardData & {
  * palettes pass { includeHidden: true }.
  *
  * youtube-lead-finder: its public "list of creators to reach / find a contact"
- * framing reads to Paddle's crawler as prohibited outbound-marketing / list-
- * building and blocked live domain approval. Kept off every crawlable page.
+ * framing read to Paddle's review crawler as prohibited outbound-marketing /
+ * list-building and blocked live domain approval. Paddle is retired now, but the
+ * framing was the problem rather than the reviewer, so it stays off every
+ * crawlable page.
  *
  * raw-footage-real-story: published 65a06a9, re-hidden 8d028be when the catalog
  * turned out to be handing new visitors an ungated build, and UNHIDDEN AGAIN

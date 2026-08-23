@@ -31,7 +31,7 @@ export function UserControls({ userId, email, hasActiveMembership, suspended }: 
   const [typed, setTyped] = useState("");
 
   // Trial length for a direct grant. Blank/0 = a permanent comp; N = an N-day
-  // trial that auto-expires. No Paddle, no code.
+  // trial that auto-expires. No payment provider, no code.
   const [days, setDays] = useState("");
   const trialDays = Math.max(0, Math.floor(Number(days) || 0));
 
@@ -138,7 +138,7 @@ export function UserControls({ userId, email, hasActiveMembership, suspended }: 
           </div>
           <p className="text-mono-chip text-text-faint">
             Blank or 0 comps a permanent membership. A trial auto-expires — no
-            Paddle, no code to hand out.
+            checkout, no code to hand out.
           </p>
         </div>
       )}

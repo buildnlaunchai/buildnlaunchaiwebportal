@@ -8,8 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "db:types": "supabase gen types typescript --project-id pezsxoynjjsipfnpfvva --schema public > lib/database.types.ts",
-    "db:push": "supabase db push",
+    "vercel:env": "node --env-file-if-exists=.env.local scripts/vercel-env-push.mjs",
+    "db:types": "node --env-file-if-exists=.env.local scripts/supabase-env.mjs --out lib/database.types.ts -- gen types typescript --project-id pezsxoynjjsipfnpfvva --schema public",
+    "db:push": "node --env-file-if-exists=.env.local scripts/supabase-env.mjs --require SUPABASE_DB_PASSWORD -- db push",
     "verify:rls": "node --env-file=.env.local scripts/verify-rls.mjs",
     "verify:guards": "node --env-file=.env.local scripts/verify-admin-guard.mjs",
     "verify:applications": "node --env-file=.env.local scripts/verify-applications.mjs",
@@ -28,8 +29,8 @@
     "verify:desktop": "node --env-file=.env.local scripts/verify-desktop.mjs"
   },
   "dependencies": {
+    "@creem_io/nextjs": "^0.5.3",
     "@hookform/resolvers": "^5.4.0",
-    "@paddle/paddle-js": "^1.6.4",
     "@supabase/ssr": "^0.12.1",
     "@supabase/supabase-js": "^2.110.3",
     "aws4fetch": "^1.0.20",
