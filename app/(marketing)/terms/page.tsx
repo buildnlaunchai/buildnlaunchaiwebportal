@@ -13,9 +13,10 @@ export default function TermsPage() {
     <LegalShell title="Terms of Service" updated="July 24, 2026">
       <Section title="1. Who we are">
         <p>
-          Build &amp; Launch AI is operated by Caparison Soft (&ldquo;we,&rdquo;
-          &ldquo;us,&rdquo; &ldquo;our&rdquo;), a business registered at 55 CDA
-          R/A, Access Road, Agrabad, Double Mooring, Chattogram, Bangladesh.
+          Build &amp; Launch AI is operated by Mohammad Zahidul Alam
+          (&ldquo;we,&rdquo; &ldquo;us,&rdquo; &ldquo;our&rdquo;), a sole
+          proprietor based at 1884/A, Mistripara, Double Mooring, Bandar Main
+          Post Office - 4100, Chattogram, Bangladesh.
         </p>
       </Section>
 
@@ -107,9 +108,9 @@ export default function TermsPage() {
       <Section title="8. Warranties and limitation of liability">
         <p>
           Build &amp; Launch AI is provided as-is, without warranties of any kind,
-          express or implied. To the maximum extent permitted by law, Caparison
-          Soft is not liable for indirect, incidental, or consequential damages
-          arising from use of the platform.
+          express or implied. To the maximum extent permitted by law, Mohammad
+          Zahidul Alam is not liable for indirect, incidental, or consequential
+          damages arising from use of the platform.
         </p>
       </Section>
 

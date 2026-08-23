@@ -36,9 +36,10 @@ export default function ContactPage() {
 
       <Section title="Business address">
         <p>
-          Caparison Soft
+          Mohammad Zahidul Alam
           <br />
-          55 CDA R/A, Access Road, Agrabad, Double Mooring, Chattogram, Bangladesh
+          1884/A, Mistripara, Double Mooring, Bandar Main Post Office - 4100,
+          Chattogram, Bangladesh
         </p>
       </Section>
     </LegalShell>
