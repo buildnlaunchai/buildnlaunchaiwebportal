@@ -217,19 +217,10 @@ export async function POST(req: NextRequest) {
       console.log(`[creem] onRevokeAccess (${reason}) — handled by the granular callback`);
     },
 
-    // Explicitly NOT a revoke: the subscription stays active until the period
-    // ends, and subscription.expired lands then. Revoking here would cut off a
-    // member who has already paid for the rest of the month.
-    onSubscriptionScheduledCancel: async (data) => {
-      console.log(
-        `[creem] subscription.scheduled_cancel (${data.id}) — access retained until expiry`,
-      );
-    },
-
     // ---- RECORD ONLY -----------------------------------------------------
-    // These two DO call apply(). They fall through process_creem_event's `else`
-    // branch, which claims the event id and records it without touching the
-    // membership — so they change no access, but they stop being lost.
+    // These three DO call apply(). They fall through process_creem_event's
+    // `else` branch, which claims the event id and records it without touching
+    // the membership — so they change no access, but they stop being lost.
     //
     // Why that matters more than it sounds: an unwired callback is not an
     // error. The SDK calls `options.onX?.(...)`, so it is a no-op, and the
@@ -237,6 +228,30 @@ export async function POST(req: NextRequest) {
     // retries, and the event is gone with no row in creem_events and no trace
     // anywhere. Silent loss behind a success response is worse than a failure,
     // because nothing surfaces it.
+
+    /**
+     * Still explicitly NOT a revoke, and the SQL agrees — process_creem_event's
+     * `else` branch names this case directly: "scheduled_cancel in particular
+     * MUST NOT revoke". The subscription stays active until the period ends and
+     * subscription.expired lands then; cutting access here would take away a
+     * month the member has already paid for.
+     *
+     * What changes is only that it now leaves a row. Previously this callback
+     * logged and returned, so the last of the 13 registered events still
+     * vanished behind a 200 — and this is the one you most want a record of,
+     * because it is the event that says a member has decided to leave.
+     */
+    onSubscriptionScheduledCancel: async (data) => {
+      console.log(
+        `[creem] subscription.scheduled_cancel (${data.id}) — access retained until expiry`,
+      );
+      await apply(
+        "subscription.scheduled_cancel",
+        data.webhookId,
+        userIdFromMetadata(data.metadata),
+        data.id,
+      );
+    },
 
     /**
      * Paused is NOT treated as a revoke here, and that is an open question
