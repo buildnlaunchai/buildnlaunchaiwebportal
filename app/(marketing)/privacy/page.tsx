@@ -17,7 +17,7 @@ export default function PrivacyPage() {
             when you sign up.
           </li>
           <li>
-            <strong>Billing info:</strong> handled entirely by Paddle, our merchant
+            <strong>Billing info:</strong> handled entirely by Creem, our merchant
             of record &mdash; we receive confirmation of your subscription status
             but never your card details.
           </li>
@@ -53,7 +53,7 @@ export default function PrivacyPage() {
       <Section title="Who we share it with (sub-processors)">
         <ul>
           <li>
-            <strong>Paddle</strong> &mdash; payment processing and billing (Paddle
+            <strong>Creem</strong> &mdash; payment processing and billing (Creem
             is merchant of record)
           </li>
           <li>

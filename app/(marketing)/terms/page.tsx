@@ -36,9 +36,11 @@ export default function TermsPage() {
             from your signup date until you cancel.
           </li>
           <li>
-            Payments are processed by Paddle.com, our merchant of record. Paddle
+            Payments are processed by Creem, our merchant of record. Creem
             handles billing, tax, and payment security; we never see or store your
-            card details.
+            card details. As merchant of record, Creem is the seller on the
+            transaction, so charges appear on your statement under their name
+            rather than ours.
           </li>
           <li>
             If we change the price of membership, we&rsquo;ll notify you by email
@@ -46,9 +48,9 @@ export default function TermsPage() {
             membership after that date means you accept the new price.
           </li>
           <li>
-            If a payment fails, Paddle will automatically retry according to its
+            If a payment fails, Creem will automatically retry according to its
             standard retry schedule. If payment continues to fail after
-            Paddle&rsquo;s retries are exhausted, we may suspend your access until
+            Creem&rsquo;s retries are exhausted, we may suspend your access until
             payment succeeds.
           </li>
           <li>We do not currently offer a free trial.</li>

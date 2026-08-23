@@ -70,7 +70,7 @@ const FAQ = [
   },
   {
     q: "Who handles the payment?",
-    a: "Paddle — our merchant of record. Paddle securely processes the payment, sends your receipt, and handles any applicable sales tax or VAT. I never see or store your card details.",
+    a: "Creem — our merchant of record. Creem securely processes the payment, sends your receipt, and handles any applicable sales tax or VAT. Because they're the seller on the transaction, the charge shows up under their name on your statement. I never see or store your card details.",
   },
   {
     q: "What happens to my data?",
@@ -149,7 +149,7 @@ export default async function PricingPage() {
               </div>
               <p className="text-mono-chip mt-3 flex items-center justify-center gap-1.5 text-text-faint">
                 <ShieldCheck aria-hidden className="size-3.5" strokeWidth={1.8} />
-                Secure checkout via Paddle · no card stored by us
+                Secure checkout via Creem · no card stored by us
               </p>
             </div>
           </div>
@@ -227,13 +227,14 @@ export default async function PricingPage() {
           </div>
         </section>
 
-        {/* Paddle merchant-of-record note */}
+        {/* Creem merchant-of-record note */}
         <section className="border-t border-line pt-10 text-center">
           <p className="prose-measure mx-auto text-small text-text-faint">
-            Payments are processed by <span className="text-text-muted">Paddle</span>,
-            our merchant of record. Paddle handles billing, your receipt, and any
-            applicable sales tax or VAT. Prices are in USD. You can cancel anytime
-            from your receipt link or your dashboard.
+            Payments are processed by <span className="text-text-muted">Creem</span>,
+            our merchant of record. Creem handles billing, your receipt, and any
+            applicable sales tax or VAT, and appears as the seller on your
+            statement. Prices are in USD. You can cancel anytime from your receipt
+            link or your dashboard.
           </p>
         </section>
       </div>
