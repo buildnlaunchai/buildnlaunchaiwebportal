@@ -81,10 +81,26 @@ function KeyRow({
       return;
     }
 
-    // A 2xx from key-vault means the row is gone — it returns 500 if the delete
-    // itself failed. Drop it from the list now rather than trusting the refetch
-    // to be what removes it, then reconcile with the server.
-    if (action === "delete" && keyMeta.provider) onDeleted(keyMeta.provider);
+    // A 2xx IS NOT PROOF THE ROW IS GONE, and this code used to assume it was.
+    // key-vault returns { deleted: <n> }; only a confirmed n >= 1 may remove the
+    // row locally. Anything else refreshes and says so, because the failure this
+    // guards against — a delete that matched nothing — is precisely the one that
+    // used to look identical to success.
+    if (action === "delete") {
+      const deleted =
+        (res.data as { deleted?: number } | null | undefined)?.deleted ?? 0;
+
+      if (deleted < 1) {
+        setError("That key wasn't deleted. Reload the page to see what's there.");
+        startTransition(() => router.refresh());
+        return;
+      }
+
+      // Drop it from the list now rather than trusting the refetch to be what
+      // removes it, then reconcile with the server.
+      if (keyMeta.provider) onDeleted(keyMeta.provider);
+    }
+
     startTransition(() => router.refresh());
   };
 

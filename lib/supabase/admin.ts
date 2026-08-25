@@ -16,7 +16,15 @@ import type { Database } from "@/lib/database.types";
  *      user_id. RLS is not going to catch you here — that is the entire premise.
  *   2. Re-check authorization explicitly (is_admin, can_access_tool).
  *   3. If you only need to read the current user's own rows, you do not need
- *      this. Use lib/supabase/server.ts and let RLS do its job.
+ *      this. Use lib/supabase/server.ts and let RLS do its job — BUT SCOPE THE
+ *      QUERY YOURSELF ANYWAY. "Let RLS do its job" is true only for a table
+ *      whose policies all agree; Postgres combines PERMISSIVE policies with OR,
+ *      so ONE extra policy (an admin select, say) silently widens every
+ *      unfiltered query on that table from "my rows" to "everyone's". That is
+ *      not hypothetical: it listed every member's key metadata on the member's
+ *      own key vault, with Verify and Delete beside rows the caller did not own.
+ *      A query that states its own scope cannot be re-broken by a policy someone
+ *      adds later for a perfectly good reason. Write the .eq("user_id", ...).
  *
  * Note what this client CANNOT do, by design: it cannot decrypt a member's API
  * key. ENCRYPTION_KEY does not exist in this environment. See CLAUDE.md §13.

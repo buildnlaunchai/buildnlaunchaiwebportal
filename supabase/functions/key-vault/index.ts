@@ -141,14 +141,40 @@ Deno.serve(async (req) => {
     }
 
     // ---- delete ----------------------------------------------------------
+    //
+    // .select() ON THE DELETE IS LOAD-BEARING, not a flourish. Without it this
+    // branch could only distinguish "the database raised an error" from
+    // "everything else" — and a delete that matches ZERO rows raises nothing.
+    // It returned { ok: true }, the client believed it, and a row the caller
+    // did not own vanished from the page until the next refetch put it back.
+    //
+    // That is how a scoping bug became an invisible one: the caller was told the
+    // work happened. A delete now reports HOW MANY rows it removed, and zero is
+    // an answer the client can act on rather than a silence it has to guess at.
     if (action === "delete") {
-      const { error } = await supabase
+      const { data: removed, error } = await supabase
         .from("user_api_keys")
         .delete()
         .eq("user_id", user.id)
-        .eq("provider", provider);
+        .eq("provider", provider)
+        .select("id");
       if (error) return json({ error: "could not delete the key" }, 500);
-      return json({ ok: true });
+
+      if (!removed || removed.length === 0) {
+        // 404, matching the verify branch above for the same condition: the
+        // caller asked us to act on a key that is not in THEIR vault. Say that,
+        // and say what to do about it — never report it as done.
+        return json(
+          {
+            error:
+              "That key isn't in your vault, so nothing was deleted. Reload the page to see what's there.",
+            deleted: 0,
+          },
+          404,
+        );
+      }
+
+      return json({ ok: true, deleted: removed.length });
     }
 
     return json({ error: "unknown action" }, 400);

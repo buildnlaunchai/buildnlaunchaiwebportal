@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getUser } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
 import type { ApiProvider } from "@/lib/providers";
 
@@ -98,11 +99,21 @@ export type KeyReleaseClient = ExternalClientMeta & {
  * is correct here — unlike the Edge Functions, where the service role makes it
  * NULL and the subject must be passed explicitly.
  *
- * All three consent reads are scoped by RLS (select-own), so there is no user_id
- * filter here to forget. They are fetched once for every client and grouped in
- * memory rather than per client, so adding a third client adds no round trips.
+ * EVERY read below filters by user_id EXPLICITLY. That is not redundancy with
+ * RLS — it is the lesson from lib/keys.ts. Postgres ORs permissive policies, and
+ * key_release_consent and key_release_log each still carry an admin select
+ * policy alongside their select-own one. Relying on RLS to scope these reads
+ * would show an admin every member's consent rows and every member's key-release
+ * history on their own permissions page, which is exactly the bug this pattern
+ * caused on the key vault.
+ *
+ * They are fetched once for every client and grouped in memory rather than per
+ * client, so adding a third client adds no round trips.
  */
 export async function getKeyReleaseState(): Promise<KeyReleaseClient[]> {
+  const user = await getUser();
+  if (!user) return [];
+
   const supabase = await createClient();
 
   const { data: tools } = await supabase
@@ -131,14 +142,19 @@ export async function getKeyReleaseState(): Promise<KeyReleaseClient[]> {
     supabase
       .from("key_release_consent")
       .select("tool_id, provider, granted_at, revoked_at")
+      .eq("user_id", user.id)
       .in("tool_id", toolIds),
     supabase
       .from("key_release_log")
       .select("tool_id, provider, created_at")
+      .eq("user_id", user.id)
       .in("tool_id", toolIds)
       .order("created_at", { ascending: false }),
     // The public view — no ciphertext, ever (§10).
-    supabase.from("user_api_keys_public").select("provider"),
+    supabase
+      .from("user_api_keys_public")
+      .select("provider")
+      .eq("user_id", user.id),
   ]);
 
   const heldProviders = new Set(

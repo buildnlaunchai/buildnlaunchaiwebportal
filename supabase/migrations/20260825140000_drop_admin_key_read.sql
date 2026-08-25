@@ -1,0 +1,58 @@
+-- ============================================================================
+-- Drop the admin select policy on user_api_keys.
+--
+-- WHAT IT BROKE. Postgres combines PERMISSIVE policies with OR. user_api_keys
+-- carried two:
+--
+--   user_api_keys_select_own    using (user_id = auth.uid())
+--   user_api_keys_select_admin  using (public.is_admin())
+--
+-- so for an admin the effective predicate was `user_id = auth.uid() OR
+-- is_admin()` — every row in the table. lib/keys.ts's getMyKeys() had no owner
+-- filter, on the reasonable-sounding grounds that a select-own policy already
+-- scoped it, and therefore listed EVERY MEMBER'S key metadata on the admin's own
+-- /dashboard/keys: provider, label, last-4, verified status, created date.
+--
+-- Then it got worse, because the page is not read-only. Each of those rows had
+-- Verify and Delete beside it. Delete calls the key-vault Edge Function, which
+-- correctly scopes its write to the CALLER — so deleting someone else's row
+-- matched zero rows, raised no error, and returned success. The row disappeared
+-- from the page and came back on reload. Two bugs, one cause, and the second one
+-- was invisible.
+--
+-- WHY DROP IT RATHER THAN WORK AROUND IT. The queries are being scoped
+-- explicitly in the same change, which alone fixes the leak. But this policy had
+-- NO CONSUMER: it was written in Phase 5 for an admin key view that CLAUDE.md §7
+-- and §8 both describe and that was never built — /admin/users/[id] displays
+-- nothing about keys, and no other code path reads these rows as an admin. A
+-- policy that grants access nothing uses, on the one table in this product whose
+-- whole design is about not being readable, is not a feature waiting for a
+-- screen. It is a loaded footgun waiting for the next unfiltered query.
+--
+-- The spec has been amended to match rather than left asking for it (§7, §8): if
+-- an admin key view is ever genuinely wanted, it gets its own explicitly-scoped
+-- query on a route about that member, not a widened policy that a member-facing
+-- page also reads through.
+--
+-- WHAT THIS DOES NOT CHANGE, and must not:
+--
+--   * The admin still sees their OWN keys. user_api_keys_select_own is
+--     untouched, and an admin is a user.
+--   * Every Edge Function is unaffected. They use the service role, which
+--     bypasses RLS entirely, and each already filters .eq("user_id", ...)
+--     explicitly — run-tool, key-vault, desktop-keys and upworkpilot-keys all
+--     scope to the member whose run or request it is.
+--   * The column-level GRANTs are untouched, and they are what actually protects
+--     the ciphertext (§7). RLS decides rows; the GRANT decides columns. Nothing
+--     here weakens the rule that no client role can read ciphertext/iv/auth_tag.
+-- ============================================================================
+
+drop policy if exists user_api_keys_select_admin on user_api_keys;
+
+-- Deliberately NOT dropped here: key_release_consent_select_admin and
+-- key_release_log_select_admin. They have the same "no consumer today" shape and
+-- the same OR-widening behaviour, and the reads that touched them are now
+-- explicitly owner-scoped in lib/key-release.ts — so they are no longer leaking
+-- anything. Whether they should also go is a decision about the future admin
+-- surface, not a bug fix, and it is not one to make silently inside a migration
+-- whose subject is a different table.

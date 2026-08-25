@@ -891,7 +891,7 @@ structurally, not by convention:
 | `user_tool_access` | select own | all |
 | `plan_tools` | select | all |
 | `tool_runs` | select own; **no insert/update policy at all** — the runner writes with the service role | all |
-| `user_api_keys` | select own, **and only the columns granted above** — there is no path to `ciphertext`/`iv`/`auth_tag` from any client role. No insert/update/delete: all writes go through Server Actions. | select the same safe columns. The admin sees *which* providers a member connected, never the key. |
+| `user_api_keys` | select own, **and only the columns granted above** — there is no path to `ciphertext`/`iv`/`auth_tag` from any client role. No insert/update/delete: all writes go through Server Actions. | **nothing beyond their own rows.** The admin select policy was REMOVED — see the note below. |
 | `rate_limit_hits` | none | none. Service role / `rate_limit_take()` only. |
 | `access_codes` | none (redeem via Server Action) | all |
 | `feature_requests` | select all; insert own; update own while `status='open'` | all |
@@ -901,6 +901,31 @@ structurally, not by convention:
 | `tool_interest` | select own; insert/delete own | all |
 | `audit_logs` | none | select. Inserts go through a `security definer` `log_audit()` function, so no role needs a direct insert grant. |
 | `app_settings` | select (public fields only, via a view) | all |
+
+### The admin's view of `user_api_keys` was removed. Reintroduce it deliberately or not at all.
+
+This section used to say the admin could select the safe columns of every member's
+keys, so the admin dashboard could show *which* providers someone had connected.
+The policy existed from Phase 5. **The screen never did.** `/admin/users/[id]`
+displays nothing about keys, and nothing else ever read those rows as an admin.
+
+What the policy did do was break the member-facing key vault. Postgres combines
+PERMISSIVE policies with OR, so `user_api_keys` carried
+`user_id = auth.uid() OR is_admin()` — and `getMyKeys()`, which scoped by RLS
+rather than by an explicit filter, therefore listed **every member's key
+metadata** on the admin's own `/dashboard/keys`, with Verify and Delete buttons
+beside rows they did not own. Delete then quietly did nothing, because the
+key-vault function correctly scopes its write to the caller. A policy with no
+consumer was doing nothing but harm, so it is dropped in
+`20260825140000_drop_admin_key_read.sql`.
+
+**If an admin key view is ever actually wanted, it is a feature, not a policy.**
+Build it with its own explicitly-scoped query (`.eq("user_id", <the member being
+viewed>)`), on a route that is about that member — never by widening a policy
+that a member-facing page also reads through. And note the general lesson, which
+is written into `lib/supabase/admin.ts` as well: **on a table with more than one
+permissive policy, "let RLS scope it" is not a scoping strategy.** Write the
+filter.
 
 Guard the `profiles.role` column with a trigger: a non-admin must never be able to set
 `role = 'admin'` or clear `is_suspended` on any row, including their own.
@@ -953,7 +978,7 @@ A trigger exception that runs once in the product's life is not worth the trigge
 | `/admin` | Metrics: pending applications, active members, runs (7d), top tools, run success rate, signup trend. |
 | `/admin/applications` | Review queue. Filter by status. Bulk approve. Each row expands to show all answers. Approve → pick plan + tools + expiry, one click. |
 | `/admin/users` | Searchable table: name, email, membership, plan, keys connected, last run, tools count. |
-| `/admin/users/[id]` | **The important one.** Per-user tool access matrix (checkbox grid of every tool). Grant/revoke. Gift a membership. Suspend. See which providers they've connected (never the keys themselves). View their run history. |
+| `/admin/users/[id]` | **The important one.** Per-user tool access matrix (checkbox grid of every tool). Grant/revoke. Gift a membership. Suspend. View their run history. (**No key view** — see §7's note on the removed admin policy. It was specified here, never built, and the policy that would have backed it caused a real bug.) |
 | `/admin/tools` | Tool list. Drag to reorder. Duplicate a tool. |
 | `/admin/tools/new` and `/admin/tools/[id]` | Tool editor: metadata, runtime config, **visual `input_schema` builder** (add/edit/reorder fields — do not make me hand-write JSON), output block builder, **required providers** picker, access type, "Test run" button that fires the webhook with sample data (using *my* admin keys) and shows the raw response. |
 | `/admin/plans` | Plan CRUD + which tools each plan includes. |
