@@ -1,9 +1,9 @@
-import { Monitor } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import Link from "next/link";
 
 import { KeyVault } from "@/components/keys/key-vault";
 import { requireUser } from "@/lib/access";
-import { canAccessDesktopApp } from "@/lib/desktop";
+import { canAccessAnyExternalClient } from "@/lib/key-release";
 import { getMyKeys } from "@/lib/keys";
 import { PROVIDER_BY_VALUE } from "@/lib/providers";
 
@@ -19,10 +19,10 @@ export default async function KeysPage({
 }) {
   await requireUser("/dashboard/keys");
 
-  const [keys, { provider }, hasDesktopApp] = await Promise.all([
+  const [keys, { provider }, hasExternalClient] = await Promise.all([
     getMyKeys(),
     searchParams,
-    canAccessDesktopApp(),
+    canAccessAnyExternalClient(),
   ]);
 
   // Deep-link target from a tool card's "needs: openai" chip.
@@ -39,24 +39,24 @@ export default async function KeysPage({
         <KeyVault keys={keys} preselect={preselect} />
       </div>
 
-      {/* Only for members who actually have the desktop app: a permissions link
+      {/* Only for members who can actually run one of these: a permissions link
           for software you can't run is a puzzle, not a feature. */}
-      {hasDesktopApp && (
+      {hasExternalClient && (
         <Link
-          href="/dashboard/keys/desktop"
+          href="/dashboard/keys/permissions"
           className="mt-6 flex items-center gap-3 rounded-lg border border-line bg-surface px-5 py-4 transition-colors duration-micro ease-default hover:bg-elevated [border-top-color:var(--line-strong)]"
         >
-          <Monitor
+          <ShieldCheck
             aria-hidden
             className="size-[18px] shrink-0 text-text-muted"
             strokeWidth={1.5}
           />
           <span className="min-w-0">
             <span className="block text-body-strong text-text">
-              Desktop app permissions
+              App permissions
             </span>
             <span className="block text-small text-text-muted">
-              Choose which keys the desktop app may read, and see every time it
+              Choose which of your keys each app may read, and see every time one
               has.
             </span>
           </span>

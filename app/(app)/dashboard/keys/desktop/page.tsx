@@ -1,41 +1,21 @@
-import { notFound } from "next/navigation";
-
-import { DesktopConsent } from "@/components/keys/desktop-consent";
-import { PageHeader } from "@/components/ui/page-header";
-import { requireUser } from "@/lib/access";
-import { getDesktopVaultState } from "@/lib/desktop";
+import { redirect } from "next/navigation";
 
 /**
- * Desktop app permissions (§8, §10).
+ * The old desktop-only permissions route. It now redirects to the generalised
+ * page, anchored at the desktop app's own section.
  *
- * The consent gate in front of supabase/functions/desktop-keys — the only path
- * in the product that sends a plaintext key off our infrastructure. Reads only;
- * both mutations are Server Actions that re-derive the user from the session,
- * because desktop_key_consent has no client write policy.
+ * ⚠️  THIS ROUTE MUST KEEP RESOLVING. FOREVER, OR UNTIL NO INSTALL IN THE FIELD
+ *     STILL POINTS AT IT.
  *
- * The desktop app deep-links here when it gets `consent_required`, so this page
- * has to make sense cold, to someone who arrived from another application and
- * has no idea what a consent row is.
+ * supabase/functions/desktop-keys returns this path as `consent_url` on every
+ * withheld key slot, and a shipped desktop binary renders whatever URL it is
+ * given. Installs already out there cannot be updated retroactively, so deleting
+ * this file would turn "grant permission" into a 404 for exactly the members who
+ * most need to reach the page — the ones whose key release is currently blocked.
+ *
+ * A 307 rather than a permanent redirect: 308 is cached by browsers
+ * indefinitely, and this route has already moved once.
  */
-export default async function DesktopKeysPage() {
-  await requireUser("/dashboard/keys/desktop");
-
-  const { toolId, toolName, rows } = await getDesktopVaultState();
-
-  // The seed row is missing or archived — there is no app to grant anything to,
-  // and an empty permissions screen would be a puzzle rather than an answer.
-  if (!toolId) notFound();
-
-  return (
-    <div className="max-w-[720px]">
-      <PageHeader
-        title="Desktop app permissions"
-        back={{ href: "/dashboard/keys", label: "Key vault" }}
-        description="Which of your stored keys this app may read, and every time it has."
-      />
-      <div className="mt-6">
-        <DesktopConsent toolName={toolName} rows={rows} />
-      </div>
-    </div>
-  );
+export default async function DesktopKeysRedirect() {
+  redirect("/dashboard/keys/permissions#raw-footage-real-story");
 }

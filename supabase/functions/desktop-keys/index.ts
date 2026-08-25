@@ -15,7 +15,7 @@
 //   1. The access engine must say yes (the member's licence is live).
 //   2. The member must have explicitly allowed THIS app to read THIS provider.
 //      Consent is per-provider and revocable from /dashboard/keys/desktop.
-//   3. Every release is logged to desktop_key_access, which the member can read.
+//   3. Every release is logged to key_release_log, which the member can read.
 //
 // Proxying the provider calls through here instead would keep the key inside
 // our walls, and was considered and rejected: this is a video/audio product, so
@@ -29,39 +29,21 @@
 
 import { decrypt } from "../_shared/crypto.ts";
 import {
-  DESKTOP_PROVIDERS,
-  type DesktopProvider,
+  type KeySlot,
   corsHeaders,
   gate,
   json,
   siteUrl,
-} from "../_shared/desktop.ts";
+} from "../_shared/client-gate.ts";
+import {
+  DESKTOP,
+  DESKTOP_PROVIDERS,
+  type DesktopProvider,
+} from "../_shared/clients/desktop.ts";
 
-/**
- * `consent_url` is REQUIRED on every withheld slot, not optional.
- *
- * It used to be set only on `consent_required`, which left the desktop app
- * guessing a URL for the other two reasons — and a guess is a hardcoded copy of
- * a route this repo is free to change. Every "no" now names the page that fixes
- * it, so the app can render the link it was given and never construct one.
- *
- * The name is kept despite now being wider than consent: a shipped binary reads
- * this field, and renaming it would break every install already out there for a
- * cosmetic gain. Read it as "where the member goes to fix this".
- *
- * A RELEASED slot carries `manage_url` instead — a separate name, deliberately.
- * Overloading `consent_url` onto a slot with nothing to consent to and nothing
- * to fix would make the field mean two different things depending on a sibling
- * boolean, which is how a client ends up reading it wrong. Every slot now
- * carries exactly one URL, and which field it arrives in says what it is for.
- */
-type KeySlot =
-  | {
-      present: false;
-      reason: "no_key" | "consent_required" | "key_invalid";
-      consent_url: string;
-    }
-  | { present: true; key: string; manage_url: string };
+// KeySlot — the per-provider answer shape — is shared with upworkpilot-keys in
+// ../_shared/client-gate.ts, including the long note on why a withheld slot
+// always carries consent_url and a released one always carries manage_url.
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -69,7 +51,7 @@ Deno.serve(async (req) => {
     return json({ error: "method not allowed" }, 405);
   }
 
-  const g = await gate(req, "desktop_keys");
+  const g = await gate(req, DESKTOP, "keys");
   if (!g.ok) return g.response;
 
   // Unlike desktop-licence, a "no" here is a refusal, not a signed negative.
@@ -131,7 +113,7 @@ Deno.serve(async (req) => {
       // would mean decrypting something we may not be allowed to hand over —
       // pointless risk, and it would leak "this member has an OpenAI key" to a
       // caller who was never granted anything.
-      const { data: consented } = await g.supabase.rpc("has_desktop_consent", {
+      const { data: consented } = await g.supabase.rpc("has_key_release_consent", {
         p_tool_id: g.toolId,
         p_provider: provider,
         uid: g.userId,
@@ -193,7 +175,7 @@ Deno.serve(async (req) => {
     if (released.length > 0) {
       const now = new Date().toISOString();
 
-      await g.supabase.from("desktop_key_access").insert(
+      await g.supabase.from("key_release_log").insert(
         released.map((provider) => ({
           user_id: g.userId,
           tool_id: g.toolId,

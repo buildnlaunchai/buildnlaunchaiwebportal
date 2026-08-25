@@ -199,7 +199,7 @@ try {
   );
   check(!JSON.stringify(nc).includes(FAKE_OPENAI), "THE PLAINTEXT IS NOT IN THE RESPONSE");
 
-  const logAfterRefusal = await svc(`/rest/v1/desktop_key_access?user_id=eq.${uidOk}&select=id`).then((r) => r.json());
+  const logAfterRefusal = await svc(`/rest/v1/key_release_log?user_id=eq.${uidOk}&select=id`).then((r) => r.json());
   check(logAfterRefusal.length === 0, "a REFUSED request writes no access log row", `${logAfterRefusal.length} rows`);
 
   // ---- 8b. an INVALID key is withheld even with consent ----------------
@@ -209,7 +209,7 @@ try {
   // second, independent gate worth asserting: consent says "you may read my
   // key", it does not say "hand over one you already know is broken".
   console.log("\n8b. Consent granted, but the key is known-invalid:");
-  await svc("/rest/v1/desktop_key_consent", { method: "POST", body: JSON.stringify({ user_id: uidOk, tool_id: toolId, provider: "openai" }) });
+  await svc("/rest/v1/key_release_consent", { method: "POST", body: JSON.stringify({ user_id: uidOk, tool_id: toolId, provider: "openai" }) });
   const storedStatus = (await svc(`/rest/v1/user_api_keys?user_id=eq.${uidOk}&provider=eq.openai&select=status`).then((r) => r.json()))?.[0]?.status;
   check(storedStatus === "invalid", "(fixture) the fake key verified as invalid", String(storedStatus));
   const invalidRes = await call(KEYS_FN, tokOk).then((r) => r.json());
@@ -226,7 +226,7 @@ try {
   // The one refusal the suite never exercised, and the one whose URL the
   // desktop app was hardcoding. elevenlabs has consent here but no key row.
   console.log("\n8c. Consented, but no key stored at all:");
-  await svc("/rest/v1/desktop_key_consent", { method: "POST", body: JSON.stringify({ user_id: uidOk, tool_id: toolId, provider: "elevenlabs" }) });
+  await svc("/rest/v1/key_release_consent", { method: "POST", body: JSON.stringify({ user_id: uidOk, tool_id: toolId, provider: "elevenlabs" }) });
   const noKeyRes = await call(KEYS_FN, tokOk).then((r) => r.json());
   check(noKeyRes.elevenlabs?.present === false, "elevenlabs withheld — consent without a key releases nothing");
   check(noKeyRes.elevenlabs?.reason === "no_key", "reason: no_key", String(noKeyRes.elevenlabs?.reason));
@@ -242,7 +242,7 @@ try {
     "EVERY withheld slot carries a consent_url",
     `${withheld.length} withheld, all with a URL`,
   );
-  await svc(`/rest/v1/desktop_key_consent?user_id=eq.${uidOk}&tool_id=eq.${toolId}&provider=eq.elevenlabs`, { method: "DELETE" });
+  await svc(`/rest/v1/key_release_consent?user_id=eq.${uidOk}&tool_id=eq.${toolId}&provider=eq.elevenlabs`, { method: "DELETE" });
   check(!JSON.stringify(invalidRes).includes(FAKE_OPENAI), "no plaintext for an invalid key");
 
   // ---- 9. keys: with consent AND a usable key --------------------------
@@ -277,19 +277,19 @@ try {
     `${allSlots.length} slots`,
   );
 
-  const log = await svc(`/rest/v1/desktop_key_access?user_id=eq.${uidOk}&select=provider`).then((r) => r.json());
+  const log = await svc(`/rest/v1/key_release_log?user_id=eq.${uidOk}&select=provider`).then((r) => r.json());
   check(log.length === 1 && log[0].provider === "openai", "exactly one access row, naming openai", `${log.length} rows`);
 
   // ---- 10. revocation is immediate -------------------------------------
   console.log("\n10. Revoking consent takes effect on the next call:");
-  await svc(`/rest/v1/desktop_key_consent?user_id=eq.${uidOk}&tool_id=eq.${toolId}&provider=eq.openai`, { method: "PATCH", body: JSON.stringify({ revoked_at: new Date().toISOString() }) });
+  await svc(`/rest/v1/key_release_consent?user_id=eq.${uidOk}&tool_id=eq.${toolId}&provider=eq.openai`, { method: "PATCH", body: JSON.stringify({ revoked_at: new Date().toISOString() }) });
   const revoked = await call(KEYS_FN, tokOk).then((r) => r.json());
   check(revoked.openai?.present === false, "openai withheld again immediately");
   check(!JSON.stringify(revoked).includes(FAKE_OPENAI), "no plaintext after revocation");
 
   // ---- 11. suspension beats everything ---------------------------------
   console.log("\n11. Suspension beats a live membership AND live consent:");
-  await svc(`/rest/v1/desktop_key_consent?user_id=eq.${uidOk}&tool_id=eq.${toolId}&provider=eq.openai`, { method: "PATCH", body: JSON.stringify({ revoked_at: null }) });
+  await svc(`/rest/v1/key_release_consent?user_id=eq.${uidOk}&tool_id=eq.${toolId}&provider=eq.openai`, { method: "PATCH", body: JSON.stringify({ revoked_at: null }) });
   await svc(`/rest/v1/profiles?id=eq.${uidOk}`, { method: "PATCH", body: JSON.stringify({ is_suspended: true }) });
   const susKeys = await call(KEYS_FN, tokOk);
   const susBody = await susKeys.text();
@@ -342,9 +342,9 @@ try {
 
   // ---- 12. the member can read their own trail, and only their own -----
   console.log("\n12. The access log is the MEMBER's to read:");
-  const asMember = await fetch(`${URL_}/rest/v1/desktop_key_access?select=provider,created_at`, { headers: { apikey: ANON, Authorization: `Bearer ${tokOk}` } }).then((r) => r.json());
+  const asMember = await fetch(`${URL_}/rest/v1/key_release_log?select=provider,created_at`, { headers: { apikey: ANON, Authorization: `Bearer ${tokOk}` } }).then((r) => r.json());
   check(Array.isArray(asMember) && asMember.length >= 1, "the member sees their own reads", `${asMember?.length} rows`);
-  const asOther = await fetch(`${URL_}/rest/v1/desktop_key_access?select=provider`, { headers: { apikey: ANON, Authorization: `Bearer ${tokNo}` } }).then((r) => r.json());
+  const asOther = await fetch(`${URL_}/rest/v1/key_release_log?select=provider`, { headers: { apikey: ANON, Authorization: `Bearer ${tokNo}` } }).then((r) => r.json());
   check(Array.isArray(asOther) && asOther.length === 0, "another member sees none of them (RLS)", `${asOther?.length} rows`);
 
   // ---- 13. ciphertext is still unreachable from the browser ------------
@@ -353,8 +353,8 @@ try {
   const ctBody = await ct.text();
   check(!ct.ok || !ctBody.includes("ciphertext") || ct.status >= 400, "a member still cannot select ciphertext", `HTTP ${ct.status}`);
 } finally {
-  if (uidOk) await svc(`/rest/v1/desktop_key_consent?user_id=eq.${uidOk}`, { method: "DELETE" });
-  if (uidOk) await svc(`/rest/v1/desktop_key_access?user_id=eq.${uidOk}`, { method: "DELETE" });
+  if (uidOk) await svc(`/rest/v1/key_release_consent?user_id=eq.${uidOk}`, { method: "DELETE" });
+  if (uidOk) await svc(`/rest/v1/key_release_log?user_id=eq.${uidOk}`, { method: "DELETE" });
   for (const u of [uidOk, uidNo]) if (u) await svc(`/auth/v1/admin/users/${u}`, { method: "DELETE" });
   console.log("\n  (probe users, consent, logs and keys deleted)");
 }

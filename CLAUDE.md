@@ -1275,19 +1275,33 @@ The true claim is strong enough. **This is the exact copy. Use it verbatim in th
 say nothing stronger anywhere else in the product:**
 
 > Your key is encrypted before it's stored. No screen in this product will show it back to you —
-> or to me. The only thing that can read it is a tool you run, and desktop apps only after you
-> allow them, per app. A leaked database is useless without a key I keep off the server.
+> or to me. The only thing that can read it is a tool you run, and the apps you install — the
+> desktop app, the browser extension — each only after you allow it, one provider at a time. A
+> leaked database is useless without a key I keep off the server.
 
 Every clause of that is literally, defensibly true.
 
-**Amended for the desktop app.** The original sentence ended at "or to me". That held while every
-tool ran inside our own Edge Functions and a decrypted key died with the isolate that spent it. It
-stopped holding when `desktop-keys` shipped: a native app reads the plaintext onto hardware we do
-not control. Rather than quietly leave a false claim in the product — the precise failure this
-section warns against — the copy names the case. The guarantees that make it acceptable are
-structural, not promises: consent is per-provider and explicit (`desktop_key_consent`, no client
-write policy), revocable at `/dashboard/keys/desktop`, and every release is logged to
-`desktop_key_access`, which the member can read and the admin cannot hide.
+**Amended twice, for the same reason both times.** The original sentence ended at "or to me".
+That held while every tool ran inside our own Edge Functions and a decrypted key died with the
+isolate that spent it. It stopped holding when `desktop-keys` shipped — a native app reads the
+plaintext onto hardware we do not control — and it stopped holding *again* when
+`upworkpilot-keys` shipped, because a browser extension is not a desktop app and a sentence that
+said "desktop apps" no longer covered the case. Rather than quietly leave a false claim in the
+product — the precise failure this section warns against — the copy names both.
+
+The guarantees that make it acceptable are structural, not promises: consent is per-client AND
+per-provider (`key_release_consent`, no client write policy), revocable at
+`/dashboard/keys/permissions`, and every release is logged to `key_release_log`, which the member
+can read and the admin cannot hide. The provider allow-list is enforced in the Edge Function, on
+our server, not in the client — which is what makes it survive a silent auto-update.
+
+**Do not let the two clients collapse into one sentence in the UI.** They are not equally safe
+places to keep a key, and the key vault's permissions screen says so at length for the extension:
+it shares a process boundary with web content, it updates through the Chrome Web Store without the
+member agreeing to anything, and its bundle is readable JavaScript on their machine. The extension
+holds the key in service-worker memory only and never in `chrome.storage` — but that is a
+commitment in code we do not run, so the screen says that too. An honest disclosure that is longer
+than its desktop equivalent is not an imbalance to fix; padding the shorter one would be filler.
 
 ### Verification
 
@@ -1641,15 +1655,19 @@ Before this is called done, all of these must be true:
       through Vercel, in memory or in transit. (§13)
 - [ ] A member cannot read their own `ciphertext` column from the browser, as themselves.
 - [ ] A member cannot read any row of `tool_secrets`, from the browser, as themselves.
-- [ ] No API key ever appears in `tool_runs`, in a log line, or in a web client payload. **The one
-      exception is the `desktop-keys` response**, which returns a decrypted key to the member's own
-      desktop app — and only for a provider that member explicitly allowed, only while their
-      licence is active, and never without a `desktop_key_access` row they can read. Anything
-      beyond that single endpoint is still a bug.
-- [ ] **No member's API key is ever sent to software I do not control**, except the desktop app
-      they installed and consented to, running on their own machine under their own account.
-      There is still no third-party execution engine in the path, so there is no vendor setting
-      that could betray this by default.
+- [ ] No API key ever appears in `tool_runs`, in a log line, or in a web client payload. **The
+      only exceptions are the `desktop-keys` and `upworkpilot-keys` responses**, which return a
+      decrypted key to software the member installed — and only for a provider that member
+      explicitly allowed for that specific client, only while their membership is active, and
+      never without a `key_release_log` row they can read. Two endpoints, named. Anything beyond
+      them is still a bug, and a third one is a decision, not a refactor.
+- [ ] **No member's API key is ever sent to software I do not control**, except the clients they
+      installed and consented to, running on their own machine under their own account: the
+      desktop app, and the UpworkPilot browser extension. There is still no third-party execution
+      engine in the path, so there is no vendor setting that could betray this by default — but
+      note that an extension auto-updates through the Chrome Web Store, so what that software does
+      *next* is not something a past consent can vouch for. That is why the provider allow-list is
+      enforced server-side and the consent is revocable, and why the vault says so plainly.
 - [ ] The platform's compute bill for any member's usage is exactly zero. The Supabase plan is a
       fixed cost and does not scale with members.
 - [ ] A run that fails on a bad key says so plainly and links to the fix.

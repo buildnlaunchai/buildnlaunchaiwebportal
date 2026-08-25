@@ -11,7 +11,7 @@
 
 import { importPKCS8, SignJWT } from "https://esm.sh/jose@5.10.0";
 
-import type { LicenceDenialReason } from "./desktop.ts";
+import type { LicenceDenialReason } from "./client-gate.ts";
 
 // Importing the PEM parses it. Cached against the raw env value so a key
 // rotation still takes effect without a redeploy, while a warm isolate doesn't
@@ -97,34 +97,33 @@ export async function mintHubToken(input: HubTokenInput): Promise<{
 // Same signing key, different question. The embed token above answers "who is
 // this and what may they open, right now, online". A licence token answers "may
 // this install keep running while it cannot reach us", which is the whole
-// reason it must be signed at all: the desktop caches the answer to disk, and a
+// reason it must be signed at all: the client caches the answer to disk, and a
 // cached JSON blob with no signature is a text file the user can edit.
 //
-// Why RS256 and not an HMAC baked into the binary: a shared secret compiled
-// into a desktop app is extractable by anyone who owns a copy, and it is the
-// SAME secret for every install — extract it once, mint "active: true" forever,
-// for everybody. The public half of an RS256 pair can verify and cannot forge,
-// so extracting it from the binary buys an attacker nothing. That is the entire
-// argument, and it is the same one hub-jwt.ts already makes at the top of this
-// file for the embedded apps.
+// Why RS256 and not an HMAC baked into the client: a shared secret compiled
+// into distributed software is extractable by anyone who owns a copy, and it is
+// the SAME secret for every install — extract it once, mint "active: true"
+// forever, for everybody. That is true of a desktop binary and MORE true of a
+// browser extension, whose bundle is plain readable JavaScript sitting in a
+// profile directory. The public half of an RS256 pair can verify and cannot
+// forge, so extracting it buys an attacker nothing. It is the same argument
+// this file already makes at the top for the embedded apps.
 // ===========================================================================
 
-/**
- * How long a desktop install may trust a cached "active" licence with no
- * contact. Thirty days is a deliberate product judgement, not a security one:
- * long enough that a member on a plane or a shoot is never locked out of
- * software they paid for, short enough that a cancellation takes effect within
- * a billing cycle. Shorten it and offline stops working; lengthen it and a
- * refunded member keeps the app for a quarter.
- */
-export const LICENCE_TTL_SECONDS = 30 * 24 * 60 * 60;
-
-/**
- * How long a NEGATIVE answer is cached. Short on purpose and asymmetric with
- * the above: someone who just paid must not wait thirty days to be let in, and
- * a "no" is cheap to re-ask because the app is already showing them a wall.
- */
-export const LICENCE_INACTIVE_TTL_SECONDS = 60 * 60;
+// HOW LONG A CACHED LICENCE MAY BE TRUSTED IS THE CLIENT'S DECISION, NOT THIS
+// FILE'S, and it arrives as a required argument rather than a default.
+//
+// It used to live here as a pair of constants, back when there was one client to
+// have an opinion. It moved to _shared/clients/<name>.ts the moment there were
+// two, because the right answer turned out to differ by an order of magnitude:
+// thirty days for a desktop app that must survive a flight, twenty-four hours
+// for a browser extension that is useless without a network anyway. A default
+// here would have quietly handed the extension the desktop's month, and the
+// symptom — a cancelled member still working four weeks later — would have
+// surfaced in billing, not in a stack trace.
+//
+// So: no default, and no house number to copy. Each client states its own,
+// next to the reason it chose it.
 
 /** Never mint a token that is already dead — a same-second exp is a support ticket. */
 const LICENCE_MIN_TTL_SECONDS = 60;
@@ -140,6 +139,13 @@ export type LicenceTokenInput = {
   plan: string | null;
   /** ISO, or null for a membership that never expires. */
   membershipExpiresAt: string | null;
+  /**
+   * How long this answer may be cached when `active` is true. Required: see the
+   * note above. Clamped to the membership expiry below.
+   */
+  ttlSeconds: number;
+  /** How long a NEGATIVE answer may be cached. Deliberately much shorter. */
+  inactiveTtlSeconds: number;
   /**
    * Why `active` is false — null whenever it is true.
    *
@@ -177,7 +183,7 @@ export async function mintLicenceToken(input: LicenceTokenInput): Promise<{
 
   const now = Math.floor(Date.now() / 1000);
 
-  let exp = now + (input.active ? LICENCE_TTL_SECONDS : LICENCE_INACTIVE_TTL_SECONDS);
+  let exp = now + (input.active ? input.ttlSeconds : input.inactiveTtlSeconds);
 
   if (input.active && input.membershipExpiresAt) {
     const membershipEnd = Math.floor(

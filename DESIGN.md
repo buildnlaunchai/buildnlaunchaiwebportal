@@ -897,15 +897,26 @@ Copy is design material. It's most of what the user actually experiences.
 
 **Key vault, what we do with the key — this exact wording, and nothing stronger, anywhere:**
 > Your key is encrypted before it's stored. No screen in this product will show it back to you —
-> or to me. The only thing that can read it is a tool you run, and desktop apps only after you
-> allow them, per app. A leaked database is useless without a key I keep off the server.
+> or to me. The only thing that can read it is a tool you run, and the apps you install — the
+> desktop app, the browser extension — each only after you allow it, one provider at a time. A
+> leaked database is useless without a key I keep off the server.
 
-> **Amended when the desktop app shipped.** The sentence used to stop at "or to me", which was
-> true while every tool ran inside our own Edge Functions. The desktop app reads a decrypted key
-> onto the member's own machine, so the old wording became an over-promise — exactly the thing
-> the note below says not to write. The clause naming desktop apps is not a softening; it is the
-> repair. Consent is per-provider, revocable at `/dashboard/keys/desktop`, and every read is
-> listed there.
+> **Amended twice — desktop app, then browser extension.** The sentence used to stop at "or to
+> me", which was true while every tool ran inside our own Edge Functions. The desktop app reads a
+> decrypted key onto the member's own machine; the UpworkPilot extension reads one into their
+> browser. Each time, the old wording became an over-promise — exactly the thing the note below
+> says not to write — and each time the clause naming the case is the repair, not a softening.
+> Consent is per-client and per-provider, revocable at `/dashboard/keys/permissions`, and every
+> read is listed there.
+
+> **The permissions screen is where the difference gets said, not here.** A desktop app and a
+> browser extension are not equally safe places to keep a key, so they do not share a disclosure:
+> the extension's names the three things that are actually different — it runs alongside the pages
+> you visit, it updates itself silently through the Chrome Web Store, and its code is readable
+> JavaScript on your machine — and then states the memory-only commitment along with the fact that
+> no server can enforce it. That disclosure is longer than the desktop's. Leave it longer. Padding
+> the shorter one to match would be filler (§12), and trimming the longer one would be a softening
+> dressed up as consistency.
 
 > The temptation is to write "not even I can read it." Don't. I hold the encryption key and the
 > database credentials; with enough determination I could decrypt anything in here, and the

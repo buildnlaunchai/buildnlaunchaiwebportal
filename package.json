@@ -26,7 +26,8 @@
     "verify:community": "node --env-file=.env.local scripts/verify-community.mjs",
     "verify:embed-token": "node --env-file=.env.local scripts/verify-embed-token.mjs",
     "verify:embed-page": "node --env-file=.env.local scripts/verify-embed-page.mjs",
-    "verify:desktop": "node --env-file=.env.local scripts/verify-desktop.mjs"
+    "verify:desktop": "node --env-file=.env.local scripts/verify-desktop.mjs",
+    "verify:upworkpilot": "node --env-file=.env.local scripts/verify-upworkpilot.mjs"
   },
   "dependencies": {
     "@creem_io/nextjs": "^0.5.3",

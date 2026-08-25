@@ -129,12 +129,18 @@ export function providerName(value: string): string {
 // The honesty statement — verbatim from CLAUDE.md §10 / DESIGN.md §12. Nothing
 // stronger than this may appear anywhere in the product.
 //
-// Amended when the desktop app shipped. The previous wording ended at "or to
-// me", which was true while every tool ran inside our own Edge Functions and
-// stopped being true the moment desktop-keys could hand a decrypted key to an
-// app on the member's machine. §10 is explicit that an over-promise here is
+// Amended twice: once when the desktop app shipped, once when the UpworkPilot
+// extension did. The original ended at "or to me", which was true while every
+// tool ran inside our own Edge Functions and stopped being true the moment
+// desktop-keys could hand a decrypted key to an app on the member's machine —
+// and then stopped being true a second time, because "desktop apps" does not
+// describe a browser extension. §10 is explicit that an over-promise here is
 // worse than no promise, because the audience is technical and will work it
-// out — so the sentence names the desktop case rather than hoping nobody reads
-// the changelog. Every clause is still literally, defensibly true.
+// out, so the sentence names both cases rather than hoping nobody reads the
+// changelog. Every clause is still literally, defensibly true.
+//
+// This is the SHORT form, shown next to the key form. The full disclosure — what
+// makes an extension a weaker place to hold a key than a desktop app — lives on
+// /dashboard/keys/permissions, where the member actually decides.
 export const KEY_HONESTY_COPY =
-  "Your key is encrypted before it's stored. No screen in this product will show it back to you — or to me. The only thing that can read it is a tool you run, and desktop apps only after you allow them, per app. A leaked database is useless without a key I keep off the server.";
+  "Your key is encrypted before it's stored. No screen in this product will show it back to you — or to me. The only thing that can read it is a tool you run, and the apps you install — the desktop app, the browser extension — each only after you allow it, one provider at a time. A leaked database is useless without a key I keep off the server.";

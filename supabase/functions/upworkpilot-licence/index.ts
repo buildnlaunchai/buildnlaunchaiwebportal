@@ -1,21 +1,35 @@
-// The desktop-licence Edge Function.
+// The upworkpilot-licence Edge Function.
 //
-// Answers "is this user entitled to run Raw Footage, Real Story" and returns
-// the answer SIGNED, so the desktop app can cache it and keep working offline.
+// Answers "is this user entitled to run the UpworkPilot extension" and returns
+// the answer SIGNED, so the extension can cache it rather than asking on every
+// service-worker wake.
+//
+// Structurally identical to desktop-licence — same gate, same engine, same
+// signing key, same claims — and that sameness is the point: two clients that
+// answer the entitlement question differently is the bug _shared/client-gate.ts
+// exists to prevent. What differs is one number, and it differs on purpose.
+//
+// THE ONE DIFFERENCE, AND WHY. The desktop app caches an active licence for
+// thirty days because a member on a plane must not lose software they paid for.
+// An extension has no such case: it lives in a browser and does work that is
+// inherently online, so a long offline window buys the member nothing and costs
+// us the entire gap between a cancellation and the client noticing. Twenty-four
+// hours — see _shared/clients/upworkpilot.ts, where the number lives with its
+// reason.
 //
 // Why signed at all, since the caller already authenticated: the response is
-// written to disk on a machine the user controls. An unsigned JSON cache is a
-// text file with `"active": false` in it, one edit away from `true`. The
-// signature is what makes the cache tamper-evident. It is RS256 with the hub's
-// existing key (_shared/hub-jwt.ts) — the desktop binary carries only the
-// public half, which can verify and cannot forge.
+// cached on a machine the user controls. An unsigned JSON cache is a text file
+// with `"active": false` in it, one edit away from `true`. RS256 with the hub's
+// existing key (_shared/hub-jwt.ts); the extension carries only the public half,
+// which can verify and cannot forge. That matters more here than it does for a
+// desktop binary — an extension bundle is readable JavaScript sitting in a
+// profile directory, so "extract the secret" is not even a reverse-engineering
+// task.
 //
-// It is worth being precise about what this function does NOT do: it is not a
-// new access path. It reads can_access_tool for the caller it cryptographically
-// identified, live, on every call. Nothing is cached server-side, so a revoked
-// membership is honoured by the next check — bounded by the token's own exp,
-// which is what the offline window costs and why it is thirty days and not a
-// year.
+// It is not a new access path. It reads can_access_tool for the caller it
+// cryptographically identified, live, on every call. Nothing is cached
+// server-side, so a revoked membership is honoured by the next check — bounded
+// by the token's own exp, which is what the offline window costs.
 
 import { mintLicenceToken } from "../_shared/hub-jwt.ts";
 import {
@@ -26,10 +40,10 @@ import {
   licenceDenialReason,
 } from "../_shared/client-gate.ts";
 import {
-  DESKTOP,
-  DESKTOP_LICENCE_INACTIVE_TTL_SECONDS,
-  DESKTOP_LICENCE_TTL_SECONDS,
-} from "../_shared/clients/desktop.ts";
+  UPWORKPILOT,
+  UPWORKPILOT_LICENCE_INACTIVE_TTL_SECONDS,
+  UPWORKPILOT_LICENCE_TTL_SECONDS,
+} from "../_shared/clients/upworkpilot.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -37,7 +51,7 @@ Deno.serve(async (req) => {
     return json({ error: "method not allowed" }, 405);
   }
 
-  const g = await gate(req, DESKTOP, "licence");
+  const g = await gate(req, UPWORKPILOT, "licence");
   if (!g.ok) return g.response;
 
   try {
@@ -62,12 +76,8 @@ Deno.serve(async (req) => {
 
     const expiresAt = (membership?.expires_at as string | null) ?? null;
 
-    // WHY it is a no. Only on the denial path: an entitled member costs no
-    // extra round trip, and a denied one is already looking at a wall.
-    //
-    // is_suspended is read here rather than carried by gate() because gate()
-    // serves desktop-keys too, which refuses outright and has no use for it —
-    // the shared gate should not buy a column for a caller that never reads it.
+    // WHY it is a no. Only on the denial path: an entitled member costs no extra
+    // round trip, and a denied one is already looking at a wall.
     let reason: LicenceDenialReason | null = null;
     if (!g.hasAccess) {
       const { data: profile } = await g.supabase
@@ -86,15 +96,15 @@ Deno.serve(async (req) => {
     const { token, expiresAt: tokenExpiresAt, checkedAt } = await mintLicenceToken({
       userId: g.userId,
       email: g.email,
-      audience: DESKTOP.slug,
+      audience: UPWORKPILOT.slug,
       active: g.hasAccess,
       plan,
       membershipExpiresAt: expiresAt,
       reason,
-      // Thirty days / one hour. Stated here rather than defaulted, because the
-      // right number is a property of THIS client — see _shared/clients/desktop.ts.
-      ttlSeconds: DESKTOP_LICENCE_TTL_SECONDS,
-      inactiveTtlSeconds: DESKTOP_LICENCE_INACTIVE_TTL_SECONDS,
+      // Twenty-four hours / one hour. Stated here rather than defaulted — see
+      // the note at the top and _shared/clients/upworkpilot.ts.
+      ttlSeconds: UPWORKPILOT_LICENCE_TTL_SECONDS,
+      inactiveTtlSeconds: UPWORKPILOT_LICENCE_INACTIVE_TTL_SECONDS,
     });
 
     return json({
@@ -103,7 +113,7 @@ Deno.serve(async (req) => {
       reason,
       plan,
       // The MEMBERSHIP's expiry — null means "never expires". Not the same date
-      // as cache_expires_at below, and the desktop app must not conflate them.
+      // as cache_expires_at below, and the extension must not conflate them.
       expires_at: expiresAt,
       checked_at: checkedAt,
       // How long the signed answer may be trusted without contacting us.
@@ -113,7 +123,7 @@ Deno.serve(async (req) => {
   } catch (err) {
     // Never leak detail: an error here could otherwise carry key material or
     // the shape of the signing setup.
-    console.error("desktop-licence error:", (err as Error).message);
+    console.error("upworkpilot-licence error:", (err as Error).message);
     return json({ error: "something went wrong" }, 500);
   }
 });

@@ -430,7 +430,7 @@ export default async function RawFootageRealStoryPage() {
             <Link href="/pricing">
               <Button variant="secondary">See membership</Button>
             </Link>
-            <Link href="/dashboard/keys/desktop">
+            <Link href="/dashboard/keys/permissions">
               <Button variant="ghost">Key permissions</Button>
             </Link>
           </div>
