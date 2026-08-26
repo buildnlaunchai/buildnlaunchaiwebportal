@@ -199,10 +199,45 @@ export function siteUrl(): string {
 export type KeySlot =
   | {
       present: false;
-      reason: "no_key" | "consent_required" | "key_invalid";
+      reason: "no_key" | "consent_required" | "key_invalid" | "credit_mode";
       consent_url: string;
     }
   | { present: true; key: string; manage_url: string };
+
+/**
+ * Where a member goes when the answer is `credit_mode`.
+ *
+ * There is nothing to FIX in credit mode — it is the system working — so this
+ * is the one reason whose URL is not a repair. Settings is where a member sees
+ * their membership state, which is the thing that explains why no key came
+ * back. WHEN THE CREDITS PAGE SHIPS, POINT THIS AT IT: that is the page that
+ * will actually answer "how much credit do I have left".
+ *
+ * Slots are emitted in credit mode at all only so an already-shipped client
+ * reading `out[provider].present` finds `false` instead of crashing on
+ * undefined. THE TOP-LEVEL `mode` FIELD IS THE REAL SIGNAL — a client must
+ * branch on that first and ignore these slots entirely when it reads "credit".
+ */
+export function creditModeUrl(): string {
+  return `${siteUrl()}/dashboard/settings`;
+}
+
+/**
+ * HOW a member is entitled to run this client, not merely whether.
+ *
+ * Mirrors the `tool_access_mode` enum in Postgres, and the distinction is the
+ * whole reason this file changed:
+ *
+ *   byok    Active member (or an explicit grant, or a public_preview tool).
+ *           They run on their OWN provider key, and the keys endpoints release
+ *           it exactly as they always have.
+ *   credit  Membership has lapsed, but they hold platform credit. They may run
+ *           the client — and their key must NOT be released, because in this
+ *           mode WE pay the provider. Releasing it would have the member pay
+ *           their provider AND be billed credit for a call we never made.
+ *   none    No access at all.
+ */
+export type ToolAccessMode = "none" | "byok" | "credit";
 
 export type ClientGate =
   | { ok: false; response: Response }
@@ -213,6 +248,13 @@ export type ClientGate =
       email: string;
       toolId: string;
       /** The access engine's verdict for THIS user on THIS client's tool. */
+      mode: ToolAccessMode;
+      /**
+       * `mode !== 'none'`, kept as its own field because the licence endpoints
+       * genuinely only need the boolean: a member in credit mode CAN run the
+       * app, so `active` stays true for them and those two functions need no
+       * change at all. Only the keys endpoints care which mode it is.
+       */
       hasAccess: boolean;
     };
 
@@ -275,11 +317,21 @@ export async function gate(
     return { ok: false, response: json({ error: "unavailable" }, 503) };
   }
 
-  // uid passed EXPLICITLY. can_access_tool defaults it to auth.uid(), which
-  // under the service role is NULL — the engine would answer for nobody. The
-  // §7 note about is_admin(uid) taking a subject is the same footgun.
-  const { data: hasAccess, error: accessErr } = await supabase.rpc(
-    "can_access_tool",
+  // tool_access_resolve, not can_access_tool: this gate now needs the MODE, and
+  // a boolean cannot say whether a member is entitled through their membership
+  // or through their credit balance — which decides whether their key may be
+  // released at all.
+  //
+  // _resolve rather than tool_access(): the public wrapper additionally refuses
+  // when the caller is asking about somebody else, which is right for a member
+  // calling from the browser and wrong here, where the caller IS the service
+  // role and auth.uid() is NULL.
+  //
+  // uid passed EXPLICITLY, for the same reason as before: the engine defaults it
+  // to auth.uid(), which under the service role is NULL — it would answer for
+  // nobody. The §7 note about is_admin(uid) taking a subject is the same footgun.
+  const { data: mode, error: accessErr } = await supabase.rpc(
+    "tool_access_resolve",
     { p_tool_id: tool.id, uid: user.id },
   );
   if (accessErr) {
@@ -287,12 +339,20 @@ export async function gate(
     return { ok: false, response: json({ error: "could not check access" }, 500) };
   }
 
+  // An unrecognised mode is treated as 'none'. The engine can only return three
+  // values, so this is unreachable — but the failure direction matters: a future
+  // fourth mode must lock people out until someone teaches this file what it
+  // means, never let them through by default.
+  const resolved: ToolAccessMode =
+    mode === "byok" || mode === "credit" ? mode : "none";
+
   return {
     ok: true,
     supabase,
     userId: user.id,
     email: user.email ?? "",
     toolId: tool.id,
-    hasAccess: hasAccess === true,
+    mode: resolved,
+    hasAccess: resolved !== "none",
   };
 }

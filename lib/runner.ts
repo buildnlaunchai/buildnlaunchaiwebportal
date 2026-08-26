@@ -53,10 +53,20 @@ export async function startRunForUser(
   }
 
   // b. Access — re-checked server-side, always (§13).
-  const { data: canAccess } = await supabase.rpc("can_access_tool", {
+  //
+  // tool_access, not can_access_tool: step (d) below has to know WHETHER the
+  // member is entitled through their membership (byok — they supply the key) or
+  // through their credit balance (credit — they deliberately do not).
+  //
+  // Called on the member's own RLS client with uid defaulted to auth.uid(),
+  // which is the subject we want; tool_access's own guard refuses any other
+  // subject, and we never ask for one.
+  const { data: mode } = await supabase.rpc("tool_access", {
     p_tool_id: tool.id,
   });
-  if (!canAccess) return { error: "You don't have access to this tool." };
+  if (mode === "none" || !mode) {
+    return { error: "You don't have access to this tool." };
+  }
 
   // c. Must be published. Maintenance shows a notice and stops.
   if (tool.status !== "published") {
@@ -68,7 +78,31 @@ export async function startRunForUser(
     };
   }
 
-  // d. Keys — name exactly which provider is missing.
+  // d. Keys — but ONLY in byok mode, and this is the distinction that matters.
+  //
+  // In credit mode the member deliberately has no key for this provider: we pay
+  // it. Running has_required_keys there would refuse a run the member is fully
+  // entitled to, and the error would tell them to go and connect a key they do
+  // not need. The check is not merely unnecessary in credit mode — it is wrong.
+  if (mode === "credit") {
+    // AND THEN WE STOP, because the executor does not exist yet.
+    //
+    // run-tool decrypts the member's own keys for tool.required_providers and
+    // hands them to a handler. In credit mode there are none, so a run started
+    // here would be accepted, written to tool_runs, invoked, and die inside the
+    // isolate with a message about a missing key — the member watching a
+    // spinner turn into a lie.
+    //
+    // This branch is unreachable today: credit mode needs consumes_credit, both
+    // such tools are external_link, and step (a) above already rejected those.
+    // It becomes reachable the moment an edge_function tool is marked
+    // consumes_credit, and on that day this message is the honest answer until
+    // the AI gateway lands and run-tool learns to call it.
+    return {
+      error: "This tool runs on credit, and credit runs aren't available yet.",
+    };
+  }
+
   const { data: hasKeys } = await supabase.rpc("has_required_keys", {
     p_tool_id: tool.id,
   });

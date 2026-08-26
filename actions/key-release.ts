@@ -80,14 +80,26 @@ export async function grantKeyRelease(
   // would make the permissions screen claim a release is possible when the keys
   // endpoint would refuse it anyway.
   //
-  // On the user's own RLS client, can_access_tool defaults uid to auth.uid(),
-  // which is the subject we want here.
+  // IT NOW ALSO REQUIRES byok MODE, and the boolean cannot express that. A
+  // credit-mode member CAN open the client — can_access_tool says true — but
+  // the keys endpoint withholds every provider from them, because in that mode
+  // we pay the provider and their own key must stay unspent. Granting consent
+  // there would write a permission that is real, visible, and inert.
+  //
+  // On the user's own RLS client, tool_access defaults uid to auth.uid(), which
+  // is the subject we want here — and its own guard refuses any other.
   const supabase = await createClient();
-  const { data: canAccess } = await supabase.rpc("can_access_tool", {
+  const { data: mode } = await supabase.rpc("tool_access", {
     p_tool_id: r.toolId,
   });
-  if (canAccess !== true) {
+  if (mode === "none" || !mode) {
     return { error: "You don't have access to that app." };
+  }
+  if (mode === "credit") {
+    return {
+      error:
+        "This app is running on your credit right now, so it doesn't need your key.",
+    };
   }
 
   const admin = createAdminClient();
@@ -133,6 +145,12 @@ export async function revokeKeyRelease(
   // withdrawing a permission they already granted, over their own API key, is
   // exactly backwards. Taking a permission away is always allowed; only giving
   // one requires standing.
+  //
+  // Credit mode makes this argument stronger, not weaker. That is exactly the
+  // member whose grant above is now refused — so if revoke checked the mode
+  // too, someone who lapsed into credit would be left holding live consent rows
+  // with no way in the product to withdraw them. The one direction that must
+  // never require standing is the one that removes a permission.
   const admin = createAdminClient();
   // Stamped, not deleted. "You allowed this on the 3rd and revoked it on the
   // 9th" is a fact the member should be able to see later, and a deleted row

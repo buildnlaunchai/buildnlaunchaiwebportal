@@ -81,10 +81,23 @@ export type KeyReleaseRow = {
   readCount: number;
 };
 
+/** Mirrors Postgres `tool_access_mode`. See supabase/functions/_shared/client-gate.ts. */
+export type ToolAccessMode = "none" | "byok" | "credit";
+
 export type KeyReleaseClient = ExternalClientMeta & {
   toolId: string;
   /** From the `tools` row, so the screen calls it whatever the catalog calls it. */
   name: string;
+  /**
+   * How this member is entitled to run this client right now.
+   *
+   * Only 'byok' and 'credit' ever reach the screen — a 'none' client is dropped
+   * below. The screen must disable granting when this is 'credit': in that mode
+   * the keys endpoint withholds every provider, so a consent granted there would
+   * be a permission that is never honoured, which is precisely the puzzle this
+   * file already refuses to show people.
+   */
+  mode: ToolAccessMode;
   rows: KeyReleaseRow[];
 };
 
@@ -94,6 +107,16 @@ export type KeyReleaseClient = ExternalClientMeta & {
  * Only accessible clients are returned. A permissions panel for software you
  * cannot run is a puzzle, not a feature — and worse, it invites a member to
  * grant a release that would never be honoured.
+ *
+ * A CREDIT-MODE CLIENT IS STILL RETURNED, and that is not a contradiction of the
+ * paragraph above. In credit mode the keys endpoint withholds every provider, so
+ * a NEW grant would indeed never be honoured — and the screen disables granting
+ * for exactly that reason. But a member who granted consent while their
+ * membership was live and has since lapsed into credit still has live consent
+ * rows, and taking away their only screen for REVOKING them would be the worse
+ * failure by far. So the client arrives labelled with its mode and the screen
+ * decides per direction: grant off, revoke on. actions/key-release.ts draws the
+ * same line, and for the same reason.
  *
  * On the user's RLS client `can_access_tool` defaults uid to auth.uid(), which
  * is correct here — unlike the Edge Functions, where the service role makes it
@@ -123,13 +146,17 @@ export async function getKeyReleaseState(): Promise<KeyReleaseClient[]> {
 
   if (!tools || tools.length === 0) return [];
 
+  // The MODE, not just the boolean. A credit-mode client still belongs on this
+  // screen — see the note on revocation below — but it must arrive labelled, so
+  // the screen can stop offering a grant that would never be honoured.
   const accessible = (
     await Promise.all(
       tools.map(async (t) => {
-        const { data } = await supabase.rpc("can_access_tool", {
+        const { data } = await supabase.rpc("tool_access", {
           p_tool_id: t.id,
         });
-        return data === true ? t : null;
+        const mode = (data ?? "none") as ToolAccessMode;
+        return mode === "none" ? null : { ...t, mode };
       }),
     )
   ).filter((t): t is NonNullable<typeof t> => t !== null);
@@ -187,7 +214,7 @@ export async function getKeyReleaseState(): Promise<KeyReleaseClient[]> {
       };
     });
 
-    return [{ ...meta, toolId: tool.id, name: tool.name, rows }];
+    return [{ ...meta, toolId: tool.id, name: tool.name, mode: tool.mode, rows }];
   });
 }
 

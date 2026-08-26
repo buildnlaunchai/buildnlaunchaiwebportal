@@ -25,7 +25,22 @@ import type { ClientKind, KeyReleaseClient, KeyReleaseRow } from "@/lib/key-rele
  * over-promise is worse than no promise, to an audience that will work it out.
  */
 
-function ConsentRow({ slug, row }: { slug: string; row: KeyReleaseRow }) {
+function ConsentRow({
+  slug,
+  row,
+  creditMode,
+}: {
+  slug: string;
+  row: KeyReleaseRow;
+  /**
+   * This client is running on platform credit, so the keys endpoint withholds
+   * every provider. Allowing is therefore disabled — the grant would be written
+   * and never honoured. Revoking stays available, because a member who lapsed
+   * into credit may still hold consent granted while their membership was live,
+   * and this screen is their only way to withdraw it.
+   */
+  creditMode: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +81,19 @@ function ConsentRow({ slug, row }: { slug: string; row: KeyReleaseRow }) {
         {/* The whole point of this screen: what actually happened, in plain
             dates. §12 — say what happened, then what to do. */}
         <p className="mt-1 text-small text-text-muted">
-          {!row.hasKey ? (
+          {creditMode ? (
+            row.granted ? (
+              <>
+                Not in use — this app is running on your credit, so it isn&apos;t
+                reading this key. You can revoke the permission anyway.
+              </>
+            ) : (
+              <>
+                This app is running on your credit right now, so it doesn&apos;t
+                need this key.
+              </>
+            )
+          ) : !row.hasKey ? (
             <>
               You haven&apos;t saved a {meta?.name ?? row.provider} key yet.{" "}
               <Link
@@ -98,14 +125,20 @@ function ConsentRow({ slug, row }: { slug: string; row: KeyReleaseRow }) {
         )}
       </div>
 
-      <Button
-        variant={row.granted ? "ghost" : "secondary"}
-        size="sm"
-        pending={pending}
-        onClick={() => act(!row.granted)}
-      >
-        {row.granted ? "Revoke" : "Allow"}
-      </Button>
+      {/* In credit mode an un-granted row has no action at all: "Allow" would be
+          refused by the Server Action, and rendering a button whose only outcome
+          is an error message is worse than rendering nothing. A granted row keeps
+          its Revoke. */}
+      {creditMode && !row.granted ? null : (
+        <Button
+          variant={row.granted ? "ghost" : "secondary"}
+          size="sm"
+          pending={pending}
+          onClick={() => act(!row.granted)}
+        >
+          {row.granted ? "Revoke" : "Allow"}
+        </Button>
+      )}
     </div>
   );
 }
@@ -206,6 +239,7 @@ function Disclosure({ kind, name }: { kind: ClientKind; name: string }) {
 
 function ClientSection({ client }: { client: KeyReleaseClient }) {
   const Icon = KIND_ICON[client.kind];
+  const creditMode = client.mode === "credit";
 
   return (
     // The slug is the anchor id: <client>-keys returns
@@ -221,11 +255,20 @@ function ClientSection({ client }: { client: KeyReleaseClient }) {
             <SectionHeader
               icon={Icon}
               title={client.name}
-              description={KIND_SUBTITLE[client.kind]}
+              description={
+                creditMode
+                  ? "Running on your credit. It doesn't read your keys in this mode."
+                  : KIND_SUBTITLE[client.kind]
+              }
             />
           </div>
           {client.rows.map((row) => (
-            <ConsentRow key={row.provider} slug={client.slug} row={row} />
+            <ConsentRow
+              key={row.provider}
+              slug={client.slug}
+              row={row}
+              creditMode={creditMode}
+            />
           ))}
         </Panel>
       </div>

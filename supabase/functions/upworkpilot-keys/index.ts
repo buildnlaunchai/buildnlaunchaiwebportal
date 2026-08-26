@@ -61,6 +61,7 @@ import { decrypt } from "../_shared/crypto.ts";
 import {
   type KeySlot,
   corsHeaders,
+  creditModeUrl,
   gate,
   json,
   siteUrl,
@@ -83,9 +84,37 @@ Deno.serve(async (req) => {
   // Unlike upworkpilot-licence, a "no" here is a refusal, not a signed negative.
   // There is nothing to hand back and nothing worth caching. The extension asks
   // the licence endpoint if it wants to know why.
-  if (!g.hasAccess) {
+  if (g.mode === "none") {
     return json({ error: "no active licence for UpworkPilot" }, 403);
   }
+
+  // CREDIT MODE: entitled to RUN, not entitled to a KEY. See the identical
+  // branch in desktop-keys for the full reasoning — in this mode WE pay OpenAI,
+  // so releasing the member's own key would bill them twice over, once by their
+  // provider and once by us, for a call we never made.
+  //
+  // Guard 1 in this file's header ("the access engine must say yes") is exactly
+  // what has just become two-valued: yes-with-a-key and yes-without-one.
+  //
+  // 200, not 403. Nothing is wrong; the answer to "may I have the key" is a
+  // considered no, and a 403 would read to a shipped extension as a dead licence.
+  if (g.mode === "credit") {
+    return json({
+      mode: "credit",
+      ...Object.fromEntries(
+        UPWORKPILOT_PROVIDERS.map((provider) => [
+          provider,
+          {
+            present: false,
+            reason: "credit_mode",
+            consent_url: creditModeUrl(),
+          } satisfies KeySlot,
+        ]),
+      ),
+    });
+  }
+
+  // Past here g.mode is 'byok', and everything below is exactly as it was.
 
   // TWO destinations for four states, and the rule dividing them is one line:
   // THE VAULT MANAGES A KEY, THE PERMISSIONS PAGE MANAGES PERMISSION.
