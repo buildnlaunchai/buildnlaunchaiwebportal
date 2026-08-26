@@ -7,6 +7,10 @@ import {
   processCreemEvent,
   userIdFromMetadata,
 } from "@/lib/creem/access";
+import {
+  checkoutCompletedEventType,
+  readCheckoutKind,
+} from "@/lib/creem/checkout-kind";
 
 // Sits under app/api/webhooks/, which proxy.ts excludes from the session
 // middleware — a webhook carries no session cookie, so the refresh is wasted
@@ -90,18 +94,84 @@ export async function POST(req: NextRequest) {
     // ---- GRANT -----------------------------------------------------------
     // The four types the SQL maps to a grant. The SQL holds the mapping; the
     // route only supplies (event type, event id, user, subscription).
+    //
+    // Three of the four are unconditional: a subscription going active, trialing
+    // or paid is a membership by definition, whatever else is in the account.
+    // `checkout.completed` is the exception and now decides its own event type
+    // from the checkout's metadata — see the note on that callback.
 
+    /**
+     * THE ONLY EVENT THAT IS NOT SELF-DESCRIBING, AND THE ONLY ONE THAT HAS TO
+     * ASK WHAT IT WAS.
+     *
+     * Creem fires `checkout.completed` for every product in the account, and
+     * process_creem_event turns that one string into a full membership —
+     * `status='active'`, `expires_at=null`, plan `member`, no expiry. With a
+     * credit top-up about to go on sale through the same Creem checkout, an
+     * unconditional grant here means $5 of credit buys a permanent free
+     * membership. That is the bug this branch exists to close.
+     *
+     * So the kind decides the event type, and the event type decides the effect:
+     * only `membership` is recorded as the literal `checkout.completed` the SQL
+     * grants on. Everything else — a credit top-up, or metadata we cannot read —
+     * is recorded under its own type and falls through the RPC's `else` branch,
+     * which claims the event id and touches no membership.
+     *
+     * ABSENT METADATA IS TREATED AS NOT-A-MEMBERSHIP, deliberately — a checkout
+     * that cannot prove what it bought does not get a membership.
+     *
+     * BE PRECISE ABOUT WHAT BACKS THAT UP, because the obvious answer is wrong.
+     * The tempting claim is "a membership checkout is a subscription, so
+     * `subscription.active` will grant it anyway". Production says otherwise:
+     * onSubscriptionActive has been wired since the first Creem commit
+     * (2026-08-08) and `subscription.active` has NEVER ARRIVED — zero rows in
+     * creem_events across every purchase. Do not rely on it.
+     *
+     * What actually co-arrives with a subscription checkout is
+     * `subscription.paid`, which is also a grant. It is confirmed on the
+     * 2026-08-26 live purchase, where it landed on the same transaction
+     * timestamp as `checkout.completed`. That is the real backstop, and it is
+     * evidenced once rather than proven — earlier purchases predate
+     * onSubscriptionPaid being wired (2026-08-24), so their silence proves
+     * nothing either way.
+     *
+     * The residual risk is therefore narrow and worth stating plainly: a
+     * MEMBERSHIP checkout already in flight at the moment this deploys carries
+     * no kind, so it will not be granted by this event, and depends on
+     * `subscription.paid` to arrive. If one is ever stranded, the console.warn
+     * below names the webhook id and the fix is a single UPDATE on memberships.
+     * A credit top-up has no subscription and therefore no second chance, which
+     * is exactly the asymmetry we want.
+     */
     onCheckoutCompleted: async (data) => {
+      // Both places the discriminator can ride, same as the user id below: on
+      // the checkout's own metadata, or on the subscription it created.
+      const kind =
+        readCheckoutKind(data.metadata) ??
+        readCheckoutKind(metadataOf(data.subscription));
+
+      const eventType = checkoutCompletedEventType(kind);
+
+      const userId =
+        userIdFromMetadata(data.metadata) ??
+        userIdFromMetadata(metadataOf(data.subscription));
+
+      if (kind !== "membership") {
+        // Loud, and it carries the user and subscription because this is the
+        // line someone reads while fixing a stranded membership by hand. A
+        // top-up we cannot fulfil yet and a membership that did not activate
+        // look identical from the outside; both need the ids to act on.
+        console.warn(
+          `[creem] checkout.completed (${data.webhookId}) kind=${kind ?? "unknown"} ` +
+            `user=${userId ?? "none"} subscription=${idOf(data.subscription) ?? "none"} ` +
+            `— recorded, no membership granted`,
+        );
+      }
+
       // `data.id` here is the CHECKOUT id, not the subscription — using it as
       // provider_subscription_id would silently break every later revoke, which
       // matches on that column. The subscription is nested.
-      await apply(
-        "checkout.completed",
-        data.webhookId,
-        userIdFromMetadata(data.metadata) ??
-          userIdFromMetadata(metadataOf(data.subscription)),
-        idOf(data.subscription),
-      );
+      await apply(eventType, data.webhookId, userId, idOf(data.subscription));
     },
 
     onSubscriptionActive: async (data) => {
