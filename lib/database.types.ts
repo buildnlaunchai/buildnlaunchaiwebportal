@@ -599,30 +599,36 @@ export type Database = {
       }
       credit_settings: {
         Row: {
+          credit_mode_enabled: boolean
           credit_usd_value: number
           expiry_months: number
           id: boolean
           margin_multiplier: number
+          max_concurrent_holds: number
           per_call_max_credits: number
           per_user_daily_max_credits: number
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          credit_mode_enabled?: boolean
           credit_usd_value?: number
           expiry_months?: number
           id?: boolean
           margin_multiplier?: number
+          max_concurrent_holds?: number
           per_call_max_credits?: number
           per_user_daily_max_credits?: number
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          credit_mode_enabled?: boolean
           credit_usd_value?: number
           expiry_months?: number
           id?: boolean
           margin_multiplier?: number
+          max_concurrent_holds?: number
           per_call_max_credits?: number
           per_user_daily_max_credits?: number
           updated_at?: string
@@ -1075,6 +1081,48 @@ export type Database = {
           },
         ]
       }
+      provider_model_prices: {
+        Row: {
+          created_at: string
+          id: string
+          input_usd_per_unit: number
+          is_active: boolean
+          model: string
+          output_usd_per_unit: number
+          provider: Database["public"]["Enums"]["api_provider"]
+          review_after: string | null
+          source_note: string | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          input_usd_per_unit: number
+          is_active?: boolean
+          model: string
+          output_usd_per_unit?: number
+          provider: Database["public"]["Enums"]["api_provider"]
+          review_after?: string | null
+          source_note?: string | null
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          input_usd_per_unit?: number
+          is_active?: boolean
+          model?: string
+          output_usd_per_unit?: number
+          provider?: Database["public"]["Enums"]["api_provider"]
+          review_after?: string | null
+          source_note?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       rate_limit_hits: {
         Row: {
           bucket: string
@@ -1432,14 +1480,17 @@ export type Database = {
       }
       credit_settings_public: {
         Row: {
+          credit_mode_enabled: boolean | null
           credit_usd_value: number | null
           expiry_months: number | null
         }
         Insert: {
+          credit_mode_enabled?: boolean | null
           credit_usd_value?: number | null
           expiry_months?: number | null
         }
         Update: {
+          credit_mode_enabled?: boolean | null
           credit_usd_value?: number | null
           expiry_months?: number | null
         }
@@ -1616,6 +1667,15 @@ export type Database = {
           p_target_user?: string
         }
         Returns: undefined
+      }
+      prices_needing_review: {
+        Args: never
+        Returns: {
+          model: string
+          provider: Database["public"]["Enums"]["api_provider"]
+          review_after: string
+          source_note: string
+        }[]
       }
       process_creem_event: {
         Args: {

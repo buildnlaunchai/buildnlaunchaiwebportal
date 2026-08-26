@@ -1,8 +1,50 @@
-import { BarChart3, LineChart } from "lucide-react";
+import { AlertTriangle, BarChart3, LineChart } from "lucide-react";
 
+import { Callout } from "@/components/ui/callout";
 import { Panel, SectionHeader } from "@/components/ui/panel";
 import { requireAdmin } from "@/lib/access";
-import { getAdminMetrics } from "@/lib/admin-metrics";
+import { getAdminMetrics, type PriceNeedingReview } from "@/lib/admin-metrics";
+
+/**
+ * Provider prices whose review date has passed.
+ *
+ * Sits at the very top of the dashboard, above the metrics, because it is the
+ * only thing on this page that costs money while it is ignored. A promotional
+ * rate that quietly expires leaves us billing members against a cost basis we
+ * no longer pay — and it fails silently, on every call, in our disfavour.
+ */
+function PriceReviewBanner({ prices }: { prices: PriceNeedingReview[] }) {
+  if (prices.length === 0) return null;
+
+  return (
+    <Callout tone="warn" icon={AlertTriangle}>
+      <div className="flex flex-col gap-2">
+        <div className="text-body-strong">
+          {prices.length === 1
+            ? "A provider price is past its review date"
+            : `${prices.length} provider prices are past their review date`}
+        </div>
+        <ul className="flex flex-col gap-2">
+          {prices.map((p) => (
+            <li key={`${p.provider}:${p.model}`}>
+              <span className="text-mono-chip">
+                {p.provider} · {p.model}
+              </span>{" "}
+              — due {p.reviewAfter}
+              {p.sourceNote ? <div className="mt-0.5">{p.sourceNote}</div> : null}
+            </li>
+          ))}
+        </ul>
+        <p>
+          Re-check the provider&apos;s published rate and update{" "}
+          <span className="text-mono-chip">provider_model_prices</span>. Until it
+          is corrected, every call on these models is billed against a cost basis
+          we may no longer be paying.
+        </p>
+      </div>
+    </Callout>
+  );
+}
 
 function Sparkline({ data }: { data: number[] }) {
   const max = Math.max(1, ...data);
@@ -37,6 +79,8 @@ export default async function AdminOverviewPage() {
 
   return (
     <div className="flex flex-col gap-8">
+      <PriceReviewBanner prices={m.pricesNeedingReview} />
+
       <section className="flex flex-col gap-4">
         <h2 className="text-eyebrow text-text-faint">Last 7 days</h2>
 

@@ -2,6 +2,21 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
+/**
+ * A provider price whose review date has passed.
+ *
+ * These exist because a promotional rate silently becoming the wrong rate costs
+ * real money on every call, in the direction nobody notices — we keep billing
+ * the old cost basis while paying the new one. The date is stored on the price
+ * row; this is the part that says it out loud.
+ */
+export type PriceNeedingReview = {
+  provider: string;
+  model: string;
+  reviewAfter: string;
+  sourceNote: string | null;
+};
+
 export type AdminMetrics = {
   pendingApplications: number;
   activeMembers: number;
@@ -9,6 +24,7 @@ export type AdminMetrics = {
   successRate: number | null; // 0–100, null if no runs in the window
   topTools: { name: string; runs: number }[];
   signupTrend: number[]; // daily new signups, oldest → newest (14 days)
+  pricesNeedingReview: PriceNeedingReview[];
 };
 
 /**
@@ -35,6 +51,17 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     admin.from("profiles").select("created_at").gte("created_at", fourteenDaysAgo),
     admin.from("tools").select("id, name"),
   ]);
+
+  // Prices past their review date. Its own round trip rather than part of the
+  // batch above: it is the one thing here that is not a metric, and a failure
+  // to load it must not take the whole dashboard down with it.
+  const { data: staleRows } = await admin.rpc("prices_needing_review");
+  const pricesNeedingReview: PriceNeedingReview[] = (staleRows ?? []).map((r) => ({
+    provider: r.provider as string,
+    model: r.model as string,
+    reviewAfter: r.review_after as string,
+    sourceNote: (r.source_note as string | null) ?? null,
+  }));
 
   // Active members: active/trialing and not expired.
   const activeMembers = (memberships.data ?? []).filter(
@@ -76,5 +103,6 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     successRate,
     topTools,
     signupTrend: buckets,
+    pricesNeedingReview,
   };
 }
