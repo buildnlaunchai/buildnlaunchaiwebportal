@@ -1,0 +1,80 @@
+-- ============================================================
+-- Point the 'member' plan at the LIVE Creem product. Going live.
+--
+-- The Creem account is approved, CREEM_TEST_MODE is now false, and the live API
+-- key and live webhook secret are in Vercel. What was still pointing at the
+-- sandbox was the checkout target itself: plans.provider_price_id held
+-- prod_4MqjbtbJZj7yPFWdzazRkg, a TEST-mode product from migration
+-- 20260824120000. Test ids do not exist in the live account, so with the live
+-- key every checkout would have died at Creem with exactly the 404 that
+-- migration was written to fix:
+--
+--     HTTP 404  {"status":404,"message":["Product not found"]}
+--
+-- That failure was predicted in 20260824120000's own header ("Going live needs a
+-- LIVE-mode product id here"). This is that migration.
+--
+-- VERIFIED AGAINST THE LIVE API BEFORE WRITING
+-- ------------------------------------------------------------------
+-- Both ids were retrieved from https://api.creem.io (live host, live key), so
+-- the replacement is a checked fact and not a copied string:
+--
+--   prod_4MqjbtbJZj7yPFWdzazRkg -> 404 Product not found     (the outgoing test id)
+--   prod_5XeY9QhJaa6EemXjujJ6Fl -> 200, mode=prod, status=active,
+--                                  billing_type=recurring, every-month,
+--                                  price 1000 USD
+--
+-- Three things were checked, not one. That the id resolves is the least of
+-- them:
+--
+--   * mode=prod. A test id that resolved against the live host would mean the
+--     live key was not actually live, and the whole point of this deploy would
+--     be quietly undone.
+--   * price 1000 USD equals plans.price_monthly (1000) and plans.currency
+--     (USD) on this same row. A product that resolves but charges a different
+--     amount is a worse bug than a 404: nothing surfaces it until a customer
+--     is billed the wrong price and says so.
+--   * billing_type=recurring, every-month. A one-time product would check out
+--     fine and then never send subscription.paid again, so memberships would
+--     silently never renew.
+--
+-- WHAT WAS NOT VERIFIED HERE
+-- ------------------------------------------------------------------
+-- 20260824120000 also reproduced the failing operation end to end by creating a
+-- checkout session, on the grounds that a 200 from product retrieval implies
+-- checkout creation works but does not prove it. That step is NOT repeated in
+-- this migration, because creating a session against the LIVE account is a
+-- write to a real payment provider rather than a sandbox. The equivalent proof
+-- is one click of Subscribe in production after this applies: it should reach
+-- Creem's hosted page showing $10.00/month, and the URL should NOT carry a test
+-- banner. Do that before announcing.
+--
+-- STILL DATA, STILL NO REDEPLOY FOR THIS PART
+-- ------------------------------------------------------------------
+-- No schema change and no application change. lib/billing.ts reads the id from
+-- this row and /api/checkout is force-dynamic, so this takes effect the moment
+-- it applies. The redeploy that accompanies this go-live is for CREEM_TEST_MODE,
+-- CREEM_API_KEY and CREEM_WEBHOOK_SECRET — env vars are inlined at build time,
+-- so the running deployment keeps the old values until it is rebuilt. Two
+-- independent changes that happen to ship together; neither one implies the
+-- other.
+--
+-- KNOWN, DELIBERATELY OUT OF SCOPE
+-- ------------------------------------------------------------------
+-- Four memberships carry provider='creem' with subscription ids from the TEST
+-- store. In live mode app/api/portal/route.ts looks those up against the live
+-- host and will not find them; it already handles that path and redirects to
+-- /dashboard/settings?billing=unavailable rather than erroring. They are
+-- sandbox artefacts, not paying customers, and rewriting them is a separate
+-- decision from switching the checkout target.
+--
+-- A new migration rather than an edit to 20260824120000: the runner tracks
+-- applied versions and never re-runs an edited file, so amending that one would
+-- leave this unapplied on every database where it had already run — silently,
+-- with a broken live checkout as the only symptom.
+-- ============================================================
+
+update plans
+   set provider_price_id = 'prod_5XeY9QhJaa6EemXjujJ6Fl'
+ where slug = 'member'
+   and provider = 'creem';
