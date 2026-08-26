@@ -2,6 +2,11 @@ import { Checkout } from "@creem_io/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getSubscribePriceId } from "@/lib/billing";
+import {
+  CHECKOUT_KIND_KEY,
+  type CheckoutKind,
+  isCheckoutKind,
+} from "@/lib/creem/checkout-kind";
 import { createClient } from "@/lib/supabase/server";
 
 // A webhook is not the only sanctioned route any more: this one exists because
@@ -38,7 +43,34 @@ export const dynamic = "force-dynamic";
  * sent survives into it. The user comes from the Supabase session and from
  * nowhere else. Note the URL is rebuilt rather than cloned — a clone would carry
  * the caller's parameters through and re-open every hole above.
+ *
+ * THE ONE THING THE CALLER MAY INFLUENCE, AND WHY IT IS SAFE
+ * ------------------------------------------------------------------
+ * `?kind=` selects WHICH of our own checkouts to start. It is not passed through
+ * to Creem: it is validated against a closed enum, and everything that actually
+ * reaches the SDK — the product id, the metadata — is then looked up server-side
+ * from that enum. An unrecognised value is a 400, not a default, so the query
+ * string can pick between our products but can never introduce one.
+ *
+ * That distinction is the whole reason this is not the `productId` hole above.
+ * A client naming a product checks out anything in the Creem account; a client
+ * naming a KIND picks a row out of a table this file owns.
  */
+
+/**
+ * Which Creem product each kind of checkout buys.
+ *
+ * Only `membership` resolves today — the credit top-up product does not exist in
+ * Creem yet, so there is nothing honest to return for it and the route answers
+ * 501 rather than inventing an id. When the credit feature lands, this is the
+ * function that gains its branch, and the metadata below already carries the
+ * discriminator that keeps the webhook from mistaking it for a membership.
+ */
+async function productIdForKind(kind: CheckoutKind): Promise<string | null> {
+  if (kind === "membership") return getSubscribePriceId();
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   const apiKey = process.env.CREEM_API_KEY;
   if (!apiKey) {
@@ -49,6 +81,20 @@ export async function GET(req: NextRequest) {
   // Test vs live is env-driven, never hardcoded. Default to TEST: the failure
   // mode of a missing var should be "sandbox money", not "real money".
   const testMode = process.env.CREEM_TEST_MODE !== "false";
+
+  // What is being bought. Absent means membership, which is what every existing
+  // CTA sends (useSubscribe navigates to a bare /api/checkout) and what this
+  // route has always done — so the default preserves today's behaviour exactly.
+  //
+  // The default is safe HERE and would not be safe in the webhook, and the
+  // asymmetry is the fix: this side is choosing what to sell, where guessing
+  // "membership" costs nothing; that side is deciding what to grant, where
+  // guessing "membership" is the bug.
+  const rawKind = req.nextUrl.searchParams.get("kind");
+  if (rawKind !== null && !isCheckoutKind(rawKind)) {
+    return new NextResponse("unknown checkout kind", { status: 400 });
+  }
+  const kind: CheckoutKind = rawKind ?? "membership";
 
   // The membership must attach to a real account, so the session is the gate —
   // the same auth-before-join rule useSubscribe applies before it sends anyone here.
@@ -65,12 +111,19 @@ export async function GET(req: NextRequest) {
   // The checkout target is data, not code: plans.provider_price_id on the
   // slug='member' row. Moving test→live, or switching product, is one UPDATE and
   // no redeploy — the convention lib/billing.ts was written around.
-  const productId = await getSubscribePriceId();
+  const productId = await productIdForKind(kind);
   if (!productId) {
-    console.error(
-      "[creem] plans.provider_price_id is empty for slug='member' — nothing to check out",
-    );
-    return new NextResponse("not configured", { status: 500 });
+    if (kind === "membership") {
+      console.error(
+        "[creem] plans.provider_price_id is empty for slug='member' — nothing to check out",
+      );
+      return new NextResponse("not configured", { status: 500 });
+    }
+    // A kind we know the name of but cannot sell yet. Distinct from the 400
+    // above (which means "no such kind") and from the 500 (which means "this
+    // should work and is misconfigured").
+    console.error(`[creem] no product configured for checkout kind '${kind}'`);
+    return new NextResponse("not available yet", { status: 501 });
   }
 
   // Where Creem returns the buyer after paying.
@@ -94,8 +147,16 @@ export async function GET(req: NextRequest) {
   url.searchParams.set("productId", productId);
   // The webhook reads metadata.referenceId to find profiles.id — Creem's events
   // don't otherwise know our users. Set in both places the SDK looks.
+  //
+  // It also reads the kind, and that one is load-bearing: `checkout.completed`
+  // grants a membership ONLY when this says `membership`. A checkout that leaves
+  // without this field gets no membership from that event, so it is written here
+  // for every kind, unconditionally, rather than only for the ones that need it.
   url.searchParams.set("referenceId", user.id);
-  url.searchParams.set("metadata", JSON.stringify({ referenceId: user.id }));
+  url.searchParams.set(
+    "metadata",
+    JSON.stringify({ referenceId: user.id, [CHECKOUT_KIND_KEY]: kind }),
+  );
   if (user.email) {
     url.searchParams.set("customer", JSON.stringify({ email: user.email }));
   }
