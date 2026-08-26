@@ -337,6 +337,307 @@ export type Database = {
           },
         ]
       }
+      credit_balances: {
+        Row: {
+          balance: number
+          held: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          held?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          held?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_balances_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_holds: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          max_credits: number
+          note: string | null
+          resolved_at: string | null
+          run_id: string | null
+          settled_ledger_id: string | null
+          status: Database["public"]["Enums"]["credit_hold_status"]
+          tool_id: string | null
+          tool_slug: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          max_credits: number
+          note?: string | null
+          resolved_at?: string | null
+          run_id?: string | null
+          settled_ledger_id?: string | null
+          status?: Database["public"]["Enums"]["credit_hold_status"]
+          tool_id?: string | null
+          tool_slug?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          max_credits?: number
+          note?: string | null
+          resolved_at?: string | null
+          run_id?: string | null
+          settled_ledger_id?: string | null
+          status?: Database["public"]["Enums"]["credit_hold_status"]
+          tool_id?: string | null
+          tool_slug?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_holds_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "tool_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_holds_settled_ledger_id_fkey"
+            columns: ["settled_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "credit_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_holds_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "tools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_holds_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_ledger: {
+        Row: {
+          actor_id: string | null
+          balance_after: number
+          created_at: string
+          credit_usd_value_at: number
+          credits: number
+          hold_id: string | null
+          id: string
+          kind: Database["public"]["Enums"]["credit_entry_kind"]
+          lot_id: string | null
+          margin_multiplier_at: number
+          model: string | null
+          note: string | null
+          provider: Database["public"]["Enums"]["api_provider"] | null
+          provider_cost_usd: number | null
+          reference: string | null
+          run_id: string | null
+          source: string | null
+          tool_id: string | null
+          tool_slug: string | null
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          balance_after: number
+          created_at?: string
+          credit_usd_value_at: number
+          credits: number
+          hold_id?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["credit_entry_kind"]
+          lot_id?: string | null
+          margin_multiplier_at: number
+          model?: string | null
+          note?: string | null
+          provider?: Database["public"]["Enums"]["api_provider"] | null
+          provider_cost_usd?: number | null
+          reference?: string | null
+          run_id?: string | null
+          source?: string | null
+          tool_id?: string | null
+          tool_slug?: string | null
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          balance_after?: number
+          created_at?: string
+          credit_usd_value_at?: number
+          credits?: number
+          hold_id?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["credit_entry_kind"]
+          lot_id?: string | null
+          margin_multiplier_at?: number
+          model?: string | null
+          note?: string | null
+          provider?: Database["public"]["Enums"]["api_provider"] | null
+          provider_cost_usd?: number | null
+          reference?: string | null
+          run_id?: string | null
+          source?: string | null
+          tool_id?: string | null
+          tool_slug?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_ledger_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_ledger_hold_fk"
+            columns: ["hold_id"]
+            isOneToOne: false
+            referencedRelation: "credit_holds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_ledger_lot_fk"
+            columns: ["lot_id"]
+            isOneToOne: false
+            referencedRelation: "credit_lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_ledger_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "tool_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_ledger_tool_id_fkey"
+            columns: ["tool_id"]
+            isOneToOne: false
+            referencedRelation: "tools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_ledger_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_lots: {
+        Row: {
+          created_at: string
+          credits_remaining: number
+          credits_total: number
+          expires_at: string
+          id: string
+          ledger_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits_remaining: number
+          credits_total: number
+          expires_at: string
+          id?: string
+          ledger_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits_remaining?: number
+          credits_total?: number
+          expires_at?: string
+          id?: string
+          ledger_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_lots_ledger_id_fkey"
+            columns: ["ledger_id"]
+            isOneToOne: false
+            referencedRelation: "credit_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_lots_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_settings: {
+        Row: {
+          credit_usd_value: number
+          expiry_months: number
+          id: boolean
+          margin_multiplier: number
+          per_call_max_credits: number
+          per_user_daily_max_credits: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          credit_usd_value?: number
+          expiry_months?: number
+          id?: boolean
+          margin_multiplier?: number
+          per_call_max_credits?: number
+          per_user_daily_max_credits?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          credit_usd_value?: number
+          expiry_months?: number
+          id?: boolean
+          margin_multiplier?: number
+          per_call_max_credits?: number
+          per_user_daily_max_credits?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creem_events: {
         Row: {
           event_id: string
@@ -924,6 +1225,7 @@ export type Database = {
         Row: {
           access_type: Database["public"]["Enums"]["tool_access_type"]
           category: string | null
+          consumes_credit: boolean
           cover_image_url: string | null
           created_at: string
           description: string | null
@@ -950,6 +1252,7 @@ export type Database = {
         Insert: {
           access_type?: Database["public"]["Enums"]["tool_access_type"]
           category?: string | null
+          consumes_credit?: boolean
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
@@ -976,6 +1279,7 @@ export type Database = {
         Update: {
           access_type?: Database["public"]["Enums"]["tool_access_type"]
           category?: string | null
+          consumes_credit?: boolean
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
@@ -1126,6 +1430,21 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_settings_public: {
+        Row: {
+          credit_usd_value: number | null
+          expiry_months: number | null
+        }
+        Insert: {
+          credit_usd_value?: number | null
+          expiry_months?: number | null
+        }
+        Update: {
+          credit_usd_value?: number | null
+          expiry_months?: number | null
+        }
+        Relationships: []
+      }
       user_api_keys_public: {
         Row: {
           created_at: string | null
@@ -1173,6 +1492,13 @@ export type Database = {
     }
     Functions: {
       accessible_tool_ids: { Args: { uid?: string }; Returns: string[] }
+      accessible_tool_modes: {
+        Args: { uid?: string }
+        Returns: {
+          mode: Database["public"]["Enums"]["tool_access_mode"]
+          tool_id: string
+        }[]
+      }
       approve_application: {
         Args: { p_application_id: string; p_expires_at?: string }
         Returns: string
@@ -1182,6 +1508,83 @@ export type Database = {
         Returns: boolean
       }
       claim_referral: { Args: { p_code: string }; Returns: Json }
+      credit_admin_adjust: {
+        Args: {
+          p_actor?: string
+          p_credits: number
+          p_note?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      credit_available: { Args: { uid?: string }; Returns: number }
+      credit_consume_fifo: {
+        Args: {
+          p_actor?: string
+          p_balance_before: number
+          p_credits: number
+          p_hold_id?: string
+          p_kind: Database["public"]["Enums"]["credit_entry_kind"]
+          p_model?: string
+          p_note?: string
+          p_provider?: Database["public"]["Enums"]["api_provider"]
+          p_provider_cost_usd?: number
+          p_run_id?: string
+          p_source?: string
+          p_tool_id?: string
+          p_tool_slug?: string
+          p_user_id: string
+        }
+        Returns: {
+          consumed: number
+          first_ledger_id: string
+        }[]
+      }
+      credit_hold_open: {
+        Args: {
+          p_max_credits: number
+          p_run_id?: string
+          p_tool_id: string
+          p_ttl_seconds?: number
+          p_user_id: string
+        }
+        Returns: {
+          available: number
+          hold_id: string
+          status: string
+        }[]
+      }
+      credit_hold_release: {
+        Args: { p_hold_id: string; p_reason?: string }
+        Returns: string
+      }
+      credit_hold_settle: {
+        Args: {
+          p_hold_id: string
+          p_model?: string
+          p_provider?: Database["public"]["Enums"]["api_provider"]
+          p_provider_cost_usd?: number
+          p_run_id?: string
+        }
+        Returns: string
+      }
+      credit_holds_sweep: { Args: never; Returns: number }
+      credit_lots_expire: { Args: never; Returns: number }
+      credit_quote: { Args: { p_provider_cost_usd: number }; Returns: number }
+      credit_refund: {
+        Args: { p_actor?: string; p_ledger_id: string; p_note?: string }
+        Returns: string
+      }
+      credit_topup: {
+        Args: {
+          p_credits: number
+          p_note?: string
+          p_reference?: string
+          p_source?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       has_active_membership: { Args: { uid?: string }; Returns: boolean }
       has_desktop_consent: {
         Args: {
@@ -1237,6 +1640,14 @@ export type Database = {
         Returns: boolean
       }
       redeem_access_code: { Args: { p_code: string }; Returns: Json }
+      tool_access: {
+        Args: { p_tool_id: string; uid?: string }
+        Returns: Database["public"]["Enums"]["tool_access_mode"]
+      }
+      tool_access_resolve: {
+        Args: { p_tool_id: string; uid?: string }
+        Returns: Database["public"]["Enums"]["tool_access_mode"]
+      }
       tool_public_stats: {
         Args: { p_tool_id: string }
         Returns: {
@@ -1261,10 +1672,18 @@ export type Database = {
         | "custom"
       application_status: "pending" | "approved" | "waitlisted" | "rejected"
       code_kind: "membership" | "tool_access"
+      credit_entry_kind:
+        | "topup"
+        | "debit"
+        | "refund"
+        | "expiry"
+        | "admin_adjustment"
+      credit_hold_status: "open" | "settled" | "released" | "expired"
       grant_source: "global" | "plan" | "manual" | "code"
       key_status: "unverified" | "valid" | "invalid"
       membership_status: "trialing" | "active" | "expired" | "revoked"
       run_status: "queued" | "running" | "success" | "error" | "timeout"
+      tool_access_mode: "none" | "byok" | "credit"
       tool_access_type: "public_preview" | "members" | "plan" | "manual"
       tool_runtime: "edge_function" | "internal" | "iframe" | "external_link"
       tool_status:
@@ -1417,10 +1836,19 @@ export const Constants = {
       ],
       application_status: ["pending", "approved", "waitlisted", "rejected"],
       code_kind: ["membership", "tool_access"],
+      credit_entry_kind: [
+        "topup",
+        "debit",
+        "refund",
+        "expiry",
+        "admin_adjustment",
+      ],
+      credit_hold_status: ["open", "settled", "released", "expired"],
       grant_source: ["global", "plan", "manual", "code"],
       key_status: ["unverified", "valid", "invalid"],
       membership_status: ["trialing", "active", "expired", "revoked"],
       run_status: ["queued", "running", "success", "error", "timeout"],
+      tool_access_mode: ["none", "byok", "credit"],
       tool_access_type: ["public_preview", "members", "plan", "manual"],
       tool_runtime: ["edge_function", "internal", "iframe", "external_link"],
       tool_status: [

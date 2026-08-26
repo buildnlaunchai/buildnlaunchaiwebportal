@@ -31,6 +31,7 @@ import { decrypt } from "../_shared/crypto.ts";
 import {
   type KeySlot,
   corsHeaders,
+  creditModeUrl,
   gate,
   json,
   siteUrl,
@@ -56,9 +57,39 @@ Deno.serve(async (req) => {
 
   // Unlike desktop-licence, a "no" here is a refusal, not a signed negative.
   // There is nothing to hand back and nothing worth caching.
-  if (!g.hasAccess) {
+  if (g.mode === "none") {
     return json({ error: "no active licence for this app" }, 403);
   }
+
+  // CREDIT MODE: entitled to RUN, not entitled to a KEY.
+  //
+  // This is the branch the whole mode-awareness change exists for. A member
+  // whose membership lapsed but who holds credit may open this app — and in
+  // that mode WE pay OpenAI and ElevenLabs, so releasing their own key would
+  // mean they pay their provider AND get billed credit for a call we never
+  // made. Money moving in both directions at once, with the wrong release
+  // byte-for-byte identical to a right one.
+  //
+  // Note it returns 200, not 403: nothing is wrong. The client is entitled, and
+  // the answer to "may I have the key" is a considered no. A 403 here would
+  // read to every shipped client as "your licence died".
+  if (g.mode === "credit") {
+    return json({
+      mode: "credit",
+      ...Object.fromEntries(
+        DESKTOP_PROVIDERS.map((provider) => [
+          provider,
+          {
+            present: false,
+            reason: "credit_mode",
+            consent_url: creditModeUrl(),
+          } satisfies KeySlot,
+        ]),
+      ),
+    });
+  }
+
+  // Past here g.mode is 'byok', and everything below is exactly as it was.
 
   // TWO destinations for four states, and the rule dividing them is one line:
   // THE VAULT MANAGES A KEY, THE DESKTOP PAGE MANAGES PERMISSION.
