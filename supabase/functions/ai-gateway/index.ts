@@ -179,6 +179,10 @@ Deno.serve(async (req) => {
   }
   const { data: settingsRow, error: settingsErr } = await g.supabase
     .from("credit_settings")
+    // credit_mode_enabled is still selected and deliberately NOT read here: the
+    // effective answer is per member and comes from credit_mode_for below. It
+    // stays in the projection so a debugger sees the global setting beside the
+    // resolved one rather than wondering where the switch went.
     .select(
       "credit_usd_value, margin_multiplier, per_call_max_credits, credit_mode_enabled",
     )
@@ -200,7 +204,22 @@ Deno.serve(async (req) => {
   //
   // This is also the only gateway route that runs at all in credit mode, so if
   // credit mode is off the whole function is off, whatever the caller's mode.
-  if (settingsRow.credit_mode_enabled !== true) {
+  //
+  // PER MEMBER, not global — and reading the flag straight off the settings row
+  // here was a bug the moment the override existed. tool_access_resolve would
+  // have answered 'credit' for a member with an override while this line 503'd
+  // them, so the one account credit mode was switched on for would have been the
+  // one account that could not use it. credit_mode_for() is the only thing that
+  // resolves the precedence; nothing else may read the raw column to decide.
+  const { data: creditOn, error: modeErr } = await g.supabase.rpc(
+    "credit_mode_for",
+    { uid: g.userId },
+  );
+  if (modeErr) {
+    console.error("ai-gateway: could not resolve credit mode");
+    return json({ error: "something went wrong", code: "unavailable" }, 500);
+  }
+  if (creditOn !== true) {
     return json(
       {
         error: "Credit mode is turned off right now.",

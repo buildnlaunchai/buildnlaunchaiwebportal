@@ -94,3 +94,25 @@ Deno.test("the router registers the read paths as GET, and only those", () => {
     "subscription must not be routed at all",
   );
 });
+
+Deno.test("the kill switch is resolved PER MEMBER, never read raw", () => {
+  const src = read("./index.ts");
+
+  // The regression this stops: reading credit_settings.credit_mode_enabled here
+  // to decide. tool_access_resolve answers 'credit' for a member with an
+  // override, so a raw read would 503 the one account credit mode was switched
+  // on for — the only account that could not use it would be the test account.
+  assert(
+    src.includes('rpc(\n    "credit_mode_for"') || src.includes('"credit_mode_for"'),
+    "index.ts does not resolve the mode through credit_mode_for",
+  );
+
+  // The column may still be SELECTED (it is, so a debugger sees the global
+  // setting beside the resolved one). What it must not be is the thing branched
+  // on. Anything of the form `settingsRow.credit_mode_enabled !== true` or
+  // `if (...credit_mode_enabled)` is that branch coming back.
+  assert(
+    !/settingsRow\.credit_mode_enabled\s*[!=]==/.test(src),
+    "index.ts branches on the raw global flag instead of credit_mode_for",
+  );
+});
