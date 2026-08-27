@@ -81,6 +81,25 @@ export default async function AdminOverviewPage() {
     <div className="flex flex-col gap-8">
       <PriceReviewBanner prices={m.pricesNeedingReview} />
 
+      {m.orphanedBackgroundCalls7d > 0 && (
+        <Callout tone="warn" icon={AlertTriangle}>
+          <div className="flex flex-col gap-1">
+            <div className="text-body-strong">
+              {m.orphanedBackgroundCalls7d} background{" "}
+              {m.orphanedBackgroundCalls7d === 1 ? "call" : "calls"} expired
+              unsettled in the last 7 days
+            </div>
+            <p>
+              Each one is work OpenAI performed and billed us for, that no member
+              was charged for — the client never came back to collect the result.
+              A few is people closing laptops. A run of them is a bug worth
+              finding before the invoice does. Each is named in the function logs
+              with its upstream id.
+            </p>
+          </div>
+        </Callout>
+      )}
+
       <section className="flex flex-col gap-4">
         <h2 className="text-eyebrow text-text-faint">Last 7 days</h2>
 
