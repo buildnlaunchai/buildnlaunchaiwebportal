@@ -15,6 +15,10 @@ const NAV: NavItem[] = [
   { href: "/dashboard", label: "Apps", icon: "apps", section: "Workspace" },
   { href: "/dashboard/runs", label: "Runs", icon: "runs", section: "Workspace" },
   { href: "/dashboard/keys", label: "Keys", icon: "keys", section: "Account" },
+  // Beside Keys on purpose: they are the two answers to "who pays for this
+  // call", and a member who has just been told their key is not being used
+  // needs the other one to be one click away rather than somewhere in Settings.
+  { href: "/dashboard/credits", label: "Credits", icon: "credits", section: "Account" },
   { href: "/dashboard/requests", label: "Requests", icon: "requests", section: "Account" },
   { href: "/dashboard/settings", label: "Settings", icon: "settings", section: "Account" },
 ];

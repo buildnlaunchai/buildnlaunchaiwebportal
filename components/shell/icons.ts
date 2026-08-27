@@ -1,4 +1,5 @@
 import {
+  Coins,
   History,
   Inbox,
   KeyRound,
@@ -38,6 +39,7 @@ export const ICONS = {
   announcements: Megaphone,
   codes: Ticket,
   requests: Lightbulb,
+  credits: Coins,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
