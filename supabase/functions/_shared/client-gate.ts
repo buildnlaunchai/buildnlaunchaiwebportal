@@ -59,10 +59,25 @@ export type ExternalClient = {
    */
   providers: readonly string[];
 
+  /**
+   * Which Supabase secret holds OUR key for each provider this client may spend
+   * on, in credit mode. The NAME only — the value is read from Deno.env inside
+   * the gateway and never travels anywhere else.
+   *
+   * Per-tool keys on purpose: a runaway in one client cannot drain the other's
+   * budget, spend is attributable in the provider's own dashboard, and a
+   * provider-side spend cap becomes a backstop independent of our accounting.
+   *
+   * Keys here must be a subset of `providers` above. That list bounds what a
+   * client may ask for; this one says what we spend on its behalf.
+   */
+  providerKeyEnv: Readonly<Record<string, string>>;
+
   /** Per-endpoint abuse guards. Distinct buckets per client, always. */
   endpoints: {
     licence: RateLimit;
     keys: RateLimit;
+    gateway: RateLimit;
   };
 };
 

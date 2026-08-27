@@ -48,6 +48,16 @@ export const DESKTOP_LICENCE_INACTIVE_TTL_SECONDS = 60 * 60;
 export const DESKTOP: ExternalClient = {
   slug: DESKTOP_TOOL_SLUG,
   providers: DESKTOP_PROVIDERS,
+
+  // Its OWN OpenAI key, separate from UpworkPilot's. A stuck retry loop in the
+  // extension must not be able to exhaust the budget this app depends on, and a
+  // per-project spend cap at OpenAI then guards each one independently of
+  // anything we compute.
+  providerKeyEnv: {
+    openai: "OPENAI_API_KEY_RAW_FOOTAGE",
+    elevenlabs: "ELEVENLABS_API_KEY",
+  },
+
   endpoints: {
     // Bucket names are UNCHANGED from before the refactor, on purpose. They are
     // live keys in rate_limit_hits; renaming them would silently reset every
@@ -58,5 +68,12 @@ export const DESKTOP: ExternalClient = {
     // after, so this cap is far above real use and only bites a script.
     licence: { bucket: "desktop_licence", limitPerHour: 120 },
     keys: { bucket: "desktop_keys", limitPerHour: 120 },
+
+    // 600/hr, far above the other two, because this one is not a session check:
+    // a narration run makes ONE CALL PER LINE, sequentially, and a long script
+    // is a lot of lines. The real guard on this endpoint is not the rate limit —
+    // it is the credit balance, the per-call cap and the daily cap, all of which
+    // bound spend rather than requests. This number only stops a hot loop.
+    gateway: { bucket: "desktop_gateway", limitPerHour: 600 },
   },
 };

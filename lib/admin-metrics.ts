@@ -25,6 +25,15 @@ export type AdminMetrics = {
   topTools: { name: string; runs: number }[];
   signupTrend: number[]; // daily new signups, oldest → newest (14 days)
   pricesNeedingReview: PriceNeedingReview[];
+  /**
+   * Background AI calls that expired without ever being settled, last 7 days.
+   *
+   * Each one is work OpenAI performed and billed us for, that no member was
+   * charged for — because the client never came back to collect the result. A
+   * few is the cost of people closing laptops. A sudden run of them is a bug,
+   * and this number is how that becomes visible before the invoice does.
+   */
+  orphanedBackgroundCalls7d: number;
 };
 
 /**
@@ -55,6 +64,17 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
   // Prices past their review date. Its own round trip rather than part of the
   // batch above: it is the one thing here that is not a metric, and a failure
   // to load it must not take the whole dashboard down with it.
+  // Orphaned background calls. `note` carries the upstream reference the
+  // gateway wrote when it opened the hold, so an expired hold with one is a
+  // call that was performed and never billed — as opposed to an ordinary
+  // expiry, which is a reservation nobody spent.
+  const { count: orphanCount } = await admin
+    .from("credit_holds")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "expired")
+    .like("note", "openai:%")
+    .gte("resolved_at", sevenDaysAgo);
+
   const { data: staleRows } = await admin.rpc("prices_needing_review");
   const pricesNeedingReview: PriceNeedingReview[] = (staleRows ?? []).map((r) => ({
     provider: r.provider as string,
@@ -104,5 +124,6 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     topTools,
     signupTrend: buckets,
     pricesNeedingReview,
+    orphanedBackgroundCalls7d: orphanCount ?? 0,
   };
 }
