@@ -50,6 +50,12 @@ export const UPWORKPILOT_LICENCE_INACTIVE_TTL_SECONDS = 60 * 60;
 export const UPWORKPILOT: ExternalClient = {
   slug: UPWORKPILOT_TOOL_SLUG,
   providers: UPWORKPILOT_PROVIDERS,
+
+  // Its own OpenAI key, separate from the desktop app's. See ./desktop.ts.
+  providerKeyEnv: {
+    openai: "OPENAI_API_KEY_UPWORKPILOT",
+  },
+
   endpoints: {
     // Distinct buckets, so a member running both clients has two independent
     // budgets rather than one they can exhaust from either side.
@@ -66,5 +72,11 @@ export const UPWORKPILOT: ExternalClient = {
     // an hour. Treat this number as provisional until real traffic exists.
     licence: { bucket: "upworkpilot_licence", limitPerHour: 120 },
     keys: { bucket: "upworkpilot_keys", limitPerHour: 240 },
+
+    // 120/hr, a FIFTH of the desktop's, and the asymmetry is the point. A
+    // cover letter is a deliberate act a person performs a few times an hour;
+    // narration is a machine walking a script line by line. Sizing both the
+    // same would either throttle the desktop or leave this one wide open.
+    gateway: { bucket: "upworkpilot_gateway", limitPerHour: 120 },
   },
 };
