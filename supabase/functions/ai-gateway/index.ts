@@ -38,6 +38,7 @@ import {
   handleOpenAiResponsesPoll,
 } from "./routes/openai-responses.ts";
 import { handleElevenLabsTts } from "./routes/elevenlabs-tts.ts";
+import { handleElevenLabsRead } from "./routes/elevenlabs-read.ts";
 
 /**
  * Settings the routes need, read once per request.
@@ -104,6 +105,28 @@ const ROUTES: Route[] = [
     client: DESKTOP,
     provider: "elevenlabs",
     handle: handleElevenLabsTts,
+  },
+  // ---- Read-only, and therefore NOT metered ------------------------------
+  //
+  // A member on credit has no ElevenLabs key, and without a voice list there is
+  // no narration — so these two are the difference between credit mode working
+  // for the desktop app and not existing for it. They cost nothing, so they open
+  // no hold and write no ledger row; see routes/elevenlabs-read.ts, which
+  // deliberately does not import hold.ts at all.
+  //
+  // /v1/user/subscription is absent on purpose. It reports the quota of the key
+  // that called it, which here is OURS.
+  {
+    match: (m, p) => m === "GET" && p === "/elevenlabs/v2/voices",
+    client: DESKTOP,
+    provider: "elevenlabs",
+    handle: handleElevenLabsRead,
+  },
+  {
+    match: (m, p) => m === "GET" && p === "/elevenlabs/v1/models",
+    client: DESKTOP,
+    provider: "elevenlabs",
+    handle: handleElevenLabsRead,
   },
 ];
 
