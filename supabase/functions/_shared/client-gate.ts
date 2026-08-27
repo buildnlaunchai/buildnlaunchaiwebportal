@@ -118,7 +118,11 @@ export type LicenceDenialReason =
   | "suspended"
   | "no_membership"
   | "membership_inactive"
-  | "no_access";
+  | "no_access"
+  /** Credit mode is switched off. Their licence is untouched. See CreditDenial. */
+  | "credit_mode_disabled"
+  /** Their credit balance is empty. Every credit customer reaches this one. */
+  | "credit_exhausted";
 
 /**
  * Derive the reason behind a denial.
@@ -129,6 +133,19 @@ export type LicenceDenialReason =
  * Reorder this and you get a licence that says `active: false` with
  * `reason: "no_membership"` for a suspended member who is paid up — a wrong
  * answer that sends them to checkout to fix something checkout cannot fix.
+ *
+ * A CREDIT DENIAL COMES SECOND, AND THAT PLACE IS ARGUED FOR. It sits below
+ * suspension because suspension outranks everything, and ABOVE the membership
+ * reasons because for a lapsed member holding credit `membership_inactive` is
+ * true and irrelevant: their membership has been inactive for weeks and they
+ * were running perfectly well yesterday. What changed is the credit system, and
+ * a client that hears "membership_inactive" will offer to renew a membership
+ * that was never the thing standing in the way.
+ *
+ * There is no risk of it stealing a more accurate answer: credit_denial_reason
+ * returns null for a suspended member, for an admin, and for anyone with an
+ * active membership, so it can only be set for exactly the member this branch
+ * is about.
  */
 export function licenceDenialReason(input: {
   suspended: boolean;
@@ -136,8 +153,11 @@ export function licenceDenialReason(input: {
   membershipStatus: string | null;
   /** memberships.expires_at — null means it never expires. */
   membershipExpiresAt: string | null;
+  /** From the gate. Null unless the refusal is specifically about credit. */
+  creditDenial?: CreditDenial | null;
 }): LicenceDenialReason {
   if (input.suspended) return "suspended";
+  if (input.creditDenial) return input.creditDenial;
   if (!input.membershipStatus) return "no_membership";
 
   const live =
@@ -254,6 +274,37 @@ export function creditModeUrl(): string {
  */
 export type ToolAccessMode = "none" | "byok" | "credit";
 
+/**
+ * WHY a credit-eligible member was refused. Null unless mode is 'none'.
+ *
+ * ─── THE BUG THIS TYPE EXISTS TO END ──────────────────────────────────────────
+ *
+ * `tool_access_resolve` returns 'none' for three different situations, and every
+ * endpoint in this family collapsed them into one sentence — "no active licence
+ * for this app". Two of the three make that sentence FALSE:
+ *
+ *   credit_mode_disabled  We turned the kill switch off. Their licence is
+ *                         exactly as it was. Telling them their membership ended
+ *                         sends them to a checkout that fixes nothing.
+ *   credit_exhausted      Their balance is empty. This is not an edge case — it
+ *                         is what happens to EVERY credit customer on the day
+ *                         they spend their last credit, and "your membership does
+ *                         not include this app" is the wrong thing to say to
+ *                         somebody who needs to buy credit.
+ *
+ * ai-gateway/index.ts has carried a comment about the first of these since the
+ * day it shipped, explaining why IT reads the kill switch before the mode. That
+ * reasoning was right and it never reached these four endpoints, which shipped
+ * earlier. So it is computed HERE, once, for all of them — because this file
+ * exists precisely so those four cannot drift, and this was the drift.
+ *
+ * IF YOU ARE ADDING AN ACCESS CHECK TO ONE OF THESE ENDPOINTS: put it after the
+ * mode, and if it can refuse a member who would otherwise have run on credit,
+ * give it a value here. A refusal that cannot say which of the three it is will
+ * be reported as the wrong one — and the wrong one costs the member money.
+ */
+export type CreditDenial = "credit_mode_disabled" | "credit_exhausted";
+
 export type ClientGate =
   | { ok: false; response: Response }
   | {
@@ -266,11 +317,17 @@ export type ClientGate =
       mode: ToolAccessMode;
       /**
        * `mode !== 'none'`, kept as its own field because the licence endpoints
-       * genuinely only need the boolean: a member in credit mode CAN run the
-       * app, so `active` stays true for them and those two functions need no
-       * change at all. Only the keys endpoints care which mode it is.
+       * mostly need only the boolean: a member in credit mode CAN run the app,
+       * so `active` stays true for them.
        */
       hasAccess: boolean;
+      /**
+       * Set only when `mode === 'none'` AND the refusal is about credit. Null
+       * everywhere else, including for a suspension or a plan that does not
+       * include this tool — those are their own answers and must not be dressed
+       * up as a billing problem. See CreditDenial.
+       */
+      creditDenial: CreditDenial | null;
     };
 
 /**
@@ -361,6 +418,25 @@ export async function gate(
   const resolved: ToolAccessMode =
     mode === "byok" || mode === "credit" ? mode : "none";
 
+  // Only a refusal has anything to explain, so this round trip happens only on
+  // the path that was already ending in an error. credit_denial_reason asks the
+  // access engine first and returns null unless it said 'none', so it can never
+  // disagree with the line above — the worst it can do is decline to explain.
+  let creditDenial: CreditDenial | null = null;
+  if (resolved === "none") {
+    const { data: why, error: whyErr } = await supabase.rpc(
+      "credit_denial_reason",
+      { p_tool_id: tool.id, uid: user.id },
+    );
+    if (whyErr) {
+      // Never fatal. Losing the explanation costs the member a vaguer sentence;
+      // failing the request over it would cost them the whole answer.
+      console.error("client-gate: denial reason lookup failed for", client.slug);
+    } else if (why === "credit_mode_disabled" || why === "credit_exhausted") {
+      creditDenial = why;
+    }
+  }
+
   return {
     ok: true,
     supabase,
@@ -369,5 +445,6 @@ export async function gate(
     toolId: tool.id,
     mode: resolved,
     hasAccess: resolved !== "none",
+    creditDenial,
   };
 }
