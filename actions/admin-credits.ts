@@ -107,6 +107,29 @@ export async function adjustCredits(
 }
 
 /**
+ * What credit_set_mode_override reports back: whether it was allowed, what it
+ * replaced, and whether that was a change at all.
+ *
+ * Hand-parsed because the RPC returns jsonb and the type generator can only
+ * call that `Json` — it cannot see the shape a plpgsql function builds. Narrow
+ * it once, here, rather than casting at the call site: an unexpected shape
+ * becomes an unknown status, which `explain()` already turns into a sentence,
+ * instead of a property read on something that might not be an object.
+ */
+function readOverrideResult(data: unknown): {
+  status: string;
+  from: boolean | null;
+  changed: boolean;
+} {
+  const row = (data ?? {}) as Record<string, unknown>;
+  return {
+    status: typeof row.status === "string" ? row.status : "unknown",
+    from: typeof row.from === "boolean" ? row.from : null,
+    changed: row.changed === true,
+  };
+}
+
+/**
  * Turn credit mode on or off for ONE member, or hand them back to the switch.
  *
  * ─── WHY THIS ONE IS AUDITED WITH ITS OLD VALUE ─────────────────────────────
@@ -133,15 +156,6 @@ export async function setCreditOverride(
 
   const supabase = await createClient();
 
-  // Read first, so the audit row can say what changed rather than only what it
-  // is now. A failure here is not fatal to the write; it costs the log its
-  // "from", which is worth less than refusing the admin's action over it.
-  const { data: before } = await supabase
-    .from("profiles")
-    .select("credit_mode_override")
-    .eq("id", userId)
-    .maybeSingle();
-
   // Through the RPC, NOT a table update — and this is the bug that shipped.
   //
   // `profiles` grants UPDATE on three columns to `authenticated`, and
@@ -154,7 +168,7 @@ export async function setCreditOverride(
   // spending authority. It is a security-definer function that checks is_admin
   // itself, called with the admin's OWN session so log_audit still records who
   // they are. See 20260828140000.
-  const { data: status, error } = await supabase.rpc("credit_set_mode_override", {
+  const { data, error } = await supabase.rpc("credit_set_mode_override", {
     p_user_id: userId,
     // The generator types every function argument as non-null, because Postgres
     // does not say otherwise in the catalogue. Here NULL is not a missing value
@@ -163,20 +177,38 @@ export async function setCreditOverride(
     // cast is about the generator, not about the contract.
     p_value: value as boolean,
   });
+  // Two different failures with two different answers: `error` is the database
+  // being unreachable or refusing the call, which a retry can genuinely fix;
+  // `status` is the function saying no, which it will keep saying.
   if (error) {
     return { error: "Couldn't reach the database. Try again in a moment." };
   }
-  if (status !== "ok") {
-    return { error: explain(status, "That couldn't be changed.") };
+  const result = readOverrideResult(data);
+  if (result.status !== "ok") {
+    return { error: explain(result.status, "That couldn't be changed.") };
   }
 
-  await supabase.rpc("log_audit", {
-    p_action: "credit.mode_override",
-    p_entity_type: "profile",
-    p_entity_id: userId,
-    p_target_user: userId,
-    p_metadata: { from: before?.credit_mode_override ?? null, to: value },
-  });
+  // ─── THE AUDIT ROW IS THE DATABASE'S ACCOUNT, NOT A SEPARATE ONE ───────────
+  //
+  // `from` comes back from the same statement that did the write, under the
+  // row's lock, so it is what this change actually replaced. It used to be a
+  // SELECT of its own a round trip earlier, which is a value that WAS true
+  // rather than the value that was overwritten — a difference that is invisible
+  // with one admin and permanent once there are two.
+  //
+  // And a press that changed nothing writes nothing. An audit log is only worth
+  // reading if every row in it is an event; "set to true, was already true" is a
+  // row that has to be read and discarded, and enough of them make the real ones
+  // hard to see.
+  if (result.changed) {
+    await supabase.rpc("log_audit", {
+      p_action: "credit.mode_override",
+      p_entity_type: "profile",
+      p_entity_id: userId,
+      p_target_user: userId,
+      p_metadata: { from: result.from, to: value },
+    });
+  }
 
   revalidateCredits(userId);
   return { ok: true };

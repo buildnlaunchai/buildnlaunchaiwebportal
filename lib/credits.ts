@@ -45,6 +45,12 @@ export type LedgerEntry = {
   provider: string | null;
   model: string | null;
   toolSlug: string | null;
+  /**
+   * The tool's display name, when it can be resolved. Falls back to the slug \u2014
+   * never to nothing: a spend with no name attached is the row that makes a
+   * member doubt the whole balance.
+   */
+  toolName: string | null;
   note: string | null;
   createdAt: string;
 };
@@ -113,6 +119,25 @@ export async function getMyCredits(ledgerLimit = 25): Promise<MyCredits> {
   const balance = balanceRes.data?.balance ?? 0;
   const held = balanceRes.data?.held ?? 0;
 
+  // ─── Slugs are ours, names are theirs ──────────────────────────────────────
+  //
+  // The ledger stores `tool_slug` because a slug is stable and a name is not \u2014
+  // renaming a tool must not rewrite what happened last month. But the member
+  // has never seen a slug: `raw-footage-real-story` is not what the app is
+  // called anywhere they look, and a history that names things they cannot
+  // recognise is a history they cannot check.
+  //
+  // Resolved through the same scoped client as everything else in this
+  // function, so RLS decides which tool rows are readable. A tool that is
+  // archived or draft simply will not resolve, and the row keeps its slug rather
+  // than losing its subject.
+  const slugs = [...new Set((ledgerRes.data ?? []).map((e) => e.tool_slug).filter((s): s is string => !!s))];
+  const nameOf = new Map<string, string>();
+  if (slugs.length > 0) {
+    const { data: tools } = await supabase.from("tools").select("slug, name").in("slug", slugs);
+    for (const t of tools ?? []) nameOf.set(t.slug, t.name);
+  }
+
   return {
     balance,
     held,
@@ -132,6 +157,7 @@ export async function getMyCredits(ledgerLimit = 25): Promise<MyCredits> {
       provider: e.provider,
       model: e.model,
       toolSlug: e.tool_slug,
+      toolName: e.tool_slug ? (nameOf.get(e.tool_slug) ?? e.tool_slug) : null,
       note: e.note,
       createdAt: e.created_at,
     })),

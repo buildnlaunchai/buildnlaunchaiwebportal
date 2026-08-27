@@ -69,12 +69,24 @@ export default async function CreditsPage() {
           )}
         </div>
 
+        {/* ─── WHY THIS PARAGRAPH IS NOT IN THE FIRST PERSON ──────────────────
+            The rest of the product speaks as a person, and deliberately so —
+            DESIGN.md §12 fixes the key vault's wording in the first person and
+            says never to soften it. This paragraph is different in kind: it is
+            a billing term. It says what a credit is, what a call costs, and who
+            the counterparty is, and every one of those sentences has to still
+            be true when it is restated on the refund and expiry pages. Terms
+            that name a person on one screen and a company on the next read as
+            two different promises. So money speaks as Build & Launch AI, and
+            everything else keeps its voice. Do not "fix" the inconsistency in
+            either direction. */}
         <p className="mt-5 text-small text-text-faint">
-          A credit is how you pay for AI that runs on my account instead of
-          yours. When your membership is active you use your own provider keys
-          and credits sit untouched; when it lapses, credits keep the apps
-          working. Each call costs what the provider charged me, plus a margin
-          &mdash; nothing is rounded up to a whole cent.
+          A credit pays for AI that runs on Build &amp; Launch AI&rsquo;s
+          provider accounts instead of your own. While your membership is active
+          the apps use your own keys and credits sit untouched; when it lapses,
+          credits keep the apps working. A call costs what the provider charged
+          Build &amp; Launch AI, plus a margin &mdash; nothing is rounded up to a
+          whole cent.
         </p>
       </Panel>
 
@@ -175,14 +187,14 @@ export default async function CreditsPage() {
         />
         <p className="mt-3 text-small text-text-faint">
           Buying credit isn&rsquo;t open yet. If you&rsquo;ve run out and need
-          more in the meantime, email{" "}
+          more before it opens, email{" "}
           <a
             href="mailto:support@buildnlaunchai.com"
             className="text-mono text-accent transition-colors duration-micro ease-default hover:text-accent-hover"
           >
             support@buildnlaunchai.com
           </a>{" "}
-          and I&rsquo;ll sort you out.
+          to have credits added by hand.
         </p>
       </Panel>
 
@@ -215,11 +227,16 @@ function describe(e: {
   kind: string;
   provider: string | null;
   model: string | null;
-  toolSlug: string | null;
+  toolName: string | null;
 }): string {
   switch (e.kind) {
+    // The tool's NAME, not its slug. `raw-footage-real-story` is an internal
+    // identifier that appears nowhere a member has ever looked; a spend they
+    // cannot attribute to something they recognise is a spend they have to take
+    // on trust, which is the opposite of what this list is for. See
+    // getMyCredits() for how it resolves, and what happens when it cannot.
     case "debit":
-      return [e.toolSlug, e.model ?? e.provider].filter(Boolean).join(" · ") || "A call";
+      return [e.toolName, e.model ?? e.provider].filter(Boolean).join(" · ") || "A call";
     case "topup":
       return "Credit added";
     case "refund":

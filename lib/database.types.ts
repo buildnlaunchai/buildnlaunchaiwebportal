@@ -1636,7 +1636,7 @@ export type Database = {
       }
       credit_set_mode_override: {
         Args: { p_user_id: string; p_value: boolean }
-        Returns: string
+        Returns: Json
       }
       credit_topup: {
         Args: {

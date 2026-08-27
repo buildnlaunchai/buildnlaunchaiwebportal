@@ -141,14 +141,33 @@ try {
       p_user_id: memberId,
       p_value: true,
     });
-    check(asAdmin.body === "ok", "an ADMIN can set it", JSON.stringify(asAdmin.body));
+    check(asAdmin.body?.status === "ok", "an ADMIN can set it", JSON.stringify(asAdmin.body));
     check((await overrideOf(memberId)) === true, "and it took effect");
+
+    // What the audit row is built from. `from` and `changed` come back from the
+    // statement that did the write, under the row lock — the caller no longer
+    // reads the old value separately and no longer logs a change that was not
+    // one. Four identical-looking audit rows are what sent us looking here, so
+    // the reporting is asserted rather than assumed.
+    check(asAdmin.body?.from === null, "and it reports what it replaced", JSON.stringify(asAdmin.body));
+    check(asAdmin.body?.changed === true, "and that this was a change");
+
+    const again = await rpcAs(adminToken, "credit_set_mode_override", {
+      p_user_id: memberId,
+      p_value: true,
+    });
+    check(
+      again.body?.status === "ok" && again.body?.changed === false,
+      "setting the value it already has is ok, and is NOT a change",
+      JSON.stringify(again.body),
+    );
+    check(again.body?.from === true, "and it still says what it found");
 
     const asMember = await rpcAs(memberToken, "credit_set_mode_override", {
       p_user_id: memberId,
       p_value: false,
     });
-    check(asMember.body === "not_admin", "a MEMBER cannot", JSON.stringify(asMember.body));
+    check(asMember.body?.status === "not_admin", "a MEMBER cannot", JSON.stringify(asMember.body));
     check(
       (await overrideOf(memberId)) === true,
       "and their attempt changed nothing — not even on their own row",
@@ -160,13 +179,17 @@ try {
       p_user_id: memberId,
       p_value: true,
     });
-    check(onSelf.body === "not_admin", "a member cannot grant it to themselves either");
+    check(onSelf.body?.status === "not_admin", "a member cannot grant it to themselves either");
 
     const cleared = await rpcAs(adminToken, "credit_set_mode_override", {
       p_user_id: memberId,
       p_value: null,
     });
-    check(cleared.body === "ok", "null is a real value — back to following the switch");
+    check(
+      cleared.body?.status === "ok" && cleared.body?.changed === true,
+      "null is a real value — back to following the switch",
+      JSON.stringify(cleared.body),
+    );
     check((await overrideOf(memberId)) === null, "and it cleared");
   }
 
