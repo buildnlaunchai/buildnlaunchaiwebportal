@@ -1634,6 +1634,10 @@ export type Database = {
         Args: { p_actor?: string; p_ledger_id: string; p_note?: string }
         Returns: string
       }
+      credit_set_mode_override: {
+        Args: { p_user_id: string; p_value: boolean }
+        Returns: string
+      }
       credit_topup: {
         Args: {
           p_credits: number
