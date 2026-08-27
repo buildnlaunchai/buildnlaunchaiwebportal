@@ -243,10 +243,14 @@ export type KeySlot =
  * Where a member goes when the answer is `credit_mode`.
  *
  * There is nothing to FIX in credit mode — it is the system working — so this
- * is the one reason whose URL is not a repair. Settings is where a member sees
- * their membership state, which is the thing that explains why no key came
- * back. WHEN THE CREDITS PAGE SHIPS, POINT THIS AT IT: that is the page that
- * will actually answer "how much credit do I have left".
+ * is the one reason whose URL is not a repair. It is the page that answers the
+ * question a withheld key actually raises: how much credit do I have, what is
+ * it worth, and where did the rest of it go.
+ *
+ * It pointed at /dashboard/settings until the credits page existed, with a note
+ * here to move it. Settings never mentioned credit at all, so a member running
+ * on credit was sent somewhere that could not explain their own situation to
+ * them.
  *
  * Slots are emitted in credit mode at all only so an already-shipped client
  * reading `out[provider].present` finds `false` instead of crashing on
@@ -254,7 +258,7 @@ export type KeySlot =
  * branch on that first and ignore these slots entirely when it reads "credit".
  */
 export function creditModeUrl(): string {
-  return `${siteUrl()}/dashboard/settings`;
+  return `${siteUrl()}/dashboard/credits`;
 }
 
 /**

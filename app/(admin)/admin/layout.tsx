@@ -13,6 +13,7 @@ const NAV: NavItem[] = [
   { href: "/admin/announcements", label: "Announcements", icon: "announcements", section: "Catalog" },
   { href: "/admin/codes", label: "Codes", icon: "codes", section: "Catalog" },
   { href: "/admin/requests", label: "Requests", icon: "requests", section: "Signals" },
+  { href: "/admin/credits", label: "Credits", icon: "credits", section: "Signals" },
   { href: "/admin/audit", label: "Audit", icon: "audit", section: "Signals" },
   { href: "/admin/settings", label: "Settings", icon: "settings", section: "System" },
 ];

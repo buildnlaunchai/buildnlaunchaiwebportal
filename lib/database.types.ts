@@ -1035,6 +1035,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          credit_mode_override: boolean | null
           email: string
           full_name: string | null
           id: string
@@ -1048,6 +1049,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          credit_mode_override?: boolean | null
           email: string
           full_name?: string | null
           id: string
@@ -1061,6 +1063,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          credit_mode_override?: boolean | null
           email?: string
           full_name?: string | null
           id?: string
@@ -1591,6 +1594,10 @@ export type Database = {
           first_ledger_id: string
         }[]
       }
+      credit_denial_reason: {
+        Args: { p_tool_id: string; uid?: string }
+        Returns: string
+      }
       credit_hold_open: {
         Args: {
           p_max_credits: number
@@ -1621,6 +1628,7 @@ export type Database = {
       }
       credit_holds_sweep: { Args: never; Returns: number }
       credit_lots_expire: { Args: never; Returns: number }
+      credit_mode_for: { Args: { uid: string }; Returns: boolean }
       credit_quote: { Args: { p_provider_cost_usd: number }; Returns: number }
       credit_refund: {
         Args: { p_actor?: string; p_ledger_id: string; p_note?: string }

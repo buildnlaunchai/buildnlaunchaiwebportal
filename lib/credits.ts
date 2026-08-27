@@ -1,0 +1,204 @@
+import "server-only";
+
+import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
+
+/**
+ * Reading credit — for the member whose credit it is, and for the admin.
+ *
+ * Two rules run through this file.
+ *
+ * FIRST: a member's own reads go through the ANON client, so RLS scopes them.
+ * `credit_balances`, `credit_lots` and `credit_ledger` each carry a
+ * `user_id = auth.uid()` policy, which means the query cannot return somebody
+ * else's row even if this file asked it to. That is the point of using the
+ * scoped client rather than the service role and a `.eq()` — the filter is the
+ * database's, not a line here that a refactor could drop.
+ *
+ * SECOND, and it is the same lesson §7 records about `user_api_keys`: on the
+ * admin side the filter IS written out. The service-role client bypasses RLS
+ * entirely, so "let RLS scope it" is not a scoping strategy there — every admin
+ * query below names the user it is about.
+ */
+
+/** What one credit is worth, and how long a lot lives. Member-visible. */
+export type CreditSettings = {
+  /** USD per credit. Members see this so a balance means something. */
+  usdValue: number;
+  expiryMonths: number;
+  creditModeEnabled: boolean;
+};
+
+export type CreditLot = {
+  id: string;
+  total: number;
+  remaining: number;
+  expiresAt: string | null;
+  createdAt: string;
+};
+
+export type LedgerEntry = {
+  id: string;
+  kind: string;
+  credits: number;
+  balanceAfter: number;
+  provider: string | null;
+  model: string | null;
+  toolSlug: string | null;
+  note: string | null;
+  createdAt: string;
+};
+
+export type MyCredits = {
+  balance: number;
+  held: number;
+  /** What can actually be spent right now. Holds are reservations, not spend. */
+  available: number;
+  lots: CreditLot[];
+  ledger: LedgerEntry[];
+};
+
+/**
+ * The public half of credit_settings.
+ *
+ * Read through `credit_settings_public`, which exposes the rate, the expiry and
+ * the switch and nothing else — the margin and the caps are ours. There is no
+ * `.eq()` because the view is already the single settings row.
+ */
+export async function getCreditSettings(): Promise<CreditSettings | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("credit_settings_public")
+    .select("credit_usd_value, expiry_months, credit_mode_enabled")
+    .maybeSingle();
+
+  if (!data) return null;
+  return {
+    usdValue: Number(data.credit_usd_value),
+    // The view types these as nullable because a VIEW's columns always are as
+    // far as the generator is concerned. The underlying columns are NOT NULL,
+    // so this coalesce is about the type and not about a case that happens.
+    expiryMonths: data.expiry_months ?? 12,
+    creditModeEnabled: data.credit_mode_enabled === true,
+  };
+}
+
+/**
+ * Everything the signed-in member's own credits page needs.
+ *
+ * `available` is computed here rather than read from `credit_available()`
+ * because the page shows the parts as well as the total — a member looking at
+ * "48,000 of 50,000 spendable" needs to see the 2,000 that is held, and a single
+ * number cannot explain itself.
+ */
+export async function getMyCredits(ledgerLimit = 25): Promise<MyCredits> {
+  const supabase = await createClient();
+
+  const [balanceRes, lotsRes, ledgerRes] = await Promise.all([
+    supabase.from("credit_balances").select("balance, held").maybeSingle(),
+    supabase
+      .from("credit_lots")
+      .select("id, credits_total, credits_remaining, expires_at, created_at")
+      .gt("credits_remaining", 0)
+      .order("expires_at", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("credit_ledger")
+      .select(
+        "id, kind, credits, balance_after, provider, model, tool_slug, note, created_at",
+      )
+      .order("created_at", { ascending: false })
+      .limit(ledgerLimit),
+  ]);
+
+  const balance = balanceRes.data?.balance ?? 0;
+  const held = balanceRes.data?.held ?? 0;
+
+  return {
+    balance,
+    held,
+    available: Math.max(0, balance - held),
+    lots: (lotsRes.data ?? []).map((l) => ({
+      id: l.id,
+      total: l.credits_total,
+      remaining: l.credits_remaining,
+      expiresAt: l.expires_at,
+      createdAt: l.created_at,
+    })),
+    ledger: (ledgerRes.data ?? []).map((e) => ({
+      id: e.id,
+      kind: e.kind,
+      credits: e.credits,
+      balanceAfter: e.balance_after,
+      provider: e.provider,
+      model: e.model,
+      toolSlug: e.tool_slug,
+      note: e.note,
+      createdAt: e.created_at,
+    })),
+  };
+}
+
+// ─── Admin ───────────────────────────────────────────────────────────────────
+
+export type CreditHolder = {
+  id: string;
+  email: string;
+  fullName: string | null;
+  balance: number;
+  held: number;
+  /** null = follows the global switch. See profiles.credit_mode_override. */
+  override: boolean | null;
+  membershipStatus: string | null;
+};
+
+/**
+ * Everyone the credit system currently applies to.
+ *
+ * Deliberately NOT every profile. Once there are a thousand members, a table of
+ * a thousand rows where nine hundred and ninety say "0, follows the switch" is a
+ * table nobody reads. The people who matter are the ones holding credit and the
+ * ones with an override — an override is the thing an admin turned on and will
+ * need to find again to turn off.
+ */
+export async function listCreditHolders(): Promise<CreditHolder[]> {
+  const svc = createAdminClient();
+
+  const [balances, overrides] = await Promise.all([
+    svc.from("credit_balances").select("user_id, balance, held"),
+    svc
+      .from("profiles")
+      .select("id")
+      .not("credit_mode_override", "is", null),
+  ]);
+
+  const ids = new Set<string>([
+    ...(balances.data ?? []).map((b) => b.user_id),
+    ...(overrides.data ?? []).map((p) => p.id),
+  ]);
+  if (ids.size === 0) return [];
+
+  const list = [...ids];
+  // Named filters, not RLS: the service role has none. See the note at the top.
+  const [profiles, memberships] = await Promise.all([
+    svc
+      .from("profiles")
+      .select("id, email, full_name, credit_mode_override")
+      .in("id", list),
+    svc.from("memberships").select("user_id, status").in("user_id", list),
+  ]);
+
+  const balanceOf = new Map((balances.data ?? []).map((b) => [b.user_id, b]));
+  const statusOf = new Map((memberships.data ?? []).map((m) => [m.user_id, m.status]));
+
+  return (profiles.data ?? [])
+    .map((p) => ({
+      id: p.id,
+      email: p.email,
+      fullName: p.full_name,
+      balance: balanceOf.get(p.id)?.balance ?? 0,
+      held: balanceOf.get(p.id)?.held ?? 0,
+      override: p.credit_mode_override,
+      membershipStatus: statusOf.get(p.id) ?? null,
+    }))
+    .sort((a, b) => b.balance - a.balance || a.email.localeCompare(b.email));
+}
