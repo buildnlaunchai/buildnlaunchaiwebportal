@@ -2,15 +2,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { LegalShell, Section } from "@/components/legal/legal";
+import { getCreditSettings } from "@/lib/credits";
+import {
+  CREDIT_TERMS,
+  PUBLISHED_EXPIRY_MONTHS,
+  creditExpirySentence,
+} from "@/lib/credit-terms";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Build & Launch AI",
   description: "The terms that govern your use of Build & Launch AI.",
 };
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const settings = await getCreditSettings();
+  const months = settings?.expiryMonths ?? PUBLISHED_EXPIRY_MONTHS;
+
   return (
-    <LegalShell title="Terms of Service" updated="July 24, 2026">
+    <LegalShell title="Terms of Service" updated="August 28, 2026">
       <Section title="1. Who we are">
         <p>
           Build &amp; Launch AI is operated by Mohammad Zahidul Alam
@@ -20,16 +29,42 @@ export default function TermsPage() {
         </p>
       </Section>
 
+      {/* Rewritten. This section used to say "we do not charge you for AI
+          compute", which was true of every tool that existed when it was
+          written and stopped being true the day credit mode shipped. A terms
+          page that describes the product as it was is worse than one that
+          describes it vaguely. */}
       <Section title="2. What Build & Launch AI is">
         <p>
           Build &amp; Launch AI is a members-only platform providing access to a
-          catalog of AI-powered tools. Members bring their own API keys
-          (&ldquo;BYOK&rdquo;) for the AI services these tools use &mdash; we do
-          not charge you for AI compute, and your keys are used only to run the
-          tools you choose to run.
+          catalog of AI-powered tools. There are two ways a tool can run:
+        </p>
+        <ul>
+          <li>
+            <strong>On your own API keys (&ldquo;BYOK&rdquo;).</strong> You
+            connect keys for the AI services a tool uses, your provider bills
+            you directly, and we charge you nothing for the compute. Your keys
+            are used only to run the tools you choose to run.
+          </li>
+          <li>
+            <strong>On credits.</strong> The call runs on our provider accounts
+            and is charged against a credit balance you have bought. See section
+            4.
+          </li>
+        </ul>
+        <p>
+          Which one applies is shown in the app before you run anything, and on
+          your <Link href="/dashboard/credits">credits page</Link>.
         </p>
       </Section>
 
+      {/* WHEN CREDIT PACKAGES GO ON SALE, THIS SECTION OWES AN EDIT.
+          It lists membership as the only thing with a price, which is true only
+          while credits cannot be bought. The day checkout opens, the packages
+          and their prices belong here — a price list that is silent about a
+          thing you can buy is the kind of omission a payment provider reads as
+          a misrepresentation rather than an oversight. Written here because
+          this is the file that will be wrong, not in a plan somewhere. */}
       <Section title="3. Membership and billing">
         <ul>
           <li>
@@ -58,36 +93,83 @@ export default function TermsPage() {
         </ul>
       </Section>
 
-      <Section title="4. Cancellation and refunds">
+      {/* The sentences here are imported, not written. They are the same ones
+          the member reads on /dashboard/credits and in the refund policy — see
+          lib/credit-terms.ts for why that is enforced rather than remembered. */}
+      <Section title="4. Credits">
+        <ul>
+          <li>
+            {CREDIT_TERMS.whatItIs} {CREDIT_TERMS.whenSpent}
+          </li>
+          <li>
+            <strong>{CREDIT_TERMS.notMoney}</strong> Buying credits is buying the
+            ability to run tools here, and nothing else. They carry no cash value,
+            they are not a deposit or a stored-value instrument, and they cannot
+            be sold, gifted, or moved between accounts.
+          </li>
+          <li>
+            {CREDIT_TERMS.whatACallCosts} {CREDIT_TERMS.failedCalls} Every
+            movement is recorded on your credits page with the rate and margin
+            that applied at the time, and that record is kept.
+          </li>
+          <li>
+            {creditExpirySentence(months)} {CREDIT_TERMS.spendOrder}{" "}
+            {CREDIT_TERMS.unusedNotRefundable} See our{" "}
+            <Link href="/refund">Refund Policy</Link>.
+          </li>
+          <li>
+            Credits do not depend on your membership continuing. If it lapses,
+            credits you have already bought stay spendable until they run out or
+            expire.
+          </li>
+          <li>
+            We may change the rate, the margin, or the caps for future purchases.
+            Credits you already hold are unaffected: the rate and margin are
+            frozen onto each entry when it is written, so a change cannot
+            retroactively alter what you have already been charged or what your
+            existing balance is worth.
+          </li>
+        </ul>
+      </Section>
+
+      <Section title="5. Cancellation and refunds">
         <p>
           You can cancel your membership at any time from your account settings.
           Cancelling stops future billing &mdash; you keep access until the end of
           your current paid period. See our{" "}
           <Link href="/refund">Refund Policy</Link> for full details.{" "}
           <strong>
-            We do not offer refunds for partial months or unused access.
+            We do not offer refunds for partial months or unused access, and
+            unused credits are not refundable.
           </strong>
         </p>
       </Section>
 
-      <Section title="5. Acceptable use">
+      <Section title="6. Acceptable use">
         <p>
-          You agree not to use Build &amp; Launch AI to: break any applicable law;
-          attack, scrape, or abuse other services using our tools; resell, share,
-          or provide unauthorized access to your account; or attempt to circumvent
-          membership access controls or usage limits.
+          Our <Link href="/acceptable-use">Acceptable Use Policy</Link> is part of
+          these terms and sets out in full what you may not create or do. In
+          short: no sexual or adult content; no deepfakes, face swaps, or voice
+          clones of real people; nothing harmful, hateful, deceptive, or illegal;
+          and no reselling, sharing, or working around access controls and usage
+          limits.
+        </p>
+        <p>
+          When you run on credits, the call is made on our provider accounts, so
+          those providers&rsquo; usage policies apply to you as well.
         </p>
       </Section>
 
-      <Section title="6. Ownership">
+      <Section title="7. Ownership">
         <ul>
           <li>
             We own the Build &amp; Launch AI platform, its design, and its code.
           </li>
           <li>
             You own the inputs you provide and the outputs you generate using our
-            tools, subject to the terms of the underlying AI providers whose keys
-            you connect.
+            tools, subject to the terms of the underlying AI providers &mdash;
+            whether those are providers whose keys you connected, or ours when you
+            run on credits.
           </li>
           <li>
             We do not claim ownership over anything you create using the tools.
@@ -95,17 +177,22 @@ export default function TermsPage() {
         </ul>
       </Section>
 
-      <Section title="7. Termination">
+      <Section title="8. Termination">
         <p>
-          We may suspend or terminate your account if you violate these terms,
+          We may suspend or terminate your account if you violate these terms or
+          the <Link href="/acceptable-use">Acceptable Use Policy</Link>,
           don&rsquo;t pay, or misuse the platform. If your account is terminated,
           your data (run history, stored keys) will be retained for 30 days and
           then deleted, matching our standard retention period, unless you request
-          earlier deletion.
+          earlier deletion. {CREDIT_TERMS.forfeitOnTermination}
+        </p>
+        <p>
+          Closing your own account is a different thing, and is not a penalty:{" "}
+          {CREDIT_TERMS.closingYourAccount}
         </p>
       </Section>
 
-      <Section title="8. Warranties and limitation of liability">
+      <Section title="9. Warranties and limitation of liability">
         <p>
           Build &amp; Launch AI is provided as-is, without warranties of any kind,
           express or implied. To the maximum extent permitted by law, Mohammad
@@ -114,7 +201,7 @@ export default function TermsPage() {
         </p>
       </Section>
 
-      <Section title="9. Governing law">
+      <Section title="10. Governing law">
         <p>
           These terms are governed by the laws of Bangladesh. Any disputes arising
           from these terms will be resolved in the courts of Chattogram,
@@ -122,7 +209,7 @@ export default function TermsPage() {
         </p>
       </Section>
 
-      <Section title="10. Changes to these terms">
+      <Section title="11. Changes to these terms">
         <p>
           We may update these terms from time to time. We&rsquo;ll notify you by
           email and/or a notice on the site if changes are material. Continued use
@@ -130,7 +217,7 @@ export default function TermsPage() {
         </p>
       </Section>
 
-      <Section title="11. Contact">
+      <Section title="12. Contact">
         <p>
           Questions about these terms?{" "}
           <a href="mailto:support@buildnlaunchai.com">

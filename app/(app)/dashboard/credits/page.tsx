@@ -1,8 +1,10 @@
 import { Coins, History, Hourglass, LifeBuoy } from "lucide-react";
+import Link from "next/link";
 
 import { StatusPill } from "@/components/tools/status-pill";
 import { Panel, SectionHeader } from "@/components/ui/panel";
 import { requireUser } from "@/lib/access";
+import { CREDIT_TERMS, creditExpirySentence } from "@/lib/credit-terms";
 import { getCreditSettings, getMyCredits } from "@/lib/credits";
 import { formatShipDate } from "@/lib/format";
 
@@ -69,24 +71,14 @@ export default async function CreditsPage() {
           )}
         </div>
 
-        {/* ─── WHY THIS PARAGRAPH IS NOT IN THE FIRST PERSON ──────────────────
-            The rest of the product speaks as a person, and deliberately so —
-            DESIGN.md §12 fixes the key vault's wording in the first person and
-            says never to soften it. This paragraph is different in kind: it is
-            a billing term. It says what a credit is, what a call costs, and who
-            the counterparty is, and every one of those sentences has to still
-            be true when it is restated on the refund and expiry pages. Terms
-            that name a person on one screen and a company on the next read as
-            two different promises. So money speaks as Build & Launch AI, and
-            everything else keeps its voice. Do not "fix" the inconsistency in
-            either direction. */}
+        {/* ─── WHY THIS PARAGRAPH IS IMPORTED, AND NOT IN THE FIRST PERSON ───
+            These are the same sentences as /terms §4 and /refund, because they
+            are the same billing term and a paraphrase of a billing term is a
+            second billing term. lib/credit-terms.ts is the one copy; see its
+            header for why the voice changes here and nowhere else. */}
         <p className="mt-5 text-small text-text-faint">
-          A credit pays for AI that runs on Build &amp; Launch AI&rsquo;s
-          provider accounts instead of your own. While your membership is active
-          the apps use your own keys and credits sit untouched; when it lapses,
-          credits keep the apps working. A call costs what the provider charged
-          Build &amp; Launch AI, plus a margin &mdash; nothing is rounded up to a
-          whole cent.
+          {CREDIT_TERMS.whatItIs} {CREDIT_TERMS.whenSpent}{" "}
+          {CREDIT_TERMS.whatACallCosts}
         </p>
       </Panel>
 
@@ -97,7 +89,7 @@ export default async function CreditsPage() {
             title="Expiry"
             description={
               settings
-                ? `Credits last ${settings.expiryMonths} months from the day they land.`
+                ? creditExpirySentence(settings.expiryMonths)
                 : "When each batch runs out of time."
             }
           />
@@ -129,7 +121,7 @@ export default async function CreditsPage() {
           {/* Oldest first is not cosmetic: that is the order they are spent in,
               so the top row is the one a member is actually racing. */}
           <p className="mt-3 text-small text-text-faint">
-            The batch closest to expiring is always spent first.
+            {CREDIT_TERMS.spendOrder}
           </p>
         </Panel>
       )}
@@ -208,7 +200,15 @@ export default async function CreditsPage() {
           >
             support@buildnlaunchai.com
           </a>{" "}
-          &mdash; every entry above is kept, so it can always be checked.
+          &mdash; every entry above is kept, so it can always be checked. The
+          full terms are in the{" "}
+          <Link
+            href="/refund"
+            className="text-accent transition-colors duration-micro ease-default hover:text-accent-hover"
+          >
+            refund policy
+          </Link>
+          .
         </span>
       </p>
     </div>

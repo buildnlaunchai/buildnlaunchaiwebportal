@@ -16,6 +16,10 @@ const LINKS = [
 // Legal / policy links — required by Creem (merchant of record) for live approval.
 const LEGAL_LINKS = [
   { href: "/terms", label: "Terms" },
+  // Creem's approval asked for a VISIBLE acceptable use policy, and visible is
+  // the operative word: a page nobody links to satisfies nothing. It sits with
+  // the other policies, on every marketing page.
+  { href: "/acceptable-use", label: "Acceptable use" },
   { href: "/privacy", label: "Privacy" },
   { href: "/refund", label: "Refunds" },
   { href: "/contact", label: "Contact" },
