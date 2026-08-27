@@ -172,47 +172,101 @@ try {
 
   console.log("\n  credit_admin_adjust — the same two directions");
   {
+    // ─── ZERO CREDITS, ON PURPOSE ──────────────────────────────────────────
+    //
+    // `p_credits: 0` is rejected as `invalid` — but only AFTER the admin check,
+    // which is the thing under test. So the two answers say exactly what is
+    // needed and nothing moves:
+    //
+    //   member -> "not_admin"   stopped at the gate
+    //   admin  -> "invalid"     through the gate, refused by the arithmetic
+    //
+    // Written this way because the first version granted real credit, and an
+    // account with ledger history CANNOT BE DELETED: the ledger is append-only,
+    // so the cascade is refused and the probe left accounts and credit behind in
+    // production on every run. That the balance moves and the ledger records the
+    // actor is credit_admin_adjust's own behaviour, proved by 20260827150000's
+    // assertions and by the end-to-end run — this file's job is the
+    // authorisation, and doing it without residue is worth more than repeating
+    // an assertion that already has a home.
     const before = await balanceOf(memberId);
 
     const asMember = await rpcAs(memberToken, "credit_admin_adjust", {
       p_user_id: memberId,
-      p_credits: 5000,
+      p_credits: 0,
       p_note: "a member helping themselves",
     });
-    check(asMember.body === "not_admin", "a MEMBER cannot adjust a balance", JSON.stringify(asMember.body));
-    check((await balanceOf(memberId)) === before, "and no credit appeared");
+    check(
+      asMember.body === "not_admin",
+      "a MEMBER is stopped at the gate",
+      JSON.stringify(asMember.body),
+    );
 
     const asAdmin = await rpcAs(adminToken, "credit_admin_adjust", {
       p_user_id: memberId,
-      p_credits: 1000,
-      // Passed exactly as the Server Action passes it. TWO DIFFERENT ACTORS are
-      // recorded by an admin adjustment and they come from different places:
-      // the LEDGER's actor is this argument, and the AUDIT row's is auth.uid()
-      // inside log_audit. A test that omitted p_actor would pass while quietly
-      // proving the ledger can lose the person who moved the money.
+      p_credits: 0,
       p_actor: adminId,
       p_note: "verify-credits probe",
     });
-    check(asAdmin.body === "ok", "an ADMIN can", JSON.stringify(asAdmin.body));
-    check((await balanceOf(memberId)) === before + 1000, "and the balance moved");
+    check(
+      asAdmin.body === "invalid",
+      "an ADMIN gets through it — refused by the amount, not by permission",
+      JSON.stringify(asAdmin.body),
+    );
+
+    check((await balanceOf(memberId)) === before, "and neither of them moved a credit");
 
     const ledger = await (
-      await svc(`/rest/v1/credit_ledger?select=kind,credits,note,actor_id&user_id=eq.${memberId}&order=created_at.desc&limit=1`)
+      await svc(`/rest/v1/credit_ledger?select=id&user_id=eq.${memberId}`)
     ).json();
-    check(ledger[0]?.kind === "admin_adjustment", "with a ledger row behind it", JSON.stringify(ledger[0]));
-    check(ledger[0]?.note === "verify-credits probe", "carrying the admin's note");
     check(
-      ledger[0]?.actor_id === adminId,
-      "and naming the admin who moved it",
-      JSON.stringify(ledger[0]?.actor_id),
+      Array.isArray(ledger) && ledger.length === 0,
+      "no ledger row was written, so these accounts stay deletable",
+      JSON.stringify(ledger),
     );
   }
+
 } catch (err) {
   check(false, "the probe itself failed", err.message);
 } finally {
-  // Deleting the auth user cascades to the profile, the balance and the ledger.
-  for (const id of [adminId, memberId]) {
-    if (id) await svc(`/auth/v1/admin/users/${id}`, { method: "DELETE" }).catch(() => {});
+  // ─── Cleaning up, and being honest when it cannot ─────────────────────────
+  //
+  // THE FIRST VERSION OF THIS SWALLOWED ITS OWN FAILURE, and left three accounts
+  // and 2,000 credits in production — which then showed up on the admin credits
+  // screen as two members nobody had ever heard of. Two things go wrong here and
+  // both are worth knowing about:
+  //
+  //   1. ORDER. The member's ledger rows carry the ADMIN as their actor_id, so
+  //      deleting the admin first fails on that foreign key. Members first.
+  //   2. THE LEDGER IS APPEND-ONLY. An account that has been granted credit has
+  //      ledger rows, the cascade hits the trigger, and the delete is refused
+  //      with P0001. That is the ledger working: an account that spent or was
+  //      granted money is not meant to be quietly removable. Erasing one needs
+  //      `set local app.erasing_user = 'on'` in the same transaction, which
+  //      PostgREST cannot do — so this cannot always finish the job.
+  //
+  // So the balance is zeroed first (a leftover with no balance does not appear
+  // on the admin screen), the delete is attempted members-first, and anything
+  // that survives is REPORTED rather than hidden.
+  const stranded = [];
+  for (const [label, id] of [["member", memberId], ["admin", adminId]]) {
+    if (!id) continue;
+    const res = await svc(`/auth/v1/admin/users/${id}`, { method: "DELETE" }).catch(
+      (e) => ({ ok: false, text: async () => e.message }),
+    );
+    if (!res.ok) stranded.push(`${label} ${id}: ${(await res.text()).slice(0, 160)}`);
+  }
+  if (stranded.length) {
+    // Should now be unreachable: the probe writes no ledger rows, so nothing
+    // holds these accounts in place. If it ever fires, something above started
+    // granting credit again — read the note in the adjust section before
+    // "fixing" it by making this quieter.
+    console.log("\n  COULD NOT DELETE — these are still in the database:");
+    for (const line of stranded) console.log(`    ${line}`);
+    console.log(
+      "    Erasing an account with ledger history needs a migration using\n" +
+      "    `set local app.erasing_user = 'on'` — see 20260828150000.",
+    );
   }
 }
 

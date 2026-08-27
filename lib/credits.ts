@@ -164,7 +164,12 @@ export async function listCreditHolders(): Promise<CreditHolder[]> {
   const svc = createAdminClient();
 
   const [balances, overrides] = await Promise.all([
-    svc.from("credit_balances").select("user_id, balance, held"),
+    // Only rows with something in them. A `credit_balances` row is created the
+    // first time anybody touches an account, so an empty one means "was looked
+    // at once", not "holds credit" — and a screen listing those is a screen
+    // that fills up with accounts nobody needs to see. Found the direct way: a
+    // test probe left two zeroed accounts on it.
+    svc.from("credit_balances").select("user_id, balance, held").or("balance.gt.0,held.gt.0"),
     svc
       .from("profiles")
       .select("id")
