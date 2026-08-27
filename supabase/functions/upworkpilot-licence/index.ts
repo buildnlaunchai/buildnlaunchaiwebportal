@@ -90,6 +90,12 @@ Deno.serve(async (req) => {
         suspended: profile?.is_suspended === true,
         membershipStatus: (membership?.status as string | null) ?? null,
         membershipExpiresAt: expiresAt,
+        // Without this, a lapsed member holding credit is told
+        // `membership_inactive` when credit mode is switched off — true, and not
+        // the reason. Their membership has been inactive for weeks and they were
+        // running yesterday. The client would offer to renew the one thing that
+        // was never in the way.
+        creditDenial: g.creditDenial,
       });
     }
 

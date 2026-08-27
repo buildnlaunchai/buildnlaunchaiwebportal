@@ -57,8 +57,37 @@ Deno.serve(async (req) => {
 
   // Unlike desktop-licence, a "no" here is a refusal, not a signed negative.
   // There is nothing to hand back and nothing worth caching.
+  // ─── A "no" is not one answer ───────────────────────────────────────────
+  //
+  // This used to be a bare 403 saying "no active licence", for all three ways
+  // tool_access_resolve returns 'none'. Two of them made that sentence false —
+  // and one of those two is not an edge case at all: it is what happens to every
+  // credit customer on the day they spend their last credit.
+  //
+  // ai-gateway/index.ts reads the kill switch BEFORE the mode for exactly this
+  // reason and says so in a comment. This is the same care, arriving late.
+  //
+  // IF YOU ADD AN ACCESS CHECK HERE: put it after this block, and if it can
+  // refuse somebody who would otherwise have run on credit, give it its own code
+  // in CreditDenial. A refusal that cannot say which one it is gets reported as
+  // the wrong one, and the wrong one costs the member money.
   if (g.mode === "none") {
-    return json({ error: "no active licence for this app" }, 403);
+    if (g.creditDenial === "credit_mode_disabled") {
+      // 503, not 403: nothing is wrong with them. It is switched off at our end.
+      return json({
+        error: "Credit mode is turned off right now.",
+        code: "credit_mode_disabled",
+      }, 503);
+    }
+    if (g.creditDenial === "credit_exhausted") {
+      // 402, and the code matters more than the status: "top up" and "your
+      // membership ended" send a person to two different pages.
+      return json({
+        error: "You have no credit left.",
+        code: "credit_exhausted",
+      }, 402);
+    }
+    return json({ error: "no active licence for this app", code: "no_access" }, 403);
   }
 
   // CREDIT MODE: entitled to RUN, not entitled to a KEY.
