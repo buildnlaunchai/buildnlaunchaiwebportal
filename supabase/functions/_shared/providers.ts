@@ -47,6 +47,32 @@ export async function verifyKey(
         const r = await fetch("https://api.elevenlabs.io/v1/user", {
           headers: { "xi-api-key": key },
         });
+
+        // A SCOPED KEY IS STILL A GOOD KEY, and this is where that used to be
+        // got wrong. ElevenLabs keys carry per-operation permissions, and a
+        // member who does the sensible thing — a key that may synthesise speech
+        // and nothing else — gets 401 here, because reading the user profile
+        // needs `user_read`. The vault then marked a perfectly working key
+        // `invalid`, told them to fix something that was not broken, and
+        // has_required_keys() locked them out of the tools it unlocks.
+        //
+        // ElevenLabs distinguishes the two cases itself, in the error body:
+        //
+        //   status: "missing_permissions"  -> the key authenticated. It is real.
+        //   status: "invalid_api_key"      -> the key did not. It is not.
+        //
+        // So the permission refusal is read as PROOF OF AUTHENTICATION, which is
+        // what it is. Confirmed against the live API on 2026-08-27 with a
+        // TTS-only key (401 missing_permissions) and a fabricated one
+        // (401 invalid_api_key).
+        if (r.status === 401 || r.status === 403) {
+          const detail = await r
+            .json()
+            .then((b) => (b as { detail?: { status?: unknown } })?.detail?.status)
+            .catch(() => undefined);
+          if (detail === "missing_permissions") return "valid";
+        }
+
         return classify(r.status);
       }
       case "perplexity": {

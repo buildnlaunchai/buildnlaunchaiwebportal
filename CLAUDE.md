@@ -1337,11 +1337,22 @@ Every key gets a **Verify** button that makes one cheap, read-only call to the p
 | `openai` | `GET /v1/models` |
 | `anthropic` | `POST /v1/messages` with 1 token |
 | `google_ai` | `GET /v1beta/models` |
-| `elevenlabs` | `GET /v1/user` |
+| `elevenlabs` | `GET /v1/user` — **and a 401 whose body says `missing_permissions` counts as VALID** |
 | `openrouter` | `GET /api/v1/key` |
 | others | a documented cheapest endpoint |
 
 Verify on save, and re-verify when a run gets a 401/403. Store the result in `status`.
+
+**A 401 does not always mean a bad key, and ElevenLabs is why this sentence exists.**
+Its keys carry per-operation permissions, so a member who scopes a key to
+text-to-speech and nothing else — the correct, least-privilege thing to do — gets a 401
+from `/v1/user`, which needs `user_read`. Verifying naively marked that working key
+`invalid`, told the member to fix something that was not broken, and locked them out of
+the tools it unlocks. ElevenLabs separates the two cases in the error body itself:
+`detail.status = "missing_permissions"` means the key authenticated and is real;
+`"invalid_api_key"` means it did not. The permission refusal is therefore read as *proof
+of authentication*. Any provider with scoped keys needs the same treatment — check what
+its refusal actually says before calling a key dead.
 
 ### Making BYOK not hurt
 
