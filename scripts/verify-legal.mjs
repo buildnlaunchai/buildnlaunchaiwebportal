@@ -148,12 +148,25 @@ if (!URL_ || !ANON) {
   // Both pages read the live value; the constant is only the fallback. If that
   // ever stops being true the assertion above is the only thing left holding
   // the policy to the system, so it is asserted separately.
+  const CREDITS_LIB = read("lib/credits.ts");
   for (const [name, file] of [["/refund", REFUND], ["/terms", TOS]]) {
     check(
-      /getCreditSettings\(\)/.test(file) && /expiryMonths \?\? PUBLISHED_EXPIRY_MONTHS/.test(file),
-      `${name} reads the live setting, with the published number only as a fallback`,
+      /getPublishedExpiryMonths\(\)/.test(file),
+      `${name} reads the live setting through the deadlined helper`,
+    );
+    // Not `getCreditSettings` directly any more: these are the only marketing
+    // pages that touch the database, so an unbounded read here is the one that
+    // takes the public site down with it. Asserted by name so a refactor back
+    // to the plain call fails here rather than during the next outage.
+    check(
+      !/getCreditSettings\(\)/.test(prose(file)),
+      `${name} does not call the unbounded read`,
     );
   }
+  check(
+    /timed\(/.test(CREDITS_LIB) && /return PUBLISHED_EXPIRY_MONTHS/.test(CREDITS_LIB),
+    "and the helper has a deadline and falls back to the published constant",
+  );
 }
 
 console.log("\n  Privacy says what credit mode changed");

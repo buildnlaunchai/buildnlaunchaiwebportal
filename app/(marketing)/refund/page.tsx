@@ -2,12 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { LegalShell, Section } from "@/components/legal/legal";
-import { getCreditSettings } from "@/lib/credits";
-import {
-  CREDIT_TERMS,
-  PUBLISHED_EXPIRY_MONTHS,
-  creditExpirySentence,
-} from "@/lib/credit-terms";
+import { getPublishedExpiryMonths } from "@/lib/credits";
+import { CREDIT_TERMS, creditExpirySentence } from "@/lib/credit-terms";
 
 export const metadata: Metadata = {
   title: "Refund & Cancellation Policy — Build & Launch AI",
@@ -57,8 +53,12 @@ export default async function RefundPage() {
   // The live expiry, so the published term cannot drift from the system that
   // enforces it. Falls back to the number this policy was written against only
   // if the settings row cannot be read; `verify:legal` asserts they agree.
-  const settings = await getCreditSettings();
-  const months = settings?.expiryMonths ?? PUBLISHED_EXPIRY_MONTHS;
+  // Deadlined, with the published constant as the fallback — see
+  // getPublishedExpiryMonths. These two are the only marketing pages that read
+  // the database, so they were the only two that could hang when it stopped
+  // answering; every other one is static or ISR. The fallback is safe to lean on
+  // because verify:legal fails if the constant and the setting ever disagree.
+  const months = await getPublishedExpiryMonths();
 
   const purchases: Purchase[] = [
     {

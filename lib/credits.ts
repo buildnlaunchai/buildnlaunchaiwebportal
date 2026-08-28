@@ -1,7 +1,9 @@
 import "server-only";
 
+import { PUBLISHED_EXPIRY_MONTHS } from "@/lib/credit-terms";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { timed } from "@/lib/timeout";
 
 /**
  * Reading credit — for the member whose credit it is, and for the admin.
@@ -87,6 +89,39 @@ export async function getCreditSettings(): Promise<CreditSettings | null> {
     expiryMonths: data.expiry_months ?? 12,
     creditModeEnabled: data.credit_mode_enabled === true,
   };
+}
+
+/**
+ * The credit expiry, for the pages that PUBLISH it — /terms and /refund.
+ *
+ * Those two are the only marketing pages that read the database, because they
+ * state the expiry as a term and the database is what enforces it. That made
+ * them the only two marketing pages that could hang: every other one is static
+ * or ISR and rides out an outage on cache.
+ *
+ * So the read gets a deadline, and losing it falls back to the number the
+ * policy was written against. The fallback cannot quietly go stale — verify:legal
+ * asserts PUBLISHED_EXPIRY_MONTHS equals credit_settings.expiry_months, and
+ * fails if somebody changes the setting without changing the constant. Which
+ * means during an outage these pages do not merely stay up; they stay up
+ * showing the RIGHT number.
+ *
+ * 2.5s: the healthy p50 for this query is ~200ms, so this is an order of
+ * magnitude of headroom and still twenty times faster than the gateway timeout
+ * it replaces.
+ */
+export async function getPublishedExpiryMonths(): Promise<number> {
+  const result = await timed(async () => {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("credit_settings_public")
+      .select("expiry_months")
+      .maybeSingle();
+    return data?.expiry_months ?? null;
+  }, 2500);
+
+  if (result.ok && result.value !== null) return result.value;
+  return PUBLISHED_EXPIRY_MONTHS;
 }
 
 /**

@@ -2,12 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { LegalShell, Section } from "@/components/legal/legal";
-import { getCreditSettings } from "@/lib/credits";
-import {
-  CREDIT_TERMS,
-  PUBLISHED_EXPIRY_MONTHS,
-  creditExpirySentence,
-} from "@/lib/credit-terms";
+import { getPublishedExpiryMonths } from "@/lib/credits";
+import { CREDIT_TERMS, creditExpirySentence } from "@/lib/credit-terms";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Build & Launch AI",
@@ -15,8 +11,12 @@ export const metadata: Metadata = {
 };
 
 export default async function TermsPage() {
-  const settings = await getCreditSettings();
-  const months = settings?.expiryMonths ?? PUBLISHED_EXPIRY_MONTHS;
+  // Deadlined, with the published constant as the fallback — see
+  // getPublishedExpiryMonths. These two are the only marketing pages that read
+  // the database, so they were the only two that could hang when it stopped
+  // answering; every other one is static or ISR. The fallback is safe to lean on
+  // because verify:legal fails if the constant and the setting ever disagree.
+  const months = await getPublishedExpiryMonths();
 
   return (
     <LegalShell title="Terms of Service" updated="August 28, 2026">
