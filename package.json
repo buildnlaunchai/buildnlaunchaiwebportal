@@ -31,7 +31,8 @@
     "verify:credits": "node --env-file=.env.local scripts/verify-credits.mjs",
     "verify:legal": "node --env-file=.env.local scripts/verify-legal.mjs",
     "verify:topup": "node --env-file=.env.local scripts/verify-topup.mjs",
-    "verify:credit-pages": "node --env-file=.env.local scripts/verify-credit-pages.mjs"
+    "verify:credit-pages": "node --env-file=.env.local scripts/verify-credit-pages.mjs",
+    "verify:boundary": "node --env-file=.env.local scripts/verify-error-boundary.mjs"
   },
   "dependencies": {
     "@creem_io/nextjs": "^0.5.3",

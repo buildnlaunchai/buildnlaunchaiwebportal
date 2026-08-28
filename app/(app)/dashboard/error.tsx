@@ -7,23 +7,21 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 
 /**
- * ─── WHY THIS SITS AT THE ROUTE GROUP AND NOT ON THE SEGMENT ────────────────
+ * ─── TWO BOUNDARIES, AND THEY CATCH DIFFERENT THINGS ────────────────────────
  *
- * It used to live at (app)/dashboard/ — one level down — and the black-hole
- * test showed it never ran. An error.tsx catches errors thrown by its segment's
- * PAGE and its CHILDREN. It does not catch its own layout, because the layout
- * is what renders the boundary: by the time the layout throws there is nothing
- * left to render the fallback into.
+ * This one is INSIDE the dashboard layout, so an error in a page renders here
+ * with the shell — sidebar, nav, the member's name — still around it. That is
+ * the right frame for "this page broke": nothing about their session did.
  *
- * And the layout is exactly what throws here. dashboard/layout.tsx calls
- * requireUser() before anything else, so with the auth server unreachable every
- * dashboard route returned a bare 500 in ~6s — no screen, no retry, none of the
- * copy below. Moving the boundary up one segment is what makes it reachable.
+ * It cannot catch the layout itself. A boundary is rendered BY the layout it
+ * sits under, so once that layout throws there is nothing left to render it
+ * into — which is exactly the auth-outage case, where dashboard/layout.tsx
+ * calls requireUser() before anything else. app/error.tsx catches that one, at
+ * the cost of replacing the shell too.
  *
- * Verified, not reasoned: MODE A of the black-hole test is what caught it, and
- * is what has to stay green.
+ * The black-hole test spent four rounds establishing which boundary catches
+ * what; both exist because both jobs are real. See app/error.tsx.
  */
-
 /**
  * The dashboard error boundary (§12 voice): takes the blame, says what to do,
  * doesn't apologize or exclaim. `reset()` re-renders the segment.
