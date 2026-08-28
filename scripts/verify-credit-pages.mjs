@@ -134,9 +134,15 @@ try {
     check(!body.includes("Renew membership"), "and no renew CTA");
     check(!body.includes("not open yet"), "and it no longer says buying isn't open");
     check(
-      body.includes("credits bought now are what keep the apps running later"),
-      "it says why buying before you need it is the point",
+      body.includes("Credits can only be bought while your membership is active."),
+      "the buy panel states the one thing not said elsewhere: the window closes",
     );
+    // Guarding the removal, not just the addition. The sentence it replaced was
+    // CREDIT_TERMS.whenSpent, which the top of this same page already renders —
+    // the same sentence twice, four panels apart. Counting it is how that stays
+    // fixed when somebody reaches for the shared constant again.
+    const repeats = body.split("credits keep the apps working").length - 1;
+    check(repeats === 1, "and says nothing this page has already said", `whenSpent appears ${repeats}×`);
     // The general form of the same bug, since it can appear at any JSX seam:
     // a sentence ending and the next word with no space between them.
     const runOn = body.match(/[a-z][.;][A-Z][a-z]{2,}/g);

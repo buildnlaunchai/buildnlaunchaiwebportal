@@ -194,20 +194,23 @@ export default async function CreditsPage({
 
       {/* ─── THE FOUR STATES THIS PANEL HAS, AND WHY THE LAST ONE MATTERS ────
           Credits are for members: while a membership is active the apps run on
-          the member\u2019s own keys, and credits are the cushion that keeps them
-          working if it lapses. So buying is gated on membership \u2014 which
-          produces one state that has to be handled carefully rather than
-          rendered as a refusal.
+          the member's own keys, and credits are the cushion that keeps them
+          working if it lapses. So buying is gated on membership — which produces
+          one state that has to be handled carefully rather than rendered as a
+          refusal.
 
           A LAPSED MEMBER WHO HAS RUN OUT OF CREDIT CANNOT BUY MORE. They cannot
           run anything either, so the app has sent them here, and if this panel
           simply said "members only" it would be a dead end reached by someone
-          holding out money. It is not a dead end \u2014 renewing is the way
-          through, and it is cheaper than the largest package \u2014 so that is what
-          this says, in place of the buttons rather than beside them.
+          holding out money. It is not a dead end — renewing is the way through —
+          so that is what this says, in place of the buttons rather than beside
+          them.
 
-          The rule also gives a member a reason to buy BEFORE they need to, which
-          nothing in the product said until now. The active-member case says it.
+          Renewing is $10/mo and the smallest package is $5, so it is NOT the
+          cheaper option, and nothing here may imply it is. An earlier draft of
+          the visible copy said exactly that and had to be corrected; the reason
+          to renew is that it puts the apps back on the member's own keys, which
+          is true.
       */}
       <Panel>
         <SectionHeader
@@ -243,9 +246,19 @@ export default async function CreditsPage({
                 }))}
               />
             </div>
+            {/* ONE SENTENCE, AND NOT EITHER OF THE TWO THAT WERE HERE.
+                The first was CREDIT_TERMS.whenSpent — already rendered at the
+                top of this same page, so it was the same sentence twice, four
+                panels apart. The second ("buying while your membership is
+                active is the point") told the member what to think about a
+                purchase they had not made yet, which is nagging dressed as
+                explanation.
+                What is left is the fact neither of them stated: you cannot buy
+                these once the membership lapses. That is the reason to buy now,
+                and stating it is enough — the member can draw the conclusion
+                without being walked to it. */}
             <p className="mt-3 text-small text-text-faint">
-              {CREDIT_TERMS.whenSpent}{" "}
-              {`Buying while your membership is active is the point \u2014 credits bought now are what keep the apps running later.`}
+              Credits can only be bought while your membership is active.
             </p>
           </>
         ) : (
