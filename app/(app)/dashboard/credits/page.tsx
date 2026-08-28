@@ -276,7 +276,7 @@ export default async function CreditsPage({
             <div className="mt-4">
               <SubscribeButton
                 variant={credits.available > 0 ? "secondary" : "primary"}
-                label="Renew membership &mdash; $10/mo"
+                label={"Renew membership \u2014 $10/mo"}
                 loginNext="/dashboard/credits"
               />
             </div>
