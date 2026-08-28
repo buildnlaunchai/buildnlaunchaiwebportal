@@ -29,7 +29,8 @@
     "verify:desktop": "node --env-file=.env.local scripts/verify-desktop.mjs",
     "verify:upworkpilot": "node --env-file=.env.local scripts/verify-upworkpilot.mjs",
     "verify:credits": "node --env-file=.env.local scripts/verify-credits.mjs",
-    "verify:legal": "node --env-file=.env.local scripts/verify-legal.mjs"
+    "verify:legal": "node --env-file=.env.local scripts/verify-legal.mjs",
+    "verify:topup": "node --env-file=.env.local scripts/verify-topup.mjs"
   },
   "dependencies": {
     "@creem_io/nextjs": "^0.5.3",

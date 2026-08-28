@@ -74,16 +74,16 @@ export default async function AdminCreditsPage() {
         ) : (
           <p className="mt-4 text-small text-text-faint">No settings row.</p>
         )}
+        {/* This used to link to /admin/settings, which does not flip this
+            switch — that screen writes app_settings, and credit_mode_enabled is
+            on credit_settings, which nothing in the app writes at all. Pointing
+            an admin at a control that is not there is worse on a money screen
+            than admitting there isn't one. */}
         <p className="mt-4 text-small text-text-faint">
-          The switch itself lives in{" "}
-          <Link
-            href="/admin/settings"
-            className="text-accent transition-colors duration-micro ease-default hover:text-accent-hover"
-          >
-            Settings
-          </Link>
-          . It is global; the buttons below are the per-member override, which is
-          what to use before it is on for everyone.
+          The global switch has no screen yet &mdash; it is flipped with the
+          service role, deliberately, while credit mode is being rolled out one
+          member at a time. The buttons below are the per-member override, which
+          is what to use until it is on for everyone.
         </p>
       </Panel>
 

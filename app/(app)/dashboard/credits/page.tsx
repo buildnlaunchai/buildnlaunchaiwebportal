@@ -1,11 +1,17 @@
 import { Coins, History, Hourglass, LifeBuoy } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 
+import { CreditArrivalWatcher } from "@/components/billing/credit-arrival-watcher";
+import { SubscribeButton } from "@/components/billing/subscribe-button";
+import { TopUpButtons } from "@/components/billing/top-up-buttons";
 import { StatusPill } from "@/components/tools/status-pill";
 import { Panel, SectionHeader } from "@/components/ui/panel";
 import { requireUser } from "@/lib/access";
 import { CREDIT_TERMS, creditExpirySentence } from "@/lib/credit-terms";
+import { listCreditPackages } from "@/lib/credit-packages";
 import { getCreditSettings, getMyCredits } from "@/lib/credits";
+import { getMyMembership, isMembershipActive } from "@/lib/member";
 import { formatShipDate } from "@/lib/format";
 
 export const metadata = { title: "Credits" };
@@ -24,19 +30,37 @@ export const metadata = { title: "Credits" };
  * when the rate changes. A page that showed a balance and nothing else would
  * waste that.
  */
-export default async function CreditsPage() {
+export default async function CreditsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ topup?: string }>;
+}) {
   await requireUser("/dashboard/credits");
 
-  const [credits, settings] = await Promise.all([
+  const [credits, settings, packages, membership, params] = await Promise.all([
     getMyCredits(),
     getCreditSettings(),
+    listCreditPackages(),
+    getMyMembership(),
+    searchParams,
   ]);
+
+  const isMember = isMembershipActive(membership);
+  // A package with no Creem product id cannot be sold — the checkout route
+  // refuses it rather than inventing an id, so offering the button would be a
+  // promise the next click breaks.
+  const forSale = packages.filter((p) => p.providerProductId !== null);
+  const turnedAwayForMembership = params.topup === "members_only";
 
   const rate = settings?.usdValue ?? null;
   const worth = (n: number) => (rate === null ? null : n * rate);
 
   return (
     <div className="flex max-w-[720px] flex-col gap-5">
+      <Suspense fallback={null}>
+        <CreditArrivalWatcher balanceBefore={credits.balance} />
+      </Suspense>
+
       <Panel>
         <SectionHeader
           icon={Coins}
@@ -167,27 +191,97 @@ export default async function CreditsPage() {
         )}
       </Panel>
 
-      {/* The shape #5 slots into. Deliberately not a disabled "Buy" button:
-          a button that cannot be pressed is worse than a sentence saying why,
-          and this way adding checkout is a button in an existing panel rather
-          than a new screen. */}
+      {/* ─── THE FOUR STATES THIS PANEL HAS, AND WHY THE LAST ONE MATTERS ────
+          Credits are for members: while a membership is active the apps run on
+          the member\u2019s own keys, and credits are the cushion that keeps them
+          working if it lapses. So buying is gated on membership \u2014 which
+          produces one state that has to be handled carefully rather than
+          rendered as a refusal.
+
+          A LAPSED MEMBER WHO HAS RUN OUT OF CREDIT CANNOT BUY MORE. They cannot
+          run anything either, so the app has sent them here, and if this panel
+          simply said "members only" it would be a dead end reached by someone
+          holding out money. It is not a dead end \u2014 renewing is the way
+          through, and it is cheaper than the largest package \u2014 so that is what
+          this says, in place of the buttons rather than beside them.
+
+          The rule also gives a member a reason to buy BEFORE they need to, which
+          nothing in the product said until now. The active-member case says it.
+      */}
       <Panel>
         <SectionHeader
           icon={Coins}
           title="Top up"
-          action={<StatusPill label="not open yet" tone="faint" dot={false} />}
+          action={
+            forSale.length === 0 ? (
+              <StatusPill label="not open yet" tone="faint" dot={false} />
+            ) : null
+          }
         />
-        <p className="mt-3 text-small text-text-faint">
-          Buying credit isn&rsquo;t open yet. If you&rsquo;ve run out and need
-          more before it opens, email{" "}
-          <a
-            href="mailto:support@buildnlaunchai.com"
-            className="text-mono text-accent transition-colors duration-micro ease-default hover:text-accent-hover"
-          >
-            support@buildnlaunchai.com
-          </a>{" "}
-          to have credits added by hand.
-        </p>
+
+        {forSale.length === 0 ? (
+          <p className="mt-3 text-small text-text-faint">
+            Buying credit isn&rsquo;t open yet. If you&rsquo;ve run out and need
+            more before it opens, email{" "}
+            <a
+              href="mailto:support@buildnlaunchai.com"
+              className="text-mono text-accent transition-colors duration-micro ease-default hover:text-accent-hover"
+            >
+              support@buildnlaunchai.com
+            </a>{" "}
+            to have credits added by hand.
+          </p>
+        ) : isMember ? (
+          <>
+            <div className="mt-4">
+              <TopUpButtons
+                options={forSale.map((p) => ({
+                  slug: p.slug,
+                  credits: p.credits,
+                  priceUsdCents: p.priceUsdCents,
+                }))}
+              />
+            </div>
+            <p className="mt-3 text-small text-text-faint">
+              {CREDIT_TERMS.whenSpent} Buying while your membership is active is
+              the point &mdash; credits bought now are what keep the apps running
+              later.
+            </p>
+          </>
+        ) : (
+          <>
+            {turnedAwayForMembership && (
+              <p className="mt-3 text-small text-text">
+                Credits are for members, so that top-up didn&rsquo;t go through
+                &mdash; nothing was charged.
+              </p>
+            )}
+            <p className="mt-3 text-small text-text-faint">
+              {credits.available > 0 ? (
+                <>
+                  Your membership isn&rsquo;t active, so there&rsquo;s nothing to
+                  buy right now &mdash; but the{" "}
+                  {credits.available.toLocaleString()} credits you already have
+                  keep working until they run out.
+                </>
+              ) : (
+                <>
+                  Your membership isn&rsquo;t active and your credits have run
+                  out. Renewing is the way back &mdash; and it puts the apps back
+                  on your own keys, where the running costs are yours and nothing
+                  is metered.
+                </>
+              )}
+            </p>
+            <div className="mt-4">
+              <SubscribeButton
+                variant={credits.available > 0 ? "secondary" : "primary"}
+                label="Renew membership &mdash; $10/mo"
+                loginNext="/dashboard/credits"
+              />
+            </div>
+          </>
+        )}
       </Panel>
 
       <p className="flex items-center gap-2 px-1 text-small text-text-faint">

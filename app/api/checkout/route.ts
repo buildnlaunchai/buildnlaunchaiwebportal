@@ -2,6 +2,7 @@ import { Checkout } from "@creem_io/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getSubscribePriceId } from "@/lib/billing";
+import { getCreditPackage } from "@/lib/credit-packages";
 import {
   CHECKOUT_KIND_KEY,
   type CheckoutKind,
@@ -60,15 +61,23 @@ export const dynamic = "force-dynamic";
 /**
  * Which Creem product each kind of checkout buys.
  *
- * Only `membership` resolves today — the credit top-up product does not exist in
- * Creem yet, so there is nothing honest to return for it and the route answers
- * 501 rather than inventing an id. When the credit feature lands, this is the
- * function that gains its branch, and the metadata below already carries the
- * discriminator that keeps the webhook from mistaking it for a membership.
+ * Both kinds resolve from the database, never from code: `membership` reads
+ * plans.provider_price_id, `credit_topup` reads credit_packages. Moving
+ * test\u2192live, changing a price, or retiring a package is an UPDATE.
+ *
+ * A package with no `provider_product_id` returns null and the route answers
+ * 501 rather than inventing an id \u2014 the same rule the membership plan has
+ * always followed. That is the state the three rows ship in, so this endpoint is
+ * complete and unsellable until the Creem products exist.
  */
-async function productIdForKind(kind: CheckoutKind): Promise<string | null> {
+async function productIdForKind(
+  kind: CheckoutKind,
+  packageSlug: string | null,
+): Promise<string | null> {
   if (kind === "membership") return getSubscribePriceId();
-  return null;
+  if (!packageSlug) return null;
+  const pkg = await getCreditPackage(packageSlug);
+  return pkg?.providerProductId ?? null;
 }
 
 export async function GET(req: NextRequest) {
@@ -96,6 +105,16 @@ export async function GET(req: NextRequest) {
   }
   const kind: CheckoutKind = rawKind ?? "membership";
 
+  // WHICH package, for a top-up. Same shape of parameter as `kind` and safe for
+  // the same reason: it names a row in a table this app owns, and everything
+  // that reaches Creem is looked up from that row. A slug that resolves to
+  // nothing is a 400, never a default \u2014 defaulting to a package would mean
+  // charging someone for a product they did not pick.
+  const packageSlug = req.nextUrl.searchParams.get("package");
+  if (kind === "credit_topup" && !packageSlug) {
+    return new NextResponse("a package is required", { status: 400 });
+  }
+
   // The membership must attach to a real account, so the session is the gate —
   // the same auth-before-join rule useSubscribe applies before it sends anyone here.
   const supabase = await createClient();
@@ -111,7 +130,34 @@ export async function GET(req: NextRequest) {
   // The checkout target is data, not code: plans.provider_price_id on the
   // slug='member' row. Moving test→live, or switching product, is one UPDATE and
   // no redeploy — the convention lib/billing.ts was written around.
-  const productId = await productIdForKind(kind);
+  // ─── THE MEMBERSHIP GATE FOR CREDIT, AND WHY IT IS HERE ────────────────────
+  //
+  // Credits are for members: while a membership is active the apps run on the
+  // member\u2019s own keys, and credits are the cushion that keeps them working if
+  // it lapses. Buying that cushion is therefore something you do as a member.
+  //
+  // The check belongs HERE, before Creem is ever reached, and NOT in
+  // credit_topup, which only ever runs after the money has moved. A membership
+  // that lapses between opening this checkout and the webhook landing would make
+  // a fulfilment-time check refuse a purchase somebody had already paid for \u2014
+  // which is not a guard, it is keeping their money. Refusing the sale costs
+  // nobody anything; refusing the delivery costs them everything. See
+  // 20260828190000.
+  if (kind === "credit_topup") {
+    const { data: active } = await supabase.rpc("has_active_membership", {
+      uid: user.id,
+    });
+    if (active !== true) {
+      // Not a bare 403: the person is signed in, on a page they were sent to by
+      // an app that told them to buy credit, and the thing they can act on is a
+      // membership. The credits page renders that case in full.
+      return NextResponse.redirect(
+        new URL("/dashboard/credits?topup=members_only", req.nextUrl.origin),
+      );
+    }
+  }
+
+  const productId = await productIdForKind(kind, packageSlug);
   if (!productId) {
     if (kind === "membership") {
       console.error(
@@ -160,9 +206,31 @@ export async function GET(req: NextRequest) {
   if (user.email) {
     url.searchParams.set("customer", JSON.stringify({ email: user.email }));
   }
+  // Quantity is ours, and fixed \u2014 for the top-up only.
+  //
+  // credit_packages maps a product to a number of credits per unit, so a
+  // quantity the buyer could change would be a quantity that changes how much
+  // they receive; the webhook multiplies correctly either way, but there is no
+  // reason to offer the choice.
+  //
+  // NOT set for membership, deliberately. That path has been taking real money
+  // since 2026-08-26 with `units` absent, and a subscription checkout is
+  // quantity 1 by definition \u2014 sending a value it has never received is risk
+  // with no benefit on the one flow that must not break.
+  if (kind === "credit_topup") {
+    url.searchParams.set("units", "1");
+  }
   // ?checkout=1 lets MembershipActivationWatcher poll for the async webhook to
   // activate the membership, instead of rendering the stale pre-payment state.
-  url.searchParams.set("successUrl", `${siteUrl}/dashboard?checkout=1`);
+  // ?topup=1 is the same idea for credit: the balance arrives with the webhook,
+  // seconds after the redirect, and a page showing the old balance to someone
+  // who has just paid is the one thing a buyer must never see.
+  url.searchParams.set(
+    "successUrl",
+    kind === "credit_topup"
+      ? `${siteUrl}/dashboard/credits?topup=1`
+      : `${siteUrl}/dashboard?checkout=1`,
+  );
 
   const handler = Checkout({ apiKey, testMode });
   return handler(new NextRequest(url, req));

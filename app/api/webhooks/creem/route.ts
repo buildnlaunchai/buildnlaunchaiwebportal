@@ -8,9 +8,11 @@ import {
   userIdFromMetadata,
 } from "@/lib/creem/access";
 import {
+  CREDIT_TOPUP_UNMAPPED_EVENT_TYPE,
   checkoutCompletedEventType,
   readCheckoutKind,
 } from "@/lib/creem/checkout-kind";
+import { fulfilCreditTopup } from "@/lib/creem/credit-fulfilment";
 
 // Sits under app/api/webhooks/, which proxy.ts excludes from the session
 // middleware — a webhook carries no session cookie, so the refresh is wasted
@@ -150,16 +152,64 @@ export async function POST(req: NextRequest) {
         readCheckoutKind(data.metadata) ??
         readCheckoutKind(metadataOf(data.subscription));
 
-      const eventType = checkoutCompletedEventType(kind);
+      let eventType = checkoutCompletedEventType(kind);
 
       const userId =
         userIdFromMetadata(data.metadata) ??
         userIdFromMetadata(metadataOf(data.subscription));
 
-      if (kind !== "membership") {
+      // ─── CREDIT: FULFIL BEFORE RECORDING ──────────────────────────────────
+      //
+      // Deliberately the opposite order to the membership path, and safe only
+      // because credit_topup is idempotent on the webhook id. The full argument
+      // is in lib/creem/credit-fulfilment.ts; the short version is that
+      // recording first would let a crash in between leave a paying buyer with
+      // nothing and a retry that dedupes into silence.
+      if (kind === "credit_topup") {
+        const result = await fulfilCreditTopup({
+          webhookId: data.webhookId,
+          userId,
+          productId: data.product?.id,
+          units: data.units,
+        });
+
+        if (result.status === "failed") {
+          // Throwing is the point: the SDK answers 500, Creem retries, and the
+          // event is not recorded as done. A transient database failure must not
+          // become a purchase nobody delivers.
+          throw new Error(
+            `[creem] credit top-up ${data.webhookId} failed for user=${userId ?? "none"}: ${result.reason}`,
+          );
+        }
+
+        if (result.status === "unmapped" || result.status === "no_user") {
+          // Money taken, nothing delivered, and a retry cannot help — no amount
+          // of redelivery will add a row to credit_packages or a referenceId to
+          // a checkout that left without one. So it is recorded under a type
+          // that can be searched for, logged with everything needed to fix it by
+          // hand, and answered 200. The fix is credit_admin_adjust.
+          eventType = CREDIT_TOPUP_UNMAPPED_EVENT_TYPE;
+          console.error(
+            `[creem] CREDIT TOP-UP NOT DELIVERED (${data.webhookId}): ${result.status} ` +
+              `user=${userId ?? "none"} product=${data.product?.id ?? "none"} ` +
+              `units=${data.units ?? "?"} — grant it by hand from /admin/credits`,
+          );
+        } else {
+          if (data.units !== 1) {
+            console.warn(
+              `[creem] credit top-up ${data.webhookId} had units=${data.units} ` +
+                `— delivered ${result.credits} credits for ${result.packageSlug}`,
+            );
+          }
+          console.log(
+            `[creem] credit top-up ${data.webhookId} ${result.status}: ` +
+              `${result.credits} credits (${result.packageSlug}) to ${userId}`,
+          );
+        }
+      } else if (kind !== "membership") {
         // Loud, and it carries the user and subscription because this is the
         // line someone reads while fixing a stranded membership by hand. A
-        // top-up we cannot fulfil yet and a membership that did not activate
+        // checkout we cannot identify and a membership that did not activate
         // look identical from the outside; both need the ids to act on.
         console.warn(
           `[creem] checkout.completed (${data.webhookId}) kind=${kind ?? "unknown"} ` +

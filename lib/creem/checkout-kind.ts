@@ -96,6 +96,19 @@ export function readCheckoutKind(metadata: unknown): CheckoutKind | null {
  *   credit_topup -> 'checkout.completed.credit_topup'    records only
  *   null         -> 'checkout.completed.unknown'         records only
  */
+/**
+ * A credit top-up we took money for and could not map to a package.
+ *
+ * Its own event type rather than an interpolated string, for the reason the
+ * function below is written the way it is: `creem_events.event_type` is free
+ * text, and every value that reaches it comes from this file. It is not a grant
+ * — it falls through process_creem_event's `else` branch like the others — but
+ * it is the one an admin greps for, because it means a buyer paid and received
+ * nothing until somebody acts.
+ */
+export const CREDIT_TOPUP_UNMAPPED_EVENT_TYPE =
+  "checkout.completed.credit_topup.unmapped";
+
 export function checkoutCompletedEventType(kind: CheckoutKind | null): string {
   if (kind === "membership") return "checkout.completed";
   if (kind === "credit_topup") return "checkout.completed.credit_topup";

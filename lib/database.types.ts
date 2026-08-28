@@ -597,6 +597,48 @@ export type Database = {
           },
         ]
       }
+      credit_packages: {
+        Row: {
+          created_at: string
+          credits: number
+          id: string
+          is_active: boolean
+          name: string
+          price_usd_cents: number
+          provider: string
+          provider_product_id: string | null
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credits: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price_usd_cents: number
+          provider?: string
+          provider_product_id?: string | null
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_usd_cents?: number
+          provider?: string
+          provider_product_id?: string | null
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       credit_settings: {
         Row: {
           credit_mode_enabled: boolean
@@ -1643,6 +1685,7 @@ export type Database = {
           p_credits: number
           p_note?: string
           p_reference?: string
+          p_require_membership?: boolean
           p_source?: string
           p_user_id: string
         }
