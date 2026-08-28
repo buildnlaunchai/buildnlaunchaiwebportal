@@ -123,7 +123,13 @@ export async function GET(req: NextRequest) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    const next = encodeURIComponent("/dashboard");
+    // Back where they were going, not to a generic dashboard. Reaching this with
+    // kind=credit_topup takes an expired session on /dashboard/credits — rare,
+    // and precisely the moment when landing somewhere else feels like the click
+    // was lost.
+    const next = encodeURIComponent(
+      kind === "credit_topup" ? "/dashboard/credits" : "/dashboard",
+    );
     return NextResponse.redirect(new URL(`/login?next=${next}`, req.nextUrl.origin));
   }
 
