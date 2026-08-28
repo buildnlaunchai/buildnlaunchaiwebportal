@@ -2,7 +2,11 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 import type { Database } from "@/lib/database.types";
-import { timed } from "@/lib/timeout";
+import {
+  AUTH_MIDDLEWARE_SLICE_MS,
+  AUTH_SPENT_HEADER,
+  timed,
+} from "@/lib/timeout";
 
 /**
  * Refreshes the auth cookie and applies route guards.
@@ -17,7 +21,16 @@ import { timed } from "@/lib/timeout";
  * So: this exists to give people the right redirect, not to keep anyone out.
  */
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request });
+  // ─── THE RESPONSE IS BUILT ONCE, AT THE END ───────────────────────────────
+  //
+  // It used to be rebuilt inside setAll, which was fine while nothing after the
+  // auth call needed to change the REQUEST. Now something does: the page has to
+  // be told how much of the auth budget middleware spent, and a request header
+  // is only forwarded by the NextResponse.next() that actually gets returned.
+  // So the cookies Supabase wants to set are collected here and applied to the
+  // one response constructed below.
+  const cookiesToApply: { name: string; value: string; options?: object }[] = [];
+  const started = Date.now();
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,10 +44,7 @@ export async function updateSession(request: NextRequest) {
           for (const { name, value } of cookiesToSet) {
             request.cookies.set(name, value);
           }
-          response = NextResponse.next({ request });
-          for (const { name, value, options } of cookiesToSet) {
-            response.cookies.set(name, value, options);
-          }
+          cookiesToApply.push(...cookiesToSet);
         },
       },
     },
@@ -49,11 +59,28 @@ export async function updateSession(request: NextRequest) {
   // stopped answering for about seven hours. Unbounded, it held every request
   // open until Vercel's gateway gave up at sixty seconds and returned 504.
   //
-  // 2.5s is roughly nine times the healthy p50 (~270ms). Losing the race does
-  // not cancel the call — nothing here can — but the RESPONSE stops waiting on
-  // it, which is the point.
-  const auth = await timed(() => supabase.auth.getUser(), 2500);
+  // ONE BUDGET, NOT TWO DEADLINES. The page re-checks auth a moment later, and
+  // when both had their own timeout they added up: the black-hole test measured
+  // 6.0-6.7s for what this file described as a three-second failure. Middleware
+  // takes a small slice — if auth is healthy it answers in ~270ms, and if it is
+  // not, middleware fails open regardless, so waiting longer here buys nothing
+  // and spends the page's share. What it spent is forwarded below.
+  const auth = await timed(() => supabase.auth.getUser(), AUTH_MIDDLEWARE_SLICE_MS);
+  const spent = Date.now() - started;
   const user = auth.ok ? auth.value.data.user : null;
+
+  // Forwarded on the REQUEST, so it never reaches the browser and cannot be
+  // supplied by one. A caller who forges it can only shorten their own deadline.
+  const forwardedHeaders = new Headers(request.headers);
+  forwardedHeaders.set(AUTH_SPENT_HEADER, String(spent));
+
+  const respond = () => {
+    const res = NextResponse.next({ request: { headers: forwardedHeaders } });
+    for (const { name, value, options } of cookiesToApply) {
+      res.cookies.set(name, value, options);
+    }
+    return res;
+  };
 
   const { pathname, searchParams } = request.nextUrl;
 
@@ -71,7 +98,7 @@ export async function updateSession(request: NextRequest) {
   // three seconds instead of a minute of nothing. Nothing is exposed by
   // skipping a redirect, because the redirect was never what protected it.
   if (!auth.ok) {
-    return response;
+    return respond();
   }
 
   const isAuthed = Boolean(user);
@@ -103,5 +130,5 @@ export async function updateSession(request: NextRequest) {
   // be authorization — requireAdmin() in the page is what actually decides, and
   // it 404s. Middleware only answers "are you signed in at all".
 
-  return response;
+  return respond();
 }

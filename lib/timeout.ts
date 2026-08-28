@@ -59,3 +59,47 @@ export async function timed<T>(work: () => Promise<T>, ms: number): Promise<Time
     if (timer) clearTimeout(timer);
   }
 }
+
+
+/**
+ * ─── ONE BUDGET FOR THE WHOLE REQUEST, NOT A DEADLINE PER LAYER ─────────────
+ *
+ * Auth is checked twice on a dashboard request, and correctly so: middleware
+ * decides the redirect, then the page re-checks because middleware is not
+ * authorization. Give each its own deadline and they ADD — the black-hole test
+ * measured 6.0-6.7s for what was described as a three-second failure, because a
+ * 2.5s middleware timeout and a 3s page timeout ran back to back.
+ *
+ * So there is one number, and middleware tells the page how much of it is left.
+ * `x-auth-spent` is set on the forwarded REQUEST headers (not the response), so
+ * it never reaches the browser and cannot be supplied by one: a caller who
+ * forges it can only shorten their own deadline.
+ */
+export const AUTH_BUDGET_MS = 4000;
+
+/**
+ * Middleware's slice. Deliberately small: if auth is healthy it answers in
+ * ~270ms, and if it is not, middleware fails open regardless — so waiting
+ * longer there buys nothing and spends the page's share.
+ */
+export const AUTH_MIDDLEWARE_SLICE_MS = 1500;
+
+/** The header middleware forwards, and the page reads. */
+export const AUTH_SPENT_HEADER = "x-auth-spent";
+
+/** Used where there is no request context to read the header from. */
+export const AUTH_BUDGET_HEADER_FALLBACK_MS = AUTH_BUDGET_MS;
+
+/**
+ * What is left of the budget for the page, given what middleware already spent.
+ *
+ * Floored at 750ms rather than zero: middleware having timed out is evidence
+ * that auth is sick, but not proof it is dead, and a short probe still catches a
+ * recovery between the two calls. Capped at the full budget so an absent or
+ * junk header cannot extend it.
+ */
+export function remainingAuthBudget(spentHeader: string | null): number {
+  const spent = Number(spentHeader);
+  if (!Number.isFinite(spent) || spent < 0) return AUTH_BUDGET_MS;
+  return Math.min(AUTH_BUDGET_MS, Math.max(750, AUTH_BUDGET_MS - spent));
+}

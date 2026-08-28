@@ -2,10 +2,16 @@ import "server-only";
 
 import { cache } from "react";
 
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import { timed } from "@/lib/timeout";
+import {
+  AUTH_BUDGET_HEADER_FALLBACK_MS,
+  AUTH_SPENT_HEADER,
+  remainingAuthBudget,
+  timed,
+} from "@/lib/timeout";
 import type { Profile } from "@/lib/types";
 
 /**
@@ -54,15 +60,28 @@ function authUnavailable(): Error {
 }
 
 /**
- * How long to wait on the auth server before deciding it is not there.
+ * How long this call may wait — what is LEFT of the request's auth budget.
  *
- * A healthy `auth.getUser()` answers in ~270ms; the profile read that follows is
- * ~200ms. 3s is roughly six times the healthy pair and twenty times faster than
- * the sixty-second gateway timeout it replaces. It is not tuned to be clever —
- * it is chosen to be obviously outside normal so that crossing it means
- * something is genuinely wrong.
+ * Not a fixed deadline of its own. Middleware has usually already asked the same
+ * question a moment earlier, and when both sides had their own timeout they
+ * added up: the black-hole test measured 6.0-6.7s for what was described as a
+ * three-second failure. Middleware forwards what it spent on x-auth-spent and
+ * this takes the remainder. See AUTH_BUDGET_MS.
+ *
+ * Falls back to the whole budget when the header is absent, which is the honest
+ * default for the paths middleware does not run on — a Server Action reached
+ * some other way has spent nothing yet.
  */
-const AUTH_DEADLINE_MS = 3000;
+async function authDeadlineMs(): Promise<number> {
+  try {
+    const h = await headers();
+    return remainingAuthBudget(h.get(AUTH_SPENT_HEADER));
+  } catch {
+    // headers() throws where there is no request context. Nothing has been
+    // spent in that case either.
+    return AUTH_BUDGET_HEADER_FALLBACK_MS;
+  }
+}
 
 /**
  * The signed-in user, or null when nobody is signed in. Never redirects.
@@ -108,11 +127,35 @@ export const getUser = cache(async (): Promise<AuthedUser | null> => {
     if (!profile) return null;
 
     return { id: user.id, email: user.email ?? profile.email, profile };
-  }, AUTH_DEADLINE_MS);
+  }, await authDeadlineMs());
 
   // The distinction this function exists to keep. `null` means we asked and the
   // answer was "nobody"; a throw means we could not ask. See AUTH_UNAVAILABLE.
-  if (!result.ok) throw authUnavailable();
+  //
+  // ─── AND NEXT'S OWN ERRORS MUST PASS STRAIGHT THROUGH ─────────────────────
+  //
+  // Next signals control flow by throwing: redirect(), notFound(), and the
+  // bailout that marks a route dynamic when it touches cookies() during a
+  // prerender. All three carry a `digest`. The first version of this treated
+  // every failure as a timeout, swallowed that bailout, and turned it into
+  // "auth server did not respond" — which failed the BUILD on
+  // /admin/announcements, a page whose only crime was reading a cookie while
+  // being prerendered.
+  //
+  // Catching a framework's control flow and rethrowing it as your own error is
+  // a whole class of bug, and this is the narrow rule that avoids it: if it
+  // already has a digest it belongs to Next, and it is not ours to reinterpret.
+  if (!result.ok) {
+    if (result.reason === "error") {
+      const err = result.error as { digest?: unknown } | undefined;
+      if (err && typeof err === "object" && "digest" in err) throw result.error;
+      // A genuine failure to reach auth — connection refused, DNS, a 5xx that
+      // the client turned into a throw. Same meaning as a timeout: we could not
+      // ask.
+      throw authUnavailable();
+    }
+    throw authUnavailable();
+  }
   return result.value;
 });
 
