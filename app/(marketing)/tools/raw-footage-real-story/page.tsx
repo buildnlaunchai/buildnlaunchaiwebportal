@@ -217,6 +217,33 @@ export default async function RawFootageRealStoryPage() {
           />
         </div>
 
+        {/* ─── BEFORE THE CLICK, NOT AFTER THE SCROLL ────────────────────────
+            The full explanation lives in the Installing section, and it is
+            good — but it sits below "What it does", and somebody who came for
+            the button will never reach it. What they meet instead is macOS
+            saying the app "is damaged and should be moved to the Trash", which
+            is the same block as the milder "cannot be opened" wording but reads
+            like a virus warning. Most people delete the file there, and nothing
+            about that reaches us: no error, no support email, just a download
+            that never becomes an install.
+
+            So the warning goes where the decision is. Short, because the long
+            version is one link away, and specific about the WORDS the OS will
+            use — that is what makes it recognisable when it happens rather than
+            reassurance in advance. */}
+        <Callout tone="warn" icon={ShieldAlert} className="mt-6">
+          <span className="text-text">These builds are not signed yet.</span> The
+          first time you open one, your computer will refuse &mdash; macOS may
+          say the app <em>&ldquo;is damaged and should be moved to the
+          Trash&rdquo;</em>, and Windows will show a blue &ldquo;protected your
+          PC&rdquo; screen. Nothing is wrong with the file: unsigned apps all get
+          this. Don&rsquo;t drag it to the Trash &mdash;{" "}
+          <a href="#install" className="text-accent hover:text-accent-hover">
+            here is how to get past it
+          </a>
+          , once per machine.
+        </Callout>
+
         <p className="mt-5 text-small text-text-faint">
           Every build is published on{" "}
           <a
@@ -265,8 +292,12 @@ export default async function RawFootageRealStoryPage() {
       </section>
 
       {/* Install. The unsigned-binary warning is the single most important thing
-          on this page after the buttons, so it gets a Callout, not a footnote. */}
-      <section className="pb-24">
+          on this page after the buttons, so it gets a Callout, not a footnote.
+
+          It is ALSO summarised at the download buttons, because this section is
+          below "What it does" and nobody scrolls past a button they came for.
+          See the note there. */}
+      <section id="install" className="scroll-mt-24 pb-24">
         <p className="text-eyebrow text-text-faint">Installing</p>
         <h2 className="text-display-l mt-3 text-balance">
           Both builds are unsigned. Read this first.
