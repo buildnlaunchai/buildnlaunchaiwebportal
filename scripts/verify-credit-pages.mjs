@@ -80,8 +80,8 @@ try {
   const b64 = Buffer.from(JSON.stringify(await signIn.json())).toString("base64");
   cookie = `sb-${REF}-auth-token=base64-${b64}`;
 
-  const page = async () => {
-    const res = await fetch(`${SITE}/dashboard/credits`, {
+  const page = async (query = "") => {
+    const res = await fetch(`${SITE}/dashboard/credits${query}`, {
       headers: { cookie, "cache-control": "no-cache" },
       redirect: "follow",
     });
@@ -149,6 +149,35 @@ try {
     check(!runOn, "no two sentences are run together at a JSX seam", String(runOn));
   }
 
+    console.log("\n  THE RETURN FROM CHECKOUT — the banner must not outlive the credit");
+  {
+    // The ordering production actually hit: the webhook wins, so the credit is
+    // already there when the page renders. The first watcher compared the live
+    // balance against the rendered one and waited for it to RISE, which in this
+    // ordering never happens — the banner sat for its full 40-second timeout
+    // under a balance that was already correct. Reliably wrong for the fastest,
+    // healthiest case, which is why the question changed to one the ledger can
+    // answer: has a top-up landed since the checkout started?
+    const started = Date.now() - 60_000;
+    await svc("/rest/v1/credit_ledger", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        user_id: userId, kind: "topup", credits: 1, balance_after: 1,
+        credit_usd_value_at: 0.0001, margin_multiplier_at: 1.6,
+        source: "verify", reference: `verify-banner-${userId}`,
+      }),
+    });
+    const { body } = await page(`?topup=1&t=${started}`);
+    check(!body.includes("Adding your credits"),
+      "a top-up already landed -> no banner, not a 40-second spinner over the right number");
+
+    // And the other ordering still shows it: nothing has landed since `t`.
+    const { body: waiting } = await page(`?topup=1&t=${Date.now() + 60_000}`);
+    check(waiting.includes("Adding your credits"),
+      "nothing landed yet -> the banner is shown");
+  }
+
   console.log("\n  LAPSED, WITH CREDIT — the live member's actual state");
   {
     await setMembership("expired");
@@ -173,10 +202,20 @@ try {
   check(false, "the check itself failed", err.message);
 } finally {
   if (userId) {
+    // Through the guarded RPC, not the auth admin API: this test writes a
+    // credit_ledger row, and credit_ledger is append-only — a plain delete
+    // cascades into the trigger and is refused, which is how earlier probes
+    // stranded accounts in production. erase_synthetic_credit_account refuses
+    // anything with a membership, an application, a key, a run, or a ledger row
+    // that is not source verify/test, so it cannot reach a real account.
     await svc(`/rest/v1/memberships?user_id=eq.${userId}`, { method: "DELETE" });
-    await svc(`/rest/v1/credit_balances?user_id=eq.${userId}`, { method: "DELETE" });
-    const del = await svc(`/auth/v1/admin/users/${userId}`, { method: "DELETE" });
-    console.log(`\n  cleanup: ${del.ok ? "throwaway account deleted" : `LEFT BEHIND ${userId}: ${await del.text()}`}`);
+    const erased = await (
+      await svc("/rest/v1/rpc/erase_synthetic_credit_account", {
+        method: "POST",
+        body: JSON.stringify({ p_user_id: userId }),
+      })
+    ).json();
+    console.log(`\n  cleanup: ${erased === "ok" ? "throwaway account erased" : `LEFT BEHIND ${userId}: ${JSON.stringify(erased)}`}`);
   }
 }
 console.log(`\n  ${pass} passed, ${fail} failed\n`);

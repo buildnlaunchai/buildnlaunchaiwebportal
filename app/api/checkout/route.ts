@@ -234,7 +234,12 @@ export async function GET(req: NextRequest) {
   url.searchParams.set(
     "successUrl",
     kind === "credit_topup"
-      ? `${siteUrl}/dashboard/credits?topup=1`
+      // `t` is when this checkout started. The credits page uses it to ask the
+      // ledger "has a top-up landed since?", which is answerable in both
+      // orderings — unlike "is the balance higher than when the page rendered",
+      // which the webhook wins often enough to be reliably wrong. It only drives
+      // a spinner, so a buyer editing it costs nothing.
+      ? `${siteUrl}/dashboard/credits?topup=1&t=${Date.now()}`
       : `${siteUrl}/dashboard?checkout=1`,
   );
 

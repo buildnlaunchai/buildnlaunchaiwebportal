@@ -33,7 +33,7 @@ export const metadata = { title: "Credits" };
 export default async function CreditsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ topup?: string }>;
+  searchParams: Promise<{ topup?: string; t?: string }>;
 }) {
   await requireUser("/dashboard/credits");
 
@@ -52,13 +52,25 @@ export default async function CreditsPage({
   const forSale = packages.filter((p) => p.providerProductId !== null);
   const turnedAwayForMembership = params.topup === "members_only";
 
+  // Did the purchase already land before this page rendered? The webhook usually
+  // wins that race — on the first real purchase the ledger row was written 56ms
+  // before the event was even recorded — so answering it here is what keeps the
+  // "adding your credits" banner from sitting under a balance that is already
+  // right. See CreditArrivalWatcher.
+  const since = Number(params.t) || null;
+  const topupLanded =
+    since !== null &&
+    credits.ledger.some(
+      (e) => e.kind === "topup" && new Date(e.createdAt).getTime() > since,
+    );
+
   const rate = settings?.usdValue ?? null;
   const worth = (n: number) => (rate === null ? null : n * rate);
 
   return (
     <div className="flex max-w-[720px] flex-col gap-5">
       <Suspense fallback={null}>
-        <CreditArrivalWatcher balanceBefore={credits.balance} />
+        <CreditArrivalWatcher landed={topupLanded} since={since} />
       </Suspense>
 
       <Panel>

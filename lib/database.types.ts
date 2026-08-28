@@ -1691,6 +1691,10 @@ export type Database = {
         }
         Returns: string
       }
+      erase_synthetic_credit_account: {
+        Args: { p_user_id: string }
+        Returns: string
+      }
       has_active_membership: { Args: { uid?: string }; Returns: boolean }
       has_desktop_consent: {
         Args: {
