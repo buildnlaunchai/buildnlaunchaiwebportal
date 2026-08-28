@@ -32,8 +32,14 @@ export function TopUpButtons({ options }: { options: TopUpOption[] }) {
             window.location.href = `/api/checkout?kind=credit_topup&package=${encodeURIComponent(o.slug)}`;
           }}
         >
-          {o.credits.toLocaleString()} credits &middot; $
-          {(o.priceUsdCents / 100).toFixed(0)}
+          {/* Explicit spaces. A bare space between an expression and the text
+              next to it does not survive JSX reliably — this button shipped
+              reading "50,000credits · $5", on the control someone presses to
+              spend money. */}
+          {o.credits.toLocaleString()}
+          {" credits "}
+          &middot;{" "}
+          {`$${(o.priceUsdCents / 100).toFixed(0)}`}
         </Button>
       ))}
     </div>

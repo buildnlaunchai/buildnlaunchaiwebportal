@@ -122,9 +122,13 @@ try {
     const { status, body } = await page();
     check(status === 200, "the page renders", `HTTP ${status}`);
     for (const [credits, dollars] of [["50,000", "5"], ["200,000", "20"], ["500,000", "50"]]) {
+      // A LITERAL SINGLE SPACE, not \s*. The first version of this used \s*
+      // and passed against a button that read "50,000credits · $5" — JSX drops
+      // a bare space next to an expression, and a regex loose enough to
+      // tolerate the bug is not a check. The spacing IS the assertion here.
       check(
-        new RegExp(`${credits}\\s*credits\\s*·\\s*\\$\\s*${dollars}\\b`).test(body),
-        `${credits} credits for $${dollars} is offered`,
+        body.includes(`${credits} credits · $${dollars}`),
+        `the button reads "${credits} credits · $${dollars}", spacing included`,
       );
     }
     check(!body.includes("Renew membership"), "and no renew CTA");
@@ -133,6 +137,10 @@ try {
       body.includes("credits bought now are what keep the apps running later"),
       "it says why buying before you need it is the point",
     );
+    // The general form of the same bug, since it can appear at any JSX seam:
+    // a sentence ending and the next word with no space between them.
+    const runOn = body.match(/[a-z][.;][A-Z][a-z]{2,}/g);
+    check(!runOn, "no two sentences are run together at a JSX seam", String(runOn));
   }
 
   console.log("\n  LAPSED, WITH CREDIT — the live member's actual state");
@@ -142,7 +150,7 @@ try {
     const { body } = await page();
     check(body.includes("Renew membership"), "the renew CTA is there");
     check(/Renew membership\s*—\s*\$10\/mo/.test(body), "reading as a sentence, not an HTML entity", body.match(/Renew membership[^.]{0,24}/)?.[0]);
-    check(!/50,000\s*credits\s*·/.test(body), "and the buy buttons are gone");
+    check(!body.includes("50,000 credits · $5"), "and the buy buttons are gone");
     check(body.includes("keep working until they run out"), "it says the credits they hold still work");
   }
 

@@ -101,7 +101,8 @@ export default async function CreditsPage({
             second billing term. lib/credit-terms.ts is the one copy; see its
             header for why the voice changes here and nowhere else. */}
         <p className="mt-5 text-small text-text-faint">
-          {CREDIT_TERMS.whatItIs} {CREDIT_TERMS.whenSpent}{" "}
+          {CREDIT_TERMS.whatItIs}{" "}
+          {CREDIT_TERMS.whenSpent}{" "}
           {CREDIT_TERMS.whatACallCosts}
         </p>
       </Panel>
@@ -243,9 +244,8 @@ export default async function CreditsPage({
               />
             </div>
             <p className="mt-3 text-small text-text-faint">
-              {CREDIT_TERMS.whenSpent} Buying while your membership is active is
-              the point &mdash; credits bought now are what keep the apps running
-              later.
+              {CREDIT_TERMS.whenSpent}{" "}
+              {`Buying while your membership is active is the point \u2014 credits bought now are what keep the apps running later.`}
             </p>
           </>
         ) : (
@@ -261,8 +261,8 @@ export default async function CreditsPage({
                 <>
                   Your membership isn&rsquo;t active, so there&rsquo;s nothing to
                   buy right now &mdash; but the{" "}
-                  {credits.available.toLocaleString()} credits you already have
-                  keep working until they run out.
+                  {credits.available.toLocaleString()}
+                  {" credits you already have keep working until they run out."}
                 </>
               ) : (
                 <>
