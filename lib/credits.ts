@@ -140,7 +140,21 @@ export async function getPublishedExpiryMonths(): Promise<number> {
 export async function getMyCredits(ledgerLimit = 25): Promise<MyCredits> {
   const supabase = await createClient();
 
-  const [balanceRes, lotsRes, ledgerRes] = await Promise.all([
+  // ─── FOUR QUERIES, ONE ROUND TRIP ─────────────────────────────────────────
+  //
+  // The tool-name lookup used to run AFTER this batch, because it was written to
+  // take the slugs the ledger returned — which made it a fifth, serial round
+  // trip on the heaviest page in the app. It does not need them: `tools` holds
+  // four rows, RLS already limits it to what this member may see, and filtering
+  // in memory costs nothing next to a network hop.
+  //
+  // Slugs are ours, names are theirs. The ledger stores `tool_slug` because a
+  // slug is stable and a name is not — renaming a tool must not rewrite what
+  // happened last month — but the member has never seen a slug, and a history
+  // that names things they cannot recognise is a history they cannot check. A
+  // tool that is archived or draft will not resolve, and that row keeps its slug
+  // rather than losing its subject.
+  const [balanceRes, lotsRes, ledgerRes, toolsRes] = await Promise.all([
     supabase.from("credit_balances").select("balance, held").maybeSingle(),
     supabase
       .from("credit_lots")
@@ -154,29 +168,13 @@ export async function getMyCredits(ledgerLimit = 25): Promise<MyCredits> {
       )
       .order("created_at", { ascending: false })
       .limit(ledgerLimit),
+    supabase.from("tools").select("slug, name"),
   ]);
 
   const balance = balanceRes.data?.balance ?? 0;
   const held = balanceRes.data?.held ?? 0;
 
-  // ─── Slugs are ours, names are theirs ──────────────────────────────────────
-  //
-  // The ledger stores `tool_slug` because a slug is stable and a name is not \u2014
-  // renaming a tool must not rewrite what happened last month. But the member
-  // has never seen a slug: `raw-footage-real-story` is not what the app is
-  // called anywhere they look, and a history that names things they cannot
-  // recognise is a history they cannot check.
-  //
-  // Resolved through the same scoped client as everything else in this
-  // function, so RLS decides which tool rows are readable. A tool that is
-  // archived or draft simply will not resolve, and the row keeps its slug rather
-  // than losing its subject.
-  const slugs = [...new Set((ledgerRes.data ?? []).map((e) => e.tool_slug).filter((s): s is string => !!s))];
-  const nameOf = new Map<string, string>();
-  if (slugs.length > 0) {
-    const { data: tools } = await supabase.from("tools").select("slug, name").in("slug", slugs);
-    for (const t of tools ?? []) nameOf.set(t.slug, t.name);
-  }
+  const nameOf = new Map((toolsRes.data ?? []).map((t) => [t.slug, t.name]));
 
   return {
     balance,
