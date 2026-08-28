@@ -2,6 +2,7 @@ import "server-only";
 
 import { PUBLISHED_EXPIRY_MONTHS } from "@/lib/credit-terms";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createPublicClient } from "@/lib/supabase/public";
 import { createClient } from "@/lib/supabase/server";
 import { timed } from "@/lib/timeout";
 
@@ -111,8 +112,12 @@ export async function getCreditSettings(): Promise<CreditSettings | null> {
  * it replaces.
  */
 export async function getPublishedExpiryMonths(): Promise<number> {
-  const result = await timed(async () => {
-    const supabase = await createClient();
+  const result = await timed(async (signal) => {
+    // The PUBLIC client, not the session one. Reading cookies would make
+    // /terms and /refund dynamic, and dynamic is exactly what left them as the
+    // only marketing pages that could hang — see the revalidate on both. This
+    // row is the same for every visitor, so there is no session to attach.
+    const supabase = createPublicClient({ signal });
     const { data } = await supabase
       .from("credit_settings_public")
       .select("expiry_months")

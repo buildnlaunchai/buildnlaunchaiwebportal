@@ -3,6 +3,7 @@ import "server-only";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/database.types";
+import { fetchWithSignal } from "@/lib/timeout";
 
 /**
  * A cookieless anon client for PUBLIC data — the catalog, tool pages, the
@@ -18,10 +19,15 @@ import type { Database } from "@/lib/database.types";
  * Do NOT use this for anything that depends on who is asking. Per-user reads go
  * through lib/supabase/server.ts so RLS sees the session.
  */
-export function createPublicClient() {
+export function createPublicClient(options?: { signal?: AbortSignal }) {
   return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false, autoRefreshToken: false } },
+    {
+      auth: { persistSession: false, autoRefreshToken: false },
+      ...(options?.signal
+        ? { global: { fetch: fetchWithSignal(options.signal) } }
+        : {}),
+    },
   );
 }

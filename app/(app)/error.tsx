@@ -2,7 +2,7 @@
 
 import { TriangleAlert } from "lucide-react";
 
-import { AuthUnavailable } from "@/components/ui/auth-unavailable";
+import { ServiceUnavailable } from "@/components/ui/service-unavailable";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -37,10 +37,10 @@ export default function DashboardError({
 }) {
   // Next strips server error messages in production and forwards only the
   // digest, so this is the only thing that survives to tell the two failures
-  // apart: "we could not reach the auth service" and "something else broke".
-  // They need different words — see AuthUnavailable and lib/access.ts.
-  if (error.digest === "AUTH_UNAVAILABLE") {
-    return <AuthUnavailable onRetry={reset} />;
+  // apart: "we could not reach something we depend on" and "something else
+  // broke". They need different words — see ServiceUnavailable and lib/access.ts.
+  if (error.digest === "BACKEND_UNAVAILABLE") {
+    return <ServiceUnavailable onRetry={reset} />;
   }
 
   return (

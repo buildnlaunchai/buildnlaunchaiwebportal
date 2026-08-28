@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 import type { Database } from "@/lib/database.types";
+import { fetchWithSignal } from "@/lib/timeout";
 
 /**
  * The server client, acting AS THE SIGNED-IN USER. Anon key + their session, so
@@ -11,13 +12,19 @@ import type { Database } from "@/lib/database.types";
  * If you find yourself wanting to bypass RLS here, you want lib/supabase/admin.
  * Reach for it deliberately, not by accident.
  */
-export async function createClient() {
+export async function createClient(options?: { signal?: AbortSignal }) {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      // A deadline is only real if it can cancel. Without this the request keeps
+      // the serverless invocation alive after the code has given up on it — see
+      // lib/timeout.ts, where a 2.5s timeout produced a 61-second response.
+      ...(options?.signal
+        ? { global: { fetch: fetchWithSignal(options.signal) } }
+        : {}),
       cookies: {
         getAll() {
           return cookieStore.getAll();

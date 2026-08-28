@@ -5,6 +5,7 @@ import type { Database } from "@/lib/database.types";
 import {
   AUTH_MIDDLEWARE_SLICE_MS,
   AUTH_SPENT_HEADER,
+  fetchWithSignal,
   timed,
 } from "@/lib/timeout";
 
@@ -32,10 +33,14 @@ export async function updateSession(request: NextRequest) {
   const cookiesToApply: { name: string; value: string; options?: object }[] = [];
   const started = Date.now();
 
-  const supabase = createServerClient<Database>(
+  // Built per call so it can carry the deadline's signal — an uncancellable
+  // request holds the invocation open long after the code stopped waiting on it.
+  const withSignal = (signal: AbortSignal) =>
+    createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: { fetch: fetchWithSignal(signal) },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -65,7 +70,10 @@ export async function updateSession(request: NextRequest) {
   // takes a small slice — if auth is healthy it answers in ~270ms, and if it is
   // not, middleware fails open regardless, so waiting longer here buys nothing
   // and spends the page's share. What it spent is forwarded below.
-  const auth = await timed(() => supabase.auth.getUser(), AUTH_MIDDLEWARE_SLICE_MS);
+  const auth = await timed(
+    (signal) => withSignal(signal).auth.getUser(),
+    AUTH_MIDDLEWARE_SLICE_MS,
+  );
   const spent = Date.now() - started;
   const user = auth.ok ? auth.value.data.user : null;
 
@@ -93,7 +101,7 @@ export async function updateSession(request: NextRequest) {
   // Continuing is safe here and nowhere else, and the reason is the one written
   // at the top of this file and in proxy.ts: MIDDLEWARE IS NOT AUTHORIZATION.
   // It is a redirect. The page still calls requireUser(), which shares this
-  // request's deadline through React.cache and throws AUTH_UNAVAILABLE — so the
+  // request's deadline through React.cache and throws BACKEND_UNAVAILABLE — so the
   // person gets an honest "we cannot reach the sign-in service" screen in about
   // three seconds instead of a minute of nothing. Nothing is exposed by
   // skipping a redirect, because the redirect was never what protected it.

@@ -31,24 +31,43 @@ export type Timed<T> =
 /**
  * Run `work`, giving up after `ms`.
  *
- * NOTE ON WHAT A TIMEOUT DOES NOT DO: losing the race does not cancel the
- * underlying request — there is no signal threaded through the Supabase client
- * to cancel. The hung call keeps running in the background until the runtime
- * tears the invocation down. That is acceptable because the RESPONSE is no
- * longer waiting on it, which is the whole point; but it is why this is a
- * deadline for the user, not a resource limit for the server.
+ * ─── IT CANCELS. THE FIRST VERSION DID NOT, AND THAT WAS THE BUG ────────────
+ *
+ * The first version raced and walked away, with a footnote saying the losing
+ * call keeps running "until the runtime tears the invocation down" and that this
+ * was fine because the response no longer waits on it.
+ *
+ * The response DOES wait on it. The black-hole test served /terms with the right
+ * fallback number after 61 SECONDS: the render finished in 2.5s exactly as
+ * designed, and then the invocation sat there because a fetch was still pending,
+ * until the platform killed it at its own limit. A race bounds the CONTENT, not
+ * the RESPONSE — in a serverless runtime those are different things, and the
+ * footnote had the second one backwards.
+ *
+ * So `work` is handed an AbortSignal and every caller threads it into the
+ * Supabase client's fetch. Losing the race now aborts the request rather than
+ * abandoning it.
  */
-export async function timed<T>(work: () => Promise<T>, ms: number): Promise<Timed<T>> {
+export async function timed<T>(
+  work: (signal: AbortSignal) => Promise<T>,
+  ms: number,
+): Promise<Timed<T>> {
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const controller = new AbortController();
 
   const deadline = new Promise<Timed<T>>((resolve) => {
-    timer = setTimeout(() => resolve({ ok: false, reason: "timeout" }), ms);
+    timer = setTimeout(() => {
+      // Abort BEFORE resolving: the point is that the invocation stops waiting
+      // on this request, not merely that we stop reading its answer.
+      controller.abort(new Error("deadline"));
+      resolve({ ok: false, reason: "timeout" });
+    }, ms);
   });
 
   // The .then/.catch here rather than a try/await: the losing promise must
   // still have a handler attached, or a rejection that arrives after the race
   // is over becomes an unhandled rejection and can take the process with it.
-  const attempt = work().then(
+  const attempt = work(controller.signal).then(
     (value): Timed<T> => ({ ok: true, value }),
     (error): Timed<T> => ({ ok: false, reason: "error", error }),
   );
@@ -57,7 +76,30 @@ export async function timed<T>(work: () => Promise<T>, ms: number): Promise<Time
     return await Promise.race([attempt, deadline]);
   } finally {
     if (timer) clearTimeout(timer);
+    // Also abort on the success path, so nothing the client started in the
+    // background (a retry, a token refresh) outlives the call that wanted it.
+    controller.abort(new Error("done"));
   }
+}
+
+/**
+ * A `fetch` bound to a deadline's signal, for the Supabase clients' `global`
+ * option.
+ *
+ * Combines with any signal the caller already passed rather than replacing it —
+ * supabase-js does not pass one today, but silently dropping somebody else's
+ * cancellation is the kind of helper that is wrong for a year before anyone
+ * notices.
+ */
+export function fetchWithSignal(signal: AbortSignal): typeof fetch {
+  return (input, init) => {
+    const existing = init?.signal;
+    const combined =
+      existing && typeof AbortSignal.any === "function"
+        ? AbortSignal.any([existing, signal])
+        : (existing ?? signal);
+    return fetch(input, { ...init, signal: combined });
+  };
 }
 
 

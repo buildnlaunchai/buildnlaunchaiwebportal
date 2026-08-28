@@ -32,6 +32,12 @@ export type AuthedUser = {
 /**
  * ─── UNKNOWN IS NOT SIGNED OUT ──────────────────────────────────────────────
  *
+ * Named BACKEND_ and not AUTH_ because this function reads the auth server AND
+ * the profiles table under one deadline, so it genuinely cannot tell which of
+ * them failed. The black-hole test proved that the hard way: with auth healthy
+ * and the database dead, the old name produced a screen insisting the sign-in
+ * service was down.
+ *
  * The digest carried by the error `getUser()` throws when the auth server does
  * not answer. It is NOT an error page for "you are logged out" — that case
  * returns null and redirects to /login, which is correct and always has been.
@@ -51,11 +57,11 @@ export type AuthedUser = {
  * so the digest is what the error boundary matches on to say something specific
  * rather than "something broke".
  */
-export const AUTH_UNAVAILABLE = "AUTH_UNAVAILABLE";
+export const BACKEND_UNAVAILABLE = "BACKEND_UNAVAILABLE";
 
 function authUnavailable(): Error {
-  const err = new Error("auth server did not respond") as Error & { digest?: string };
-  err.digest = AUTH_UNAVAILABLE;
+  const err = new Error("a service this request depends on did not respond") as Error & { digest?: string };
+  err.digest = BACKEND_UNAVAILABLE;
   return err;
 }
 
@@ -87,7 +93,7 @@ async function authDeadlineMs(): Promise<number> {
  * The signed-in user, or null when nobody is signed in. Never redirects.
  *
  * THROWS when the auth server does not answer inside AUTH_DEADLINE_MS, and that
- * is deliberate — see AUTH_UNAVAILABLE above. Returning null there would mean
+ * is deliberate — see BACKEND_UNAVAILABLE above. Returning null there would mean
  * every caller doing `if (!user) return []` quietly reports an outage as an
  * empty account.
  *
@@ -102,8 +108,8 @@ async function authDeadlineMs(): Promise<number> {
  * duplication is not.
  */
 export const getUser = cache(async (): Promise<AuthedUser | null> => {
-  const result = await timed(async () => {
-    const supabase = await createClient();
+  const result = await timed(async (signal) => {
+    const supabase = await createClient({ signal });
 
     // getUser(), not getSession(): getSession reads the cookie and trusts it,
     // getUser revalidates the JWT against the auth server. On the server, the
@@ -130,7 +136,7 @@ export const getUser = cache(async (): Promise<AuthedUser | null> => {
   }, await authDeadlineMs());
 
   // The distinction this function exists to keep. `null` means we asked and the
-  // answer was "nobody"; a throw means we could not ask. See AUTH_UNAVAILABLE.
+  // answer was "nobody"; a throw means we could not ask. See BACKEND_UNAVAILABLE.
   //
   // ─── AND NEXT'S OWN ERRORS MUST PASS STRAIGHT THROUGH ─────────────────────
   //

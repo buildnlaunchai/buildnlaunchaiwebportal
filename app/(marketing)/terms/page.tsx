@@ -5,6 +5,22 @@ import { LegalShell, Section } from "@/components/legal/legal";
 import { getPublishedExpiryMonths } from "@/lib/credits";
 import { CREDIT_TERMS, creditExpirySentence } from "@/lib/credit-terms";
 
+/**
+ * ─── ISR AS WELL AS THE FALLBACK, NOT INSTEAD OF IT ─────────────────────────
+ *
+ * They do different jobs and the black-hole test showed both are needed. With
+ * the database gone, /tools and /pricing served in 82ms and 299ms because they
+ * are cached; /terms served the RIGHT expiry — via the fallback — after 61
+ * seconds, because it was dynamic and had to wait for a request that was never
+ * coming.
+ *
+ * So: the fallback guarantees the number is correct, and the cache guarantees
+ * the page is fast. Neither substitutes for the other. This is only possible
+ * because getPublishedExpiryMonths reads through the cookieless public client —
+ * touching cookies would make the route dynamic again and silently undo it.
+ */
+export const revalidate = 300;
+
 export const metadata: Metadata = {
   title: "Terms of Service — Build & Launch AI",
   description: "The terms that govern your use of Build & Launch AI.",
